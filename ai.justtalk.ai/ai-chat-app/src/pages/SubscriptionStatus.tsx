@@ -1,0 +1,239 @@
+// Subscription Status Component - Display current subscription info
+import { useEffect, useState } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Progress } from '../components/ui/progress';
+import { Badge } from '../components/ui/badge';
+import { CheckCircle, ArrowLeft } from 'lucide-react';
+import { useSubscription } from '../hooks/useSubscription';
+
+export default function SubscriptionStatus() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const { subscription, messagesRemaining, isLoading } = useSubscription();
+
+  // Handle success parameter
+  useEffect(() => {
+    if (searchParams.get('success') === 'true') {
+      setShowSuccessMessage(true);
+      // Clear the parameter after showing message
+      const timer = setTimeout(() => {
+        setSearchParams({});
+        setShowSuccessMessage(false);
+      }, 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, setSearchParams]);
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center p-8">Loading...</div>;
+  }
+
+  if (!subscription) {
+    return (
+      <div className="container mx-auto py-8 px-4">
+        {/* Success Message */}
+        {showSuccessMessage && (
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 flex items-start gap-3 mb-6">
+            <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-green-900 dark:text-green-100">Subscription Activated!</p>
+              <p className="text-sm text-green-800 dark:text-green-200 mt-1">
+                Your subscription is being processed. Refresh in a moment to see your plan details.
+              </p>
+            </div>
+          </div>
+        )}
+        <Card>
+          <CardHeader>
+            <CardTitle>No Active Subscription</CardTitle>
+            <CardDescription>
+              Subscribe to JustAI to start practicing English with AI voice conversations
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => navigate('/subscription-plans')}>
+              View Plans
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const usagePercentage = subscription.monthly_message_limit
+    ? (subscription.messages_used_this_period / subscription.monthly_message_limit) * 100
+    : 0;
+
+  const periodEnd = new Date(subscription.current_period_end);
+  const daysRemaining = Math.ceil(
+    (periodEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+  );
+
+  const planName = subscription.subscription_type.charAt(0).toUpperCase() + subscription.subscription_type.slice(1);
+
+  return (
+    <div className="container mx-auto py-8 px-4 max-w-4xl">
+      {/* Success Message */}
+      {showSuccessMessage && (
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 flex items-start gap-3 mb-6">
+          <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium text-green-900 dark:text-green-100">Payment Successful!</p>
+            <p className="text-sm text-green-800 dark:text-green-200 mt-1">
+              Your subscription is now active. Enjoy unlimited access to JustAI!
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-4 mb-6">
+        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <h1 className="text-3xl font-bold">My Subscription</h1>
+      </div>
+
+      <div className="space-y-6">
+        {/* Plan Info */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>JustAI {planName}</CardTitle>
+                <CardDescription>
+                  {subscription.billing_period === 'annual' ? 'Annual' : 'Monthly'} Plan
+                </CardDescription>
+              </div>
+              <Badge
+                variant={subscription.status === 'active' ? 'default' : 'destructive'}
+              >
+                {subscription.status}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Price */}
+            <div>
+              <div className="text-2xl font-bold">
+                ${(subscription.price_cents / 100).toFixed(2)}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {subscription.billing_period === 'annual' ? 'per year' : 'per month'}
+              </div>
+            </div>
+
+            {/* Renewal Date */}
+            <div>
+              <div className="text-sm font-medium">Next billing date</div>
+              <div className="text-muted-foreground">
+                {periodEnd.toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+                {' '}
+                ({daysRemaining} days remaining)
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Usage */}
+        {subscription.monthly_message_limit && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Usage This Period</CardTitle>
+              <CardDescription>
+                Messages used: {subscription.messages_used_this_period} of {subscription.monthly_message_limit}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Progress value={usagePercentage} />
+              
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">
+                  {messagesRemaining ?? 0} messages remaining
+                </span>
+                <span className="font-medium">
+                  {usagePercentage.toFixed(0)}% used
+                </span>
+              </div>
+
+              {usagePercentage > 80 && (
+                <div className="text-sm text-amber-600">
+                  You're running low on messages. Consider upgrading to get more.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {!subscription.monthly_message_limit && (
+          <Card>
+            <CardContent className="py-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600 mb-2">
+                  ♾️ Unlimited Messages
+                </div>
+                <p className="text-muted-foreground">
+                  You have unlimited access to all JustAI features
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Features */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Benefits</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              <li className="flex items-start gap-2">
+                <span className="text-green-600">✓</span>
+                <span className="text-sm">AI-powered conversation practice</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-green-600">✓</span>
+                <span className="text-sm">Real-time pronunciation feedback</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-green-600">✓</span>
+                <span className="text-sm">Personalized learning path</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-green-600">✓</span>
+                <span className="text-sm">{subscription.monthly_message_limit ? `${subscription.monthly_message_limit} messages per month` : 'Unlimited messages'}</span>
+              </li>
+            </ul>
+          </CardContent>
+        </Card>
+
+        {/* Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Manage Subscription</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Button variant="outline" className="w-full" disabled>
+              Update Payment Method
+            </Button>
+            <Button variant="outline" className="w-full" disabled>
+              Change Plan
+            </Button>
+            <Button variant="outline" className="w-full text-destructive" disabled>
+              Cancel Subscription
+            </Button>
+            <p className="text-xs text-muted-foreground text-center pt-2">
+              Subscription management will be available soon
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

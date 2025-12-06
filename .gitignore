@@ -1,0 +1,18 @@
+# Ignore everything by default
+*
+*/
+
+# But track ai.justtalk.ai and its contents
+!ai.justtalk.ai/
+!ai.justtalk.ai/**
+
+# Ignore specific items within ai.justtalk.ai
+ai.justtalk.ai/.env
+ai.justtalk.ai/.env.*
+!ai.justtalk.ai/.env.example
+ai.justtalk.ai/supabase/
+ai.justtalk.ai/node_modules/
+ai.justtalk.ai/.DS_Store
+
+# Also track .gitignore itself
+!.gitignore
