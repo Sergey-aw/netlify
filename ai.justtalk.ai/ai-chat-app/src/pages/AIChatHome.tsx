@@ -19,6 +19,7 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,10 +60,23 @@ export default function AIChatHome() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [translations, setTranslations] = useState<Record<string, string>>({});
+  const [visibleTranslations, setVisibleTranslations] = useState<Set<string>>(new Set());
   const [loadingTranslation, setLoadingTranslation] = useState<Record<string, boolean>>({});
   const [playingAudio, setPlayingAudio] = useState<Record<string, boolean>>({});
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
   const voiceButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Load cached translations from localStorage
+  useEffect(() => {
+    const cached = localStorage.getItem('ai-chat-translations');
+    if (cached) {
+      try {
+        setTranslations(JSON.parse(cached));
+      } catch (e) {
+        console.error('Failed to parse cached translations:', e);
+      }
+    }
+  }, []);
 
   // Initialize OpenAI client
   const openai = new OpenAI({
@@ -199,16 +213,40 @@ export default function AIChatHome() {
   };
 
   const handleTranslate = async (messageId: string, content: string) => {
-    if (translations[messageId]) {
-      // Toggle translation visibility
-      setTranslations((prev) => {
-        const newTranslations = { ...prev };
-        delete newTranslations[messageId];
-        return newTranslations;
+    // Check if translation is currently visible - toggle it off
+    if (visibleTranslations.has(messageId)) {
+      setVisibleTranslations((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(messageId);
+        return newSet;
       });
       return;
     }
 
+    // Check if translation already exists in cache
+    if (translations[messageId]) {
+      // Show cached translation immediately without loading state
+      setVisibleTranslations((prev) => new Set(prev).add(messageId));
+      return;
+    }
+
+    // Check if translation exists in localStorage but not in state
+    const cached = localStorage.getItem('ai-chat-translations');
+    if (cached) {
+      try {
+        const cachedTranslations = JSON.parse(cached);
+        if (cachedTranslations[messageId]) {
+          // Load into state and show immediately
+          setTranslations((prev) => ({ ...prev, [messageId]: cachedTranslations[messageId] }));
+          setVisibleTranslations((prev) => new Set(prev).add(messageId));
+          return;
+        }
+      } catch (e) {
+        console.error('Failed to parse cached translations:', e);
+      }
+    }
+
+    // Fetch new translation
     setLoadingTranslation((prev) => ({ ...prev, [messageId]: true }));
     
     try {
@@ -230,7 +268,13 @@ export default function AIChatHome() {
       });
 
       const translation = completion.choices[0]?.message?.content || 'Translation failed';
-      setTranslations((prev) => ({ ...prev, [messageId]: translation }));
+      setTranslations((prev) => {
+        const newTranslations = { ...prev, [messageId]: translation };
+        // Save to localStorage
+        localStorage.setItem('ai-chat-translations', JSON.stringify(newTranslations));
+        return newTranslations;
+      });
+      setVisibleTranslations((prev) => new Set(prev).add(messageId));
     } catch (error) {
       console.error('Translation error:', error);
       setTranslations((prev) => ({ ...prev, [messageId]: 'Translation error occurred' }));
@@ -418,18 +462,34 @@ export default function AIChatHome() {
                     <div className="flex flex-col gap-2">
                       <div
                         className={cn(
-                          'px-4 py-3 rounded-2xl',
+                          'px-4 py-3 rounded-2xl transition-all duration-300 ease-in-out',
                           message.role === 'user'
                             ? 'bg-blue-600 text-white'
                             : 'bg-white text-gray-900 shadow-sm'
                         )}
                       >
                         <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                        {translations[message.id] && (
-                          <div className="mt-2 pt-2 border-t border-gray-200">
-                            <p className="text-sm text-gray-600 italic">{translations[message.id]}</p>
+                        <div 
+                          className={cn(
+                            "grid transition-all duration-300 ease-in-out",
+                            (visibleTranslations.has(message.id) || loadingTranslation[message.id]) 
+                              ? "grid-rows-[1fr] opacity-100" 
+                              : "grid-rows-[0fr] opacity-0"
+                          )}
+                        >
+                          <div className="overflow-hidden">
+                            <div className="mt-2 pt-2 border-t border-gray-200">
+                              {loadingTranslation[message.id] ? (
+                                <div className="space-y-2">
+                                  <Skeleton className="h-3 w-full" />
+                                  <Skeleton className="h-3 w-3/4" />
+                                </div>
+                              ) : visibleTranslations.has(message.id) && translations[message.id] ? (
+                                <p className="text-sm text-gray-600">{translations[message.id]}</p>
+                              ) : null}
+                            </div>
                           </div>
-                        )}
+                        </div>
                         <p
                           className={cn(
                             'text-xs mt-1',
@@ -461,7 +521,7 @@ export default function AIChatHome() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 px-2 text-gray-500 hover:text-gray-700"
+                            className="h-7 px-0 text-gray-500 hover:text-gray-700"
                             onClick={() => handleTranslate(message.id, message.content)}
                             disabled={loadingTranslation[message.id]}
                           >
