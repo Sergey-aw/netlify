@@ -20,6 +20,7 @@ import AIChatVoice from './pages/AIChatVoice'
 import RolePlays from './pages/RolePlays'
 import Dictionary from './pages/Dictionary'
 import Profile from './pages/Profile'
+import Settings from './pages/Settings'
 import SubscriptionPlans from './pages/SubscriptionPlans'
 import SubscriptionStatus from './pages/SubscriptionStatus'
 import SubscriptionManagement from './pages/SubscriptionManagement'
@@ -68,6 +69,7 @@ function App() {
             <Route path="/role-plays" element={<ProtectedRoute><RolePlays /></ProtectedRoute>} />
             <Route path="/dictionary" element={<ProtectedRoute><Dictionary /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/subscription-plans" element={<SubscriptionPlans />} />
             <Route path="/subscription-status" element={<ProtectedRoute><SubscriptionStatus /></ProtectedRoute>} />
             <Route path="/subscription/plans" element={<SubscriptionPlans />} />

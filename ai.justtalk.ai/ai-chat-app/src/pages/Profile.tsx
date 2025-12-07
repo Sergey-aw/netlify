@@ -22,7 +22,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 export default function Profile() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const { subscription, hasActiveSubscription, messagesRemaining, isLoading: subLoading } = useSubscription();
+  const { subscription, messagesRemaining } = useSubscription();
 
   // Get current user
   const { data: user, isLoading: userLoading } = useQuery({
@@ -167,7 +167,7 @@ export default function Profile() {
     { 
       icon: Settings, 
       label: 'Settings', 
-      action: () => console.log('Settings')
+      action: () => navigate('/settings')
     },
   ];
 
@@ -253,28 +253,7 @@ export default function Profile() {
           })}
         </Card>
 
-        {/* Learning Preferences */}
-        <Card className="p-4">
-          <h3 className="font-semibold mb-3">Learning Preferences</h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Native Language</span>
-              <span className="text-sm font-medium">
-                {user?.native_language || 'Not set'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Target Language</span>
-              <span className="text-sm font-medium">English</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Correction Style</span>
-              <span className="text-sm font-medium">
-                {agentConfig?.correction_style || 'Balanced'}
-              </span>
-            </div>
-          </div>
-        </Card>
+
 
         {/* Logout Button */}
         <Button

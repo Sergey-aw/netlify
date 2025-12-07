@@ -1,12 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play } from 'lucide-react';
+import { Play, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cefrLevels, voiceOptions } from '@/data/mockData';
+import { cefrLevels } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { markOnboardingComplete } from '@/lib/onboarding-state';
+
+interface Voice {
+  voice_id: string;
+  name: string;
+  labels: {
+    gender: string;
+    accent: string;
+    age?: string;
+    use_case?: string;
+  };
+  preview_url: string;
+  is_primary: boolean;
+}
 
 export default function OnboardingPreferences() {
   const navigate = useNavigate();
@@ -14,6 +27,44 @@ export default function OnboardingPreferences() {
   const [cefrLevel, setCefrLevel] = useState('');
   const [voicePreference, setVoicePreference] = useState('');
   const [correctionStyle, setCorrectionStyle] = useState('balanced');
+  const [voices, setVoices] = useState<Voice[]>([]);
+  const [loadingVoices, setLoadingVoices] = useState(true);
+  const [playingVoice, setPlayingVoice] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Load voices from API
+  useEffect(() => {
+    const loadVoices = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-get-voices`,
+          {
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setVoices(data.voices || []);
+          // Set primary voice as default
+          const primaryVoice = data.voices.find((v: Voice) => v.is_primary);
+          if (primaryVoice) {
+            setVoicePreference(primaryVoice.voice_id);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading voices:', error);
+      } finally {
+        setLoadingVoices(false);
+      }
+    };
+    loadVoices();
+  }, []);
 
   // Load from database on mount
   useEffect(() => {
@@ -22,15 +73,39 @@ export default function OnboardingPreferences() {
       
       const { data } = await supabase
         .from('profiles')
-        .select('cefr_level, justai_correction_style')
+        .select('cefr_level, justai_correction_style, justai_preferred_voice')
         .eq('id', user.id)
         .single();
       
       if (data?.cefr_level) setCefrLevel(data.cefr_level);
       if (data?.justai_correction_style) setCorrectionStyle(data.justai_correction_style);
+      if (data?.justai_preferred_voice) setVoicePreference(data.justai_preferred_voice);
     };
     loadPreferences();
   }, [user]);
+
+  // Play voice preview
+  const handlePlayVoice = (voiceId: string, previewUrl: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (playingVoice === voiceId) {
+      // Stop current audio
+      audioRef.current?.pause();
+      setPlayingVoice(null);
+    } else {
+      // Stop any existing audio
+      audioRef.current?.pause();
+      
+      // Play new audio
+      const audio = new Audio(previewUrl);
+      audioRef.current = audio;
+      setPlayingVoice(voiceId);
+      
+      audio.play();
+      audio.onended = () => setPlayingVoice(null);
+      audio.onerror = () => setPlayingVoice(null);
+    }
+  };
 
   const correctionStyles = [
     {
@@ -79,6 +154,7 @@ export default function OnboardingPreferences() {
           .update({
             cefr_level: cefrLevel,
             justai_correction_style: correctionStyle,
+            justai_preferred_voice: voicePreference,
             justai_onboarding_completed: true,
           })
           .eq('id', user.id);
@@ -164,29 +240,51 @@ export default function OnboardingPreferences() {
         {/* Voice Preference */}
         <div className="mb-8">
           <h3 className="font-semibold text-gray-900 mb-4">Choose AI Voice</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {voiceOptions.map((voice) => (
-              <button
-                key={voice.id}
-                onClick={() => setVoicePreference(voice.id)}
-                className={cn(
-                  'p-4 rounded-xl border-2 transition-all text-left relative',
-                  voicePreference === voice.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                )}
-              >
-                <p className="font-semibold text-gray-900">{voice.name}</p>
-                <p className="text-xs text-gray-500">
-                  {voice.accent} • {voice.gender}
-                </p>
-                <p className="text-xs text-gray-600 mt-1">{voice.description}</p>
-                <button className="absolute top-3 right-3 p-2 bg-gray-100 rounded-full hover:bg-gray-200">
-                  <Play className="w-3 h-3" />
+          {loadingVoices ? (
+            <div className="text-center py-8 text-gray-500">Loading voices...</div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {voices.map((voice) => (
+                <button
+                  key={voice.voice_id}
+                  onClick={() => setVoicePreference(voice.voice_id)}
+                  className={cn(
+                    'p-4 rounded-xl border-2 transition-all text-left relative',
+                    voicePreference === voice.voice_id
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  )}
+                >
+                  <p className="font-semibold text-gray-900">
+                    {voice.name}
+                    {voicePreference === voice.voice_id && (
+                      <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-medium">
+                        Active
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-xs text-gray-500 capitalize">
+                    {voice.labels.accent} • {voice.labels.gender}
+                  </p>
+                  {voice.labels.age && (
+                    <p className="text-xs text-gray-600 mt-1 capitalize">
+                      {voice.labels.age.replace('_', ' ')}
+                    </p>
+                  )}
+                  <button
+                    onClick={(e) => handlePlayVoice(voice.voice_id, voice.preview_url, e)}
+                    className="absolute top-3 right-3 p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+                  >
+                    {playingVoice === voice.voice_id ? (
+                      <Pause className="w-3 h-3" />
+                    ) : (
+                      <Play className="w-3 h-3" />
+                    )}
+                  </button>
                 </button>
-              </button>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Correction Style */}
