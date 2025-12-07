@@ -367,13 +367,15 @@ const response = await fetch(
 1. Fetches conversation transcript from ElevenLabs API
 2. Extracts user and assistant messages
 3. Saves messages to `justai_messages` table
-4. Updates `justai_voice_sessions` with costs and duration
-5. Marks session as `transcription_complete`
-
-**For vocabulary processing:** After this function completes, call external NLP service to:
-1. Extract lemmas from user messages
-2. Insert into `vocab_evidence` with `virtual_lesson_id`
-3. Database trigger will auto-update `student_lexeme_history`
+4. Creates AI lesson and lesson_transcription_segments
+5. **Triggers real-time vocabulary processing:**
+   - Calls `vocab-ingest-segment` for each student segment (parallel, non-blocking)
+   - External NLP service extracts lemmas
+   - Inserts into `vocab_evidence` table
+   - Database trigger auto-updates `student_lexeme_history`
+6. Updates `justai_voice_sessions` with costs and duration
+7. Calls `vocab-process-final-segment` to finalize and aggregate statistics
+8. Marks session as `transcription_complete`
 
 **Environment Variables Required:**
 - `ELEVENLABS_API_KEY` - API key for ElevenLabs
@@ -427,10 +429,20 @@ const response = await fetch(
 
 ```
 1. Voice session ends
-2. Call process-voice-session → saves messages to justai_messages
-3. External NLP analyzes user messages → extracts lemmas
-4. Insert into vocab_evidence with virtual_lesson_id
-5. Database trigger updates student_lexeme_history automatically
+2. Call process-voice-session
+   → Fetches transcript from ElevenLabs
+   → Creates lesson + lesson_transcription_segments
+3. Immediately after segments created:
+   → Triggers vocab-ingest-segment for each student segment (parallel)
+   → External NLP (spaCy) analyzes text → extracts lemmas
+   → Looks up lexeme IDs from database
+   → Inserts into vocab_evidence with lesson_id
+   → Database trigger auto-updates student_lexeme_history
+4. Session finalization continues (non-blocking)
+5. vocab-process-final-segment called to aggregate statistics
+
+Note: Vocabulary processing happens in real-time as segments are created,
+not waiting for full session completion.
 ```
 
 ### Webhook Integration

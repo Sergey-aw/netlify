@@ -11,6 +11,8 @@
 // Required Secrets (set in Supabase Dashboard):
 // - ELEVENLABS_API_KEY
 
+/// <reference types="https://deno.land/x/types/index.d.ts" />
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 
@@ -252,16 +254,19 @@ serve(async (req) => {
           start_time: segmentStartTime.toISOString(),
           end_time: segmentEndTime.toISOString(),
           transcript: content,
+          formatted_text: content, // Store same text for vocabulary processing
           final_sentence_transcription: true,
         })
       }
     }
 
     // Insert segments in bulk
+    let studentSegmentIds: string[] = []
     if (segmentsToInsert.length > 0) {
-      const { error: segmentsError } = await supabase
+      const { data: insertedSegments, error: segmentsError } = await supabase
         .from('lesson_transcription_segments')
         .insert(segmentsToInsert)
+        .select()
 
       if (segmentsError) {
         console.error('Error inserting lesson segments:', segmentsError)
@@ -269,6 +274,12 @@ serve(async (req) => {
       }
 
       console.log(`Inserted ${segmentsToInsert.length} lesson transcription segments`)
+
+      // Collect student segment IDs for client-side vocabulary processing
+      const studentSegments = insertedSegments.filter((seg: any) => seg.speaker_role === 'student')
+      studentSegmentIds = studentSegments.map((seg: any) => seg.id)
+      
+      console.log(`Created ${studentSegmentIds.length} student segments for vocabulary processing`)
     }
 
     // Convert ElevenLabs credits to cost in cents
@@ -300,19 +311,14 @@ serve(async (req) => {
       throw updateError
     }
 
-    // TODO: Queue vocabulary and grammar processing
-    // This could trigger another background job to:
-    // 1. Extract vocabulary from user messages
-    // 2. Detect grammar patterns
-    // 3. Update student_lexeme_history
-    // 4. Create vocab_evidence entries linked to virtual_lesson_id
-    // For now, just mark as ready for processing
-    console.log('Voice session processing complete, ready for vocab/grammar analysis')
+    console.log('Voice session processing complete')
 
     return new Response(
       JSON.stringify({
         success: true,
         voiceSessionId,
+        lessonId: lessonData.id,
+        studentSegmentIds: studentSegmentIds || [],
         messagesProcessed: messagesToInsert.length,
         totalCharacters,
         costCents: totalCostCents,

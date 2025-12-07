@@ -77,15 +77,78 @@ export default function Profile() {
     },
   });
 
+  // Get real user stats
+  const { data: userStats } = useQuery({
+    queryKey: ['user-stats', user?.id],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      // Get conversation count
+      const { count: conversationCount } = await supabase
+        .from('justai_conversations')
+        .select('*', { count: 'exact', head: true })
+        .eq('student_id', user.id);
+
+      // Get total voice session hours
+      const { data: voiceSessions } = await supabase
+        .from('justai_voice_sessions')
+        .select('total_duration_seconds')
+        .eq('student_id', user.id);
+
+      const totalSeconds = voiceSessions?.reduce((sum, session) => sum + (session.total_duration_seconds || 0), 0) || 0;
+      const totalHours = (totalSeconds / 3600).toFixed(1);
+
+      // Calculate streak (days with conversations in last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const { data: recentConversations } = await supabase
+        .from('justai_conversations')
+        .select('created_at')
+        .eq('student_id', user.id)
+        .gte('created_at', thirtyDaysAgo.toISOString())
+        .order('created_at', { ascending: false });
+
+      // Calculate consecutive days with activity
+      let streak = 0;
+      if (recentConversations && recentConversations.length > 0) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const conversationDates = new Set(
+          recentConversations.map(conv => {
+            const date = new Date(conv.created_at);
+            date.setHours(0, 0, 0, 0);
+            return date.getTime();
+          })
+        );
+
+        let checkDate = today.getTime();
+        while (conversationDates.has(checkDate)) {
+          streak++;
+          checkDate -= 24 * 60 * 60 * 1000; // Go back one day
+        }
+      }
+
+      return {
+        conversationCount: conversationCount || 0,
+        totalHours,
+        streak,
+      };
+    },
+    enabled: !!user?.id,
+  });
+
   const handleLogout = async () => {
     await signOut();
     navigate('/login');
   };
 
   const stats = [
-    { label: 'Conversations', value: '47', icon: TrendingUp },
-    { label: 'Current Streak', value: '12 days', icon: Target },
-    { label: 'Total Hours', value: '8.5h', icon: Award },
+    { label: 'Conversations', value: userStats?.conversationCount?.toString() || '0', icon: TrendingUp },
+    { label: 'Current Streak', value: `${userStats?.streak || 0} days`, icon: Target },
+    { label: 'Total Hours', value: `${userStats?.totalHours || '0.0'}h`, icon: Award },
   ];
 
   const menuItems = [

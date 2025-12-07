@@ -8,7 +8,6 @@ export interface Subscription {
   subscription_type: 'basic' | 'plus' | 'premium';
   status: 'active' | 'past_due' | 'canceled' | 'expired';
   monthly_message_limit: number | null;
-  messages_used_this_period: number;
   price_cents: number;
   currency: string;
   billing_period: 'monthly' | 'annual';
@@ -18,6 +17,8 @@ export interface Subscription {
   stripe_customer_id: string | null;
   created_at: string;
   updated_at: string;
+  // Computed field - not from database
+  messages_used_this_period?: number;
 }
 
 export interface SubscriptionAccess {
@@ -31,6 +32,7 @@ export interface SubscriptionAccess {
 
 /**
  * Hook to check user's subscription status and message limits
+ * Now uses database functions to calculate real-time usage from justai_messages
  */
 export function useSubscription(): SubscriptionAccess {
   const { user } = useSession();
@@ -42,7 +44,7 @@ export function useSubscription(): SubscriptionAccess {
 
       const { data, error } = await supabase
         .from('justai_subscriptions')
-        .select('*')
+        .select('id, student_id, subscription_type, status, monthly_message_limit, price_cents, currency, billing_period, current_period_start, current_period_end, stripe_subscription_id, stripe_customer_id, created_at, updated_at')
         .eq('student_id', user.id)
         .eq('status', 'active')
         .single();
@@ -55,17 +57,34 @@ export function useSubscription(): SubscriptionAccess {
         throw error;
       }
 
-      return data as Subscription;
+      // Get real-time message count using database function
+      const { data: messageCount, error: countError } = await supabase.rpc(
+        'get_messages_used_in_period',
+        {
+          p_student_id: user.id,
+          p_period_start: data.current_period_start,
+          p_period_end: data.current_period_end,
+        }
+      );
+
+      if (countError) {
+        console.error('Failed to get message count:', countError);
+      }
+
+      return {
+        ...data,
+        messages_used_this_period: messageCount || 0,
+      } as Subscription;
     },
     enabled: !!user?.id,
-    staleTime: 60000, // Consider fresh for 1 minute
-    refetchInterval: 300000, // Refetch every 5 minutes
+    staleTime: 30000, // Consider fresh for 30 seconds (shorter for real-time updates)
+    refetchInterval: 60000, // Refetch every 1 minute to keep usage current
   });
 
   const hasActiveSubscription = !!subscription && subscription.status === 'active';
   
   const messagesRemaining = subscription?.monthly_message_limit
-    ? subscription.monthly_message_limit - subscription.messages_used_this_period
+    ? subscription.monthly_message_limit - (subscription.messages_used_this_period || 0)
     : null;
 
   const canSendMessage = hasActiveSubscription && (

@@ -63,17 +63,26 @@ Fetches ElevenLabs conversation data and processes:
   - Preserves exact timestamps from voice session
   - Sets `final_sentence_transcription`: true
 - Links lesson to voice session via `virtual_lesson_id`
-- These segments can later be processed for:
-  - Vocabulary extraction (`vocab_evidence` table)
-  - Grammar pattern detection
-  - Lexeme tracking
 
-#### D. Future Processing (TODO)
-- Extract vocabulary from student messages
-- Create `vocab_evidence` entries linked to segments
-- Update `student_lexeme_history`
-- Detect grammar patterns
-- Generate session summaries
+#### D. Real-Time Vocabulary Processing
+**Immediately after segments are inserted:**
+- Filters student segments (`speaker_role = 'student'`)
+- Triggers `vocab-ingest-segment` edge function for each student segment in parallel
+- **Non-blocking operation** - runs in background while session finalization continues
+- Each segment is processed:
+  1. Segment text fetched from database
+  2. External NLP service (spaCy) called to extract lemmas
+  3. Lexeme IDs looked up from `lexemes` table
+  4. Records inserted into `vocab_evidence` table
+  5. Database trigger automatically updates `student_lexeme_history`
+- Processing happens asynchronously - doesn't delay session completion
+
+#### E. Vocabulary Finalization
+- After all vocabulary processing completes, calls `vocab-process-final-segment`:
+  - Aggregates all vocabulary evidence for the lesson
+  - Calculates final statistics
+  - Marks lesson as vocabulary processed
+- This is a finalization-only step (individual segments already processed)
   - `elevenlabs_llm_credits`: LLM credits (charging.llm_charge)
   - `elevenlabs_character_count`: character count (for reference)
   - `elevenlabs_cost_cents`: estimated cost
@@ -81,19 +90,39 @@ Fetches ElevenLabs conversation data and processes:
   - `ai_speaking_time_seconds`: from analysis
   - `total_duration_seconds`: actual duration from ElevenLabs
 
-#### C. Processing Flags
+#### F. Processing Flags
 - Sets `transcription_complete: true`
-- Leaves `vocabulary_processed` and `grammar_processed` as false (for future enhancement)
+- `vocabulary_processed` is set by `vocab-process-final-segment` after aggregation completes
+- `grammar_processed` remains false (for future enhancement)
 
 ### 3. Future Enhancements (TODO)
 
-#### Vocabulary Processing
-Similar to regular lessons, extract vocabulary from user messages:
-- Parse user messages for words/phrases
-- Link to `lexemes` table
-- Create `vocab_evidence` entries
-- Update `student_lexeme_history` for progress tracking
-- Mark new vocabulary learned
+#### Vocabulary Processing ✅ IMPLEMENTED
+**Current Implementation:**
+- Real-time processing during session end via `vocab-ingest-segment`
+- Parallel processing of all student segments
+- Automatic NLP analysis and lemma extraction
+- Database trigger maintains `student_lexeme_history`
+- Finalization via `vocab-process-final-segment`
+
+**Architecture:**
+```
+Session Ends → process-voice-session
+  ↓
+  Create lesson + segments
+  ↓
+  [Real-Time Processing - Non-blocking]
+  ├─ vocab-ingest-segment (segment 1) ────→ vocab_evidence
+  ├─ vocab-ingest-segment (segment 2) ────→ vocab_evidence  
+  └─ vocab-ingest-segment (segment N) ────→ vocab_evidence
+                                              ↓
+                                      [DB Trigger Auto-Updates]
+                                      student_lexeme_history
+  ↓
+  Calculate costs & update session
+  ↓
+  vocab-process-final-segment (finalize)
+```
 
 #### Grammar Processing  
 Similar to regular lessons, detect grammar patterns:

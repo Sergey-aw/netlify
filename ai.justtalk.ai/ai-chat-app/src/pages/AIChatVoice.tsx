@@ -84,71 +84,43 @@ export default function AIChatVoice() {
         
         // Save to database
         if (conversationId && user?.id) {
-          // Check subscription limit before saving
+          // Check subscription limit before saving using database function
           const { data: subscription } = await supabase
             .from('justai_subscriptions')
-            .select('*')
+            .select('id, monthly_message_limit, current_period_start, current_period_end')
             .eq('student_id', user.id)
             .eq('status', 'active')
             .single();
 
-          // Verify user hasn't hit limit during session
-          if (
-            subscription?.monthly_message_limit &&
-            subscription.messages_used_this_period >= subscription.monthly_message_limit
-          ) {
-            alert(
-              'You have reached your monthly message limit. Ending session.'
-            );
+          if (!subscription) {
+            alert('No active subscription found. Ending session.');
             await endSession();
             return;
           }
 
-          const { data: messageData } = await supabase
+          // Check message limit using real-time count from justai_messages
+          if (subscription.monthly_message_limit) {
+            const { data: limitCheck } = await supabase.rpc('check_message_limit', {
+              p_student_id: user.id,
+              p_subscription_id: subscription.id,
+            });
+
+            if (limitCheck === false) {
+              alert('You have reached your monthly message limit. Ending session.');
+              await endSession();
+              return;
+            }
+          }
+
+          // Save user message (usage is automatically tracked via justai_usage_log_view)
+          await supabase
             .from('justai_messages')
             .insert({
               conversation_id: conversationId,
               role: 'user',
               content: message.message,
               is_voice_message: true,
-            })
-            .select()
-            .single();
-
-          // Track usage and increment subscription message count
-          if (messageData && subscription) {
-            // Increment messages_used_this_period
-            const { error: updateError } = await supabase
-              .from('justai_subscriptions')
-              .update({
-                messages_used_this_period: subscription.messages_used_this_period + 1,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', subscription.id);
-            
-            if (updateError) {
-              console.error('❌ Failed to update subscription:', updateError);
-            } else {
-              console.log('✅ Updated subscription message count to:', subscription.messages_used_this_period + 1);
-            }
-
-            // Log usage for analytics
-            const { error: logError } = await supabase.from('justai_usage_log').insert({
-              subscription_id: subscription.id,
-              student_id: user.id,
-              message_id: messageData.id,
-              conversation_id: conversationId,
-              is_voice_message: true,
-              billing_period_start: subscription.current_period_start,
-              billing_period_end: subscription.current_period_end,
             });
-            
-            if (logError) {
-              console.error('❌ Failed to insert usage log:', logError);
-            } else {
-              console.log('✅ Inserted usage log for message:', messageData.id);
-            }
-          }
         }
       } else if (message.source === 'ai' && message.message) {
         const segment: TranscriptSegment = {
@@ -191,10 +163,10 @@ export default function AIChatVoice() {
           throw new Error('User not authenticated');
         }
 
-        // Check subscription status and limits
+        // Check subscription status and limits using real-time count
         const { data: subscription, error: subError } = await supabase
           .from('justai_subscriptions')
-          .select('*')
+          .select('id, subscription_type, monthly_message_limit, current_period_start, current_period_end')
           .eq('student_id', user.id)
           .eq('status', 'active')
           .single();
@@ -205,16 +177,20 @@ export default function AIChatVoice() {
           return;
         }
 
-        // Check if user has exceeded their monthly limit (if limit exists)
-        if (
-          subscription.monthly_message_limit &&
-          subscription.messages_used_this_period >= subscription.monthly_message_limit
-        ) {
-          alert(
-            `You've reached your monthly message limit (${subscription.monthly_message_limit} messages). Please upgrade your plan or wait until next billing cycle.`
-          );
-          navigate('/subscription-plans');
-          return;
+        // Check if user has exceeded their monthly limit using database function
+        if (subscription.monthly_message_limit) {
+          const { data: limitCheck } = await supabase.rpc('check_message_limit', {
+            p_student_id: user.id,
+            p_subscription_id: subscription.id,
+          });
+
+          if (limitCheck === false) {
+            alert(
+              `You've reached your monthly message limit (${subscription.monthly_message_limit} messages). Please upgrade your plan or wait until next billing cycle.`
+            );
+            navigate('/subscription-plans');
+            return;
+          }
         }
 
         // Create conversation record in database
@@ -419,11 +395,59 @@ export default function AIChatVoice() {
                 voiceSessionId: voiceSessionData.id,
               }),
             }
-          ).then((response) => {
+          ).then(async (response) => {
             console.log('✅ Process function response:', response.status);
-            return response.text();
-          }).then((text) => {
-            console.log('✅ Process function result:', text);
+            if (!response.ok) {
+              throw new Error(`Process function failed: ${response.status}`);
+            }
+            return response.json();
+          }).then(async (result) => {
+            console.log('✅ Process function result:', result);
+            console.log('🔍 result.studentSegmentIds:', result.studentSegmentIds);
+            console.log('🔍 studentSegmentIds length:', result.studentSegmentIds?.length);
+            
+            // Process vocabulary for student segments
+            if (result.success && result.studentSegmentIds && result.studentSegmentIds.length > 0) {
+              console.log(`🎯 Processing vocabulary for ${result.studentSegmentIds.length} student segments`);
+              
+              // Process each segment in parallel
+              const vocabPromises = result.studentSegmentIds.map(async (segmentId: string) => {
+                try {
+                  const vocabResponse = await fetch(
+                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/vocab-ingest-segment`,
+                    {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.data.session?.access_token}`,
+                      },
+                      body: JSON.stringify({
+                        lessonId: result.lessonId,
+                        segmentId: segmentId,
+                        studentId: user.id,
+                      }),
+                    }
+                  );
+                  
+                  if (!vocabResponse.ok) {
+                    const error = await vocabResponse.text();
+                    console.error(`❌ Vocab processing failed for segment ${segmentId}:`, error);
+                    return { segmentId, success: false, error };
+                  }
+                  
+                  const vocabResult = await vocabResponse.json();
+                  console.log(`✅ Vocab processed for segment ${segmentId}:`, vocabResult);
+                  return { segmentId, success: true, ...vocabResult };
+                } catch (error) {
+                  console.error(`❌ Error processing vocab for segment ${segmentId}:`, error);
+                  return { segmentId, success: false, error };
+                }
+              });
+              
+              const vocabResults = await Promise.all(vocabPromises);
+              const successCount = vocabResults.filter(r => r.success).length;
+              console.log(`✅ Vocabulary processing complete: ${successCount}/${result.studentSegmentIds.length} successful`);
+            }
           }).catch((error) => {
             console.error('❌ Failed to trigger voice session processing:', error);
           });
