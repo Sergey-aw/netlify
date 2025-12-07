@@ -94,6 +94,20 @@ export default function AIChatHome() {
     }
   }, []);
 
+  // Load cached word definitions from localStorage
+  const [wordDefinitions, setWordDefinitions] = useState<Record<string, any>>({});
+  
+  useEffect(() => {
+    const cached = localStorage.getItem('ai-chat-word-definitions');
+    if (cached) {
+      try {
+        setWordDefinitions(JSON.parse(cached));
+      } catch (e) {
+        console.error('Failed to parse cached word definitions:', e);
+      }
+    }
+  }, []);
+
   // Initialize OpenAI client
   const openai = new OpenAI({
     apiKey: import.meta.env.VITE_OPENAI_API_KEY,
@@ -364,6 +378,16 @@ export default function AIChatHome() {
     const cleanWord = word.replace(/[.,!?;:]/g, '').trim();
     if (!cleanWord || loadingWord) return;
 
+    // Create a cache key based on word and target language
+    const cacheKey = `${cleanWord.toLowerCase()}_${user?.native_language?.toLowerCase() || 'ru'}`;
+
+    // Check if word definition exists in cache
+    if (wordDefinitions[cacheKey]) {
+      setSelectedWord(wordDefinitions[cacheKey]);
+      setShowWordDrawer(true);
+      return;
+    }
+
     setLoadingWord(true);
     setShowWordDrawer(true);
 
@@ -391,13 +415,22 @@ export default function AIChatHome() {
       }
 
       const data = await response.json();
-      setSelectedWord({
+      const wordData = {
         word: data.word[0]?.word || cleanWord,
         lemma: data.word[0]?.lemma || cleanWord,
         pos: data.word[0]?.pos || 'UNKNOWN',
         definitions: data.definitions || [],
         synonyms: data.synonyms_wordnet || {},
         translations: data.translations || {},
+      };
+
+      setSelectedWord(wordData);
+
+      // Cache the word definition
+      setWordDefinitions((prev) => {
+        const newDefinitions = { ...prev, [cacheKey]: wordData };
+        localStorage.setItem('ai-chat-word-definitions', JSON.stringify(newDefinitions));
+        return newDefinitions;
       });
     } catch (error) {
       console.error('Word analysis error:', error);
@@ -503,12 +536,12 @@ export default function AIChatHome() {
         </div>
 
         {/* Main Content Area */}
-        <div className="h-full bg-gray-100 rounded-[40px] pt-8 pb-6 m-2 flex flex-col overflow-hidden">
+        <div className="h-full bg-gray-100 rounded-[40px] pt-0 pb-6 m-2 flex flex-col overflow-hidden">
           {selectedConversation && messages ? (
             // Conversation View
             <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full px-6 overflow-hidden">
               {/* Messages - Scrollable */}
-              <div className="flex-1 overflow-y-auto space-y-4 py-4">
+              <div className="flex-1 overflow-y-auto space-y-4 pt-0 pb-4">
                 {messages.map((message) => (
                   <div
                     key={message.id}
@@ -622,7 +655,7 @@ export default function AIChatHome() {
           ) : (
             // Default Home View
             <>
-              <div className="flex justify-center">
+              <div className="flex justify-center pt-8">
                 <img src={Logo} alt="JustTalk AI" className="h-8" />
               </div>
               <main className="flex-1 flex flex-col justify-center max-w-2xl mx-auto px-6 w-full">
