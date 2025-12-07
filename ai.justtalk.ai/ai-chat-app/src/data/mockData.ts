@@ -13,7 +13,7 @@ export interface Profile {
   ai_onboarding_completed: boolean;
   ai_voice_preference?: string;
   ai_correction_style: 'gentle' | 'balanced' | 'strict';
-  avatar_url?: string;
+  profile_photo_url?: string;
 }
 
 export interface AISubscription {
@@ -121,7 +121,7 @@ export const mockCurrentUser: Profile = {
   ai_onboarding_completed: true,
   ai_voice_preference: 'rachel',
   ai_correction_style: 'balanced',
-  avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sergey'
+  profile_photo_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sergey'
 };
 
 // Mock subscription

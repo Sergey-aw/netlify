@@ -15,11 +15,17 @@ import {
   Volume2,
   CircleStop,
   Languages,
+  Bookmark,
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import {
+  Drawer,
+  DrawerContent,
+} from '@/components/ui/drawer';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,6 +69,16 @@ export default function AIChatHome() {
   const [visibleTranslations, setVisibleTranslations] = useState<Set<string>>(new Set());
   const [loadingTranslation, setLoadingTranslation] = useState<Record<string, boolean>>({});
   const [playingAudio, setPlayingAudio] = useState<Record<string, boolean>>({});
+  const [showWordDrawer, setShowWordDrawer] = useState(false);
+  const [selectedWord, setSelectedWord] = useState<{
+    word: string;
+    lemma: string;
+    pos: string;
+    definitions: Array<{ definition: string; example: string; score: number }>;
+    synonyms: Record<string, number>;
+    translations: Record<string, number>;
+  } | null>(null);
+  const [loadingWord, setLoadingWord] = useState(false);
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
   const voiceButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -344,6 +360,53 @@ export default function AIChatHome() {
     }
   };
 
+  const handleWordClick = async (word: string, messageContent: string) => {
+    const cleanWord = word.replace(/[.,!?;:]/g, '').trim();
+    if (!cleanWord || loadingWord) return;
+
+    setLoadingWord(true);
+    setShowWordDrawer(true);
+
+    try {
+      const session = await supabase.auth.getSession();
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/word-analyze`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.data.session?.access_token}`,
+          },
+          body: JSON.stringify({
+            text: messageContent,
+            target_word: cleanWord,
+            language: 'en',
+            target_language: user?.native_language?.toLowerCase() || 'ru',
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to analyze word');
+      }
+
+      const data = await response.json();
+      setSelectedWord({
+        word: data.word[0]?.word || cleanWord,
+        lemma: data.word[0]?.lemma || cleanWord,
+        pos: data.word[0]?.pos || 'UNKNOWN',
+        definitions: data.definitions || [],
+        synonyms: data.synonyms_wordnet || {},
+        translations: data.translations || {},
+      });
+    } catch (error) {
+      console.error('Word analysis error:', error);
+      setShowWordDrawer(false);
+    } finally {
+      setLoadingWord(false);
+    }
+  };
+
   return (
     <div className="h-[95vh] bg-white page-enter flex flex-col">
       {/* Voice Button Transition Overlay */}
@@ -374,7 +437,7 @@ export default function AIChatHome() {
             <span className="text-gray-700 font-medium">Upgrade</span>
           </Button>
           <Avatar className="w-10 h-10 cursor-pointer" onClick={() => navigate('/profile')}>
-            <AvatarImage src={user?.avatar_url} />
+            <AvatarImage src={user?.profile_photo_url} />
             <AvatarFallback>{user?.display_name?.[0] || 'U'}</AvatarFallback>
           </Avatar>
         </div>
@@ -468,7 +531,23 @@ export default function AIChatHome() {
                             : 'bg-white text-gray-900 shadow-sm'
                         )}
                       >
-                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                        {message.role === 'assistant' ? (
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                            {message.content.split(' ').map((word: string, index: number) => (
+                              <span key={index}>
+                                <span
+                                  onClick={() => handleWordClick(word, message.content)}
+                                  className="cursor-pointer hover:bg-blue-100 hover:text-blue-700 rounded transition-colors"
+                                >
+                                  {word}
+                                </span>
+                                {index < message.content.split(' ').length - 1 ? ' ' : ''}
+                              </span>
+                            ))}
+                          </p>
+                        ) : (
+                          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                        )}
                         <div 
                           className={cn(
                             "grid transition-all duration-300 ease-in-out",
@@ -532,7 +611,7 @@ export default function AIChatHome() {
                     </div>
                     {message.role === 'user' && (
                       <Avatar className="w-8 h-8 flex-shrink-0">
-                        <AvatarImage src={user?.avatar_url} />
+                        <AvatarImage src={user?.profile_photo_url} />
                         <AvatarFallback>{user?.display_name?.[0] || 'U'}</AvatarFallback>
                       </Avatar>
                     )}
@@ -659,6 +738,115 @@ export default function AIChatHome() {
           </div>
         </div>
       </div>
+
+      {/* Word Definition Drawer */}
+      <Drawer open={showWordDrawer} onOpenChange={setShowWordDrawer}>
+        <DrawerContent className="px-6 pb-6" aria-describedby="word-definition-description">
+          <div className="sr-only" id="word-definition-description">
+            Word definition and details
+          </div>
+          {loadingWord ? (
+            <div className="py-8 space-y-4">
+              <Skeleton className="h-10 w-48" />
+              <Skeleton className="h-6 w-32" />
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-16 w-full" />
+            </div>
+          ) : selectedWord ? (
+            <>
+              {/* Word Header */}
+              <div className="pt-6 pb-4 border-b">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h2 className="text-3xl font-bold capitalize">{selectedWord.word}</h2>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full bg-purple-100 hover:bg-purple-200 text-purple-700"
+                        onClick={() => {
+                          const utterance = new SpeechSynthesisUtterance(selectedWord.word);
+                          utterance.lang = 'en-US';
+                          window.speechSynthesis.speak(utterance);
+                        }}
+                      >
+                        <Volume2 className="w-5 h-5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full bg-purple-100 hover:bg-purple-200 text-purple-700"
+                      >
+                        <Bookmark className="w-5 h-5" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="bg-gray-200 text-gray-700">
+                        {selectedWord.pos}
+                      </Badge>
+                      <p className="text-gray-500 text-sm">{selectedWord.lemma}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Word Content */}
+              <div className="py-4 space-y-6">
+                {/* Definitions */}
+                {selectedWord.definitions && selectedWord.definitions.length > 0 && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-gray-500 mb-3">Definitions</h3>
+                    {selectedWord.definitions.map((def, index) => (
+                      <div key={index} className="mb-3 last:mb-0">
+                        <p className="text-base mb-1">{def.definition}</p>
+                        {def.example && (
+                          <p className="text-sm text-gray-600 italic">"{ def.example}"</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Synonyms */}
+                {selectedWord.synonyms && Object.keys(selectedWord.synonyms).length > 0 && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-gray-500 mb-2">Synonyms</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(selectedWord.synonyms)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 5)
+                        .map(([syn]) => (
+                          <Badge key={syn} variant="outline" className="text-sm">
+                            {syn}
+                          </Badge>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Translations */}
+                {selectedWord.translations && Object.keys(selectedWord.translations).length > 0 && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-gray-500 mb-2">
+                      Translations ({user?.native_language || 'Russian'})
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(selectedWord.translations)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 5)
+                        .map(([trans]) => (
+                          <Badge key={trans} variant="outline" className="text-sm">
+                            {trans}
+                          </Badge>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : null}
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

@@ -424,7 +424,7 @@ export default function AIChatConversation() {
             {/* Student Avatar */}
             {message.role === 'user' && (
               <Avatar className="w-8 h-8 flex-shrink-0">
-                <AvatarImage src={mockCurrentUser.avatar_url} />
+                <AvatarImage src={mockCurrentUser.profile_photo_url} />
                 <AvatarFallback>{mockCurrentUser.display_name?.[0]}</AvatarFallback>
               </Avatar>
             )}
@@ -505,7 +505,10 @@ export default function AIChatConversation() {
 
       {/* Assessment Drawer */}
       <Drawer open={showAssessmentDialog} onOpenChange={setShowAssessmentDialog}>
-        <DrawerContent className="px-6 pb-6">
+        <DrawerContent className="px-6 pb-6" aria-describedby="assessment-description">
+          <div className="sr-only" id="assessment-description">
+            Role-play assessment and feedback
+          </div>
           {/* Assessment Badges */}
           <div className="space-y-3 mb-6 mt-6">
             <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg">
@@ -571,7 +574,10 @@ export default function AIChatConversation() {
 
       {/* Word Definition Drawer */}
       <Drawer open={showWordDrawer} onOpenChange={setShowWordDrawer}>
-        <DrawerContent className="px-6 pb-6">
+        <DrawerContent className="px-6 pb-6" aria-describedby="word-definition-description">
+          <div className="sr-only" id="word-definition-description">
+            Word definition and details
+          </div>
           {selectedWord && (
             <>
               {/* Word Header */}
