@@ -497,28 +497,61 @@ function VocabSetDetails({ setId, getCefrBadgeColor }: VocabSetDetailsProps) {
     }
   };
 
+  const toggleSelectAllUnacquired = () => {
+    const unacquiredWords = words.filter(w => !w.is_acquired && !w.in_builder);
+    const unacquiredIds = new Set(unacquiredWords.map(w => w.lexeme_id));
+    
+    // Check if all unacquired words are currently selected
+    const allSelected = unacquiredWords.every(w => selectedWords.has(w.lexeme_id));
+    
+    if (allSelected) {
+      // Deselect all unacquired words
+      const newSelection = new Set(selectedWords);
+      unacquiredIds.forEach(id => newSelection.delete(id));
+      setSelectedWords(newSelection);
+    } else {
+      // Select all unacquired words
+      setSelectedWords(new Set([...selectedWords, ...unacquiredIds]));
+    }
+  };
+
   if (isLoading) {
     return <p className="text-sm text-gray-500">Loading words...</p>;
   }
 
   const wordsNotInBuilder = words.filter(w => !w.in_builder);
+  const unacquiredWords = words.filter(w => !w.is_acquired && !w.in_builder);
+  const unacquiredCount = unacquiredWords.length;
+  const allUnacquiredSelected = unacquiredWords.length > 0 && 
+    unacquiredWords.every(w => selectedWords.has(w.lexeme_id));
 
   return (
     <div className="space-y-3">
       {wordsNotInBuilder.length > 0 && (
         <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-medium text-gray-700">
-            {selectedWords.size > 0 ? `${selectedWords.size} selected` : 'Select words to add'}
-          </p>
-          {selectedWords.size > 0 && (
-            <Button
-              onClick={addSelectedWords}
-              disabled={isAdding}
-              size="sm"
-            >
-              Add to Active
-            </Button>
-          )}
+          <div className="flex items-center gap-3">
+            {unacquiredCount > 0 && (
+              <Button
+                onClick={toggleSelectAllUnacquired}
+                variant="outline"
+                size="sm"
+              >
+                {allUnacquiredSelected 
+                  ? `Deselect all (${unacquiredCount}) unacquired words`
+                  : `Select all (${unacquiredCount}) unacquired words`
+                }
+              </Button>
+            )}
+            {selectedWords.size > 0 && (
+              <Button
+                onClick={addSelectedWords}
+                disabled={isAdding}
+                size="sm"
+              >
+                Add to Active
+              </Button>
+            )}
+          </div>
         </div>
       )}
 
