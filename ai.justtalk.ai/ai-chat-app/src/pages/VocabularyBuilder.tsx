@@ -293,13 +293,17 @@ function ActiveTab({
       {/* Word Cards */}
       <div className="space-y-3">
         {words.map((word) => (
-          <Card key={word.id} className="p-4">
+          <Card 
+            key={word.id} 
+            className={cn(
+              "p-4 cursor-pointer transition-colors hover:bg-gray-50",
+              selectedWords.has(word.id) && "bg-blue-50"
+            )}
+            onClick={() => toggleWordSelection(word.id)}
+          >
             <div className="flex items-start gap-3">
               {/* Checkbox */}
-              <button
-                onClick={() => toggleWordSelection(word.id)}
-                className="mt-1"
-              >
+              <div className="mt-1">
                 <div
                   className={cn(
                     'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
@@ -312,7 +316,7 @@ function ActiveTab({
                     <Check className="w-3 h-3 text-white" />
                   )}
                 </div>
-              </button>
+              </div>
 
               {/* Word Content */}
               <div className="flex-1 min-w-0">
@@ -337,7 +341,10 @@ function ActiveTab({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => removeWord(word.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeWord(word.id);
+                  }}
                   className="text-red-600 hover:text-red-700 hover:bg-red-50"
                 >
                   Remove
@@ -559,13 +566,15 @@ function VocabSetDetails({ setId, getCefrBadgeColor }: VocabSetDetailsProps) {
         <div
           key={word.lexeme_id}
           className={cn(
-            'flex items-center justify-between p-3 rounded-lg border',
-            word.in_builder ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-300'
+            'flex items-center justify-between p-3 rounded-lg border transition-colors',
+            word.in_builder ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-300 cursor-pointer hover:bg-gray-50',
+            !word.in_builder && selectedWords.has(word.lexeme_id) && 'bg-blue-50'
           )}
+          onClick={() => !word.in_builder && toggleWord(word.lexeme_id)}
         >
           <div className="flex items-center gap-3 flex-1">
             {!word.in_builder && (
-              <button onClick={() => toggleWord(word.lexeme_id)}>
+              <div>
                 <div
                   className={cn(
                     'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
@@ -578,7 +587,7 @@ function VocabSetDetails({ setId, getCefrBadgeColor }: VocabSetDetailsProps) {
                     <Check className="w-3 h-3 text-white" />
                   )}
                 </div>
-              </button>
+              </div>
             )}
             <div className="flex-1">
               <div className="flex items-center gap-2">
