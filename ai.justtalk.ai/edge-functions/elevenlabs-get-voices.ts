@@ -22,15 +22,14 @@ serve(async (req) => {
 
   try {
     const apiKey = Deno.env.get('ELEVENLABS_API_KEY')
-    const agentId = Deno.env.get('ELEVENLABS_AGENT_ID')
 
-    if (!apiKey || !agentId) {
-      throw new Error('ELEVENLABS_API_KEY or ELEVENLABS_AGENT_ID is not set')
+    if (!apiKey) {
+      throw new Error('ELEVENLABS_API_KEY is not set')
     }
 
-    // Fetch the agent configuration
-    const agentResponse = await fetch(
-      `https://api.elevenlabs.io/v1/convai/agents/${agentId}`,
+    // Fetch voices from the "Agents Voices" collection
+    const voicesResponse = await fetch(
+      `https://api.elevenlabs.io/v2/voices?collection_id=4844zEjQaj8zg0a0JKrm&page_size=100`,
       {
         method: 'GET',
         headers: {
@@ -39,74 +38,31 @@ serve(async (req) => {
       }
     )
 
-    if (!agentResponse.ok) {
-      const errorText = await agentResponse.text()
-      console.error('Agent API error:', errorText)
-      throw new Error(`Failed to get agent: ${agentResponse.status}`)
+    if (!voicesResponse.ok) {
+      const errorText = await voicesResponse.text()
+      console.error('Voices API error:', errorText)
+      throw new Error(`Failed to get voices: ${voicesResponse.status}`)
     }
 
-    const agentData = await agentResponse.json()
-    console.log('Agent data structure:', JSON.stringify(agentData, null, 2))
+    const voicesData = await voicesResponse.json()
+    console.log('Voices data:', JSON.stringify(voicesData, null, 2))
 
-    // Extract voices from the agent configuration
-    // Primary voice from tts.voice_id
-    const primaryVoiceId = agentData.conversation_config?.tts?.voice_id
-    
-    // Additional voices from tts.supported_voices
-    const supportedVoices = agentData.conversation_config?.tts?.supported_voices || []
+    // Extract relevant voice information
+    const voices = voicesData.voices.map((voice: any) => ({
+      voice_id: voice.voice_id,
+      name: voice.name,
+      category: voice.category,
+      labels: voice.labels,
+      preview_url: voice.preview_url,
+      description: voice.description,
+    }))
 
-    if (!primaryVoiceId && supportedVoices.length === 0) {
-      throw new Error('No voices found in agent configuration')
-    }
-
-    // Collect all voice IDs (primary + supported)
-    const allVoiceIds = [primaryVoiceId, ...supportedVoices.map((v: any) => v.voice_id)].filter(Boolean)
-    
-    // Fetch details for all voices from ElevenLabs API
-    const voicesWithDetails = await Promise.all(
-      allVoiceIds.map(async (voiceId: string, index: number) => {
-        try {
-          const voiceResponse = await fetch(
-            `https://api.elevenlabs.io/v1/voices/${voiceId}`,
-            {
-              method: 'GET',
-              headers: {
-                'xi-api-key': apiKey,
-              },
-            }
-          )
-
-          if (!voiceResponse.ok) {
-            console.error(`Failed to fetch voice ${voiceId}`)
-            return null
-          }
-
-          const voiceData = await voiceResponse.json()
-          
-          return {
-            voice_id: voiceData.voice_id,
-            name: voiceData.name,
-            category: voiceData.category,
-            labels: voiceData.labels,
-            preview_url: voiceData.preview_url,
-            is_primary: index === 0, // First voice (primary) is marked
-          }
-        } catch (error) {
-          console.error(`Error fetching voice ${voiceId}:`, error)
-          return null
-        }
-      })
-    )
-
-    // Filter out any failed voice fetches
-    const validVoices = voicesWithDetails.filter(v => v !== null)
-
-    // Return the configured voices from the agent
+    // Return the voices from the account
     return new Response(
       JSON.stringify({
-        voices: validVoices,
-        agent_id: agentId,
-        total: validVoices.length,
+        voices: voices,
+        total: voices.length,
+        has_more: voicesData.has_more,
       }),
       {
         status: 200,

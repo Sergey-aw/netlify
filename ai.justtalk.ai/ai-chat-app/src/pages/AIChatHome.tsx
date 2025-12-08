@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Menu,
   Sparkles,
@@ -60,11 +60,26 @@ const SCENARIO_NAMES: Record<string, string> = {
 
 export default function AIChatHome() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchInput, setSearchInput] = useState('');
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [transitionStart, setTransitionStart] = useState<{ x: number; y: number } | undefined>();
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+
+  // Handle URL query parameter for auto-selecting conversation
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const conversationId = params.get('conversation');
+    if (conversationId) {
+      setSelectedConversation(conversationId);
+      // Invalidate and refetch messages for this conversation
+      queryClient.invalidateQueries({ queryKey: ['conversation-messages', conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      // Clean up URL without refreshing
+      window.history.replaceState({}, '', '/ai-chat');
+    }
+  }, [queryClient]);
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const [visibleTranslations, setVisibleTranslations] = useState<Set<string>>(new Set());
   const [loadingTranslation, setLoadingTranslation] = useState<Record<string, boolean>>({});
@@ -461,13 +476,15 @@ export default function AIChatHome() {
             {showSidebar ? <ChevronLeft className="w-6 h-6 text-gray-600" /> : <Menu className="w-6 h-6 text-gray-600" />}
           </Button>
           <Button
-            onClick={() => navigate('/subscription/plans')}
+            onClick={() => navigate('/ai-chat/voice/new')}
             variant="ghost"
             size="sm"
             className="rounded-full border border-gray-200 bg-white hover:bg-gray-50 px-4"
           >
             <Sparkles className="w-4 h-4 text-blue-500" />
-            <span className="text-gray-700 font-medium">Upgrade</span>
+            <span className="text-gray-700 font-medium">
+              New chat
+            </span>
           </Button>
           <Avatar className="w-10 h-10 cursor-pointer" onClick={() => navigate('/profile')}>
             <AvatarImage src={user?.profile_photo_url} />

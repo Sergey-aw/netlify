@@ -9,6 +9,8 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 export async function getElevenLabsSignedUrl(params: {
   conversationId: string;
   scenario?: string;
+  voiceId?: string;
+  voiceName?: string;
 }) {
   const session = await supabase.auth.getSession();
   const accessToken = session.data.session?.access_token;
@@ -16,6 +18,15 @@ export async function getElevenLabsSignedUrl(params: {
   if (!accessToken) {
     throw new Error('Not authenticated');
   }
+
+  const requestBody = {
+    conversation_id: params.conversationId,
+    scenario: params.scenario || 'conversation',
+    voiceId: params.voiceId,
+    voiceName: params.voiceName,
+  };
+  
+  console.log('🚀 Sending request to edge function:', requestBody);
 
   const response = await fetch(
     `${SUPABASE_URL}/functions/v1/elevenlabs-get-signed-url`,
@@ -25,10 +36,7 @@ export async function getElevenLabsSignedUrl(params: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        conversation_id: params.conversationId,
-        scenario: params.scenario || 'conversation',
-      }),
+      body: JSON.stringify(requestBody),
     }
   );
 

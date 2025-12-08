@@ -27,6 +27,7 @@ import SubscriptionManagement from './pages/SubscriptionManagement'
 import OnboardingGoals from './pages/onboarding/OnboardingGoals'
 import OnboardingInterests from './pages/onboarding/OnboardingInterests'
 import OnboardingPreferences from './pages/onboarding/OnboardingPreferences'
+import PronunciationAssessment from './pages/onboarding/PronunciationAssessment'
 import WelcomeProgress from './pages/onboarding/WelcomeProgress'
 import WelcomeFeatures from './pages/onboarding/WelcomeFeatures'
 import WelcomeSync from './pages/onboarding/WelcomeSync'
@@ -58,6 +59,7 @@ function App() {
             <Route path="/auth/setup-password" element={<SetupPassword />} />
             
             {/* Onboarding Routes - Can be accessed without full auth */}
+            <Route path="/onboarding/pronunciation" element={<PronunciationAssessment />} />
             <Route path="/onboarding/goals" element={<OnboardingGoals />} />
             <Route path="/onboarding/interests" element={<OnboardingInterests />} />
             <Route path="/onboarding/preferences" element={<OnboardingPreferences />} />

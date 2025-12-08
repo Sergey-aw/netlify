@@ -5,6 +5,7 @@
 
 export type OnboardingStep = 
   | 'email-entry'           // Initial email entry
+  | 'pronunciation-assessment' // Pronunciation test
   | 'onboarding-goals'      // Step 1: Learning goals
   | 'onboarding-interests'  // Step 2: Interests
   | 'onboarding-preferences' // Step 3: Preferences (CEFR level, etc)
@@ -125,6 +126,8 @@ export function getResumeRoute(state: OnboardingState): string {
   switch (state.currentStep) {
     case 'email-entry':
       return '/login';
+    case 'pronunciation-assessment':
+      return '/onboarding/pronunciation';
     case 'onboarding-goals':
       return '/onboarding/goals';
     case 'onboarding-interests':

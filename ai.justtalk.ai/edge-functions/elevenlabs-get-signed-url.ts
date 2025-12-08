@@ -28,20 +28,34 @@ serve(async (req) => {
       throw new Error('ELEVENLABS_API_KEY or ELEVENLABS_AGENT_ID is not set')
     }
 
-    // Get request body (conversation_id and scenario are optional metadata)
+    // Get request body (conversation_id, scenario, voiceId, and voiceName are optional metadata)
     const body = await req.json().catch(() => ({}))
     console.log('Request body:', body)
+    console.log('body.voiceId:', body.voiceId)
+    console.log('body.voiceName:', body.voiceName)
 
-    // Create signed URL for WebSocket connection
-    const response = await fetch(
-      `https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${agentId}`,
-      {
-        method: 'GET',
-        headers: {
-          'xi-api-key': apiKey,
+    // Build URL with agent_id
+    const url = new URL(`https://api.elevenlabs.io/v1/convai/conversation/get_signed_url`)
+    url.searchParams.append('agent_id', agentId)
+
+    // If voiceId is provided, override the agent's voice configuration
+    if (body.voiceId) {
+      const override = JSON.stringify({
+        tts: {
+          voice_id: body.voiceId,
         },
-      }
-    )
+      })
+      url.searchParams.append('conversation_config_override', override)
+      console.log('Adding voice override:', body.voiceId)
+    }
+
+    // Create signed URL for WebSocket connection (GET request)
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'xi-api-key': apiKey,
+      },
+    })
 
     if (!response.ok) {
       const errorText = await response.text()

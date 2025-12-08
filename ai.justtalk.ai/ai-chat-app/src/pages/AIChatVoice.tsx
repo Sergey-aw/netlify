@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft,
   MoreVertical,
@@ -40,6 +41,24 @@ export default function AIChatVoice() {
   const [elevenLabsConvId, setElevenLabsConvId] = useState<string | null>(null);
   const sessionStartTime = useRef<Date | null>(null);
   const sessionSaved = useRef(false);
+
+  // Get user's preferred voice
+  const { data: userProfile } = useQuery({
+    queryKey: ['user-profile-voice', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('justai_preferred_voice')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
 
   // ElevenLabs conversation hook
   const conversation = useConversation({
@@ -163,6 +182,11 @@ export default function AIChatVoice() {
           throw new Error('User not authenticated');
         }
 
+        // Wait for user profile to load
+        if (!userProfile) {
+          return;
+        }
+
         // Check subscription status and limits using real-time count
         const { data: subscription, error: subError } = await supabase
           .from('justai_subscriptions')
@@ -209,12 +233,15 @@ export default function AIChatVoice() {
         if (convError) throw convError;
         setConversationId(convData.id);
         
-        // Get signed URL from backend
+        // Get signed URL from backend with voice override
         const { signedUrl } = await getElevenLabsSignedUrl({
           conversationId: 'temp-' + crypto.randomUUID(), // Temporary ID for signed URL
+          voiceId: userProfile.justai_preferred_voice,
+          voiceName: 'Eric', // The voice name for system prompt
         });
         
         console.log('🔍 Signed URL received:', signedUrl);
+        console.log('🎤 Using voice ID:', userProfile.justai_preferred_voice || 'default agent voice');
         
         // Extract conversation ID from signed URL
         // URL format: wss://api.elevenlabs.io/v1/convai/conversation?agent_id=...&conversation_id=...
@@ -234,9 +261,14 @@ export default function AIChatVoice() {
           console.error('❌ Failed to extract conversation ID from signed URL:', err);
         }
         
-        // Start conversation with ElevenLabs
+        // Start conversation with ElevenLabs with voice override
         const sessionInfo = await conversation.startSession({
           signedUrl,
+          overrides: {
+            tts: {
+              voiceId: userProfile.justai_preferred_voice,
+            },
+          },
         });
 
         // sessionInfo is the ElevenLabs conversation ID (e.g., "conv_4301kbt9pxksf9cvhpspb1788w09")
@@ -264,7 +296,9 @@ export default function AIChatVoice() {
       }
     };
 
-    initConversation();
+    if (userProfile !== undefined) {
+      initConversation();
+    }
 
     // Cleanup on unmount
     return () => {
@@ -275,7 +309,7 @@ export default function AIChatVoice() {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [userProfile]);
 
   // Show button with animation after transition
   useEffect(() => {
@@ -473,13 +507,20 @@ export default function AIChatVoice() {
         await conversation.endSession();
       }
 
-      // Save session data
+      // Save session data and wait for completion
       await saveAndProcessSession();
+      
+      // Add a small delay to ensure all database operations complete
+      await new Promise(resolve => setTimeout(resolve, 500));
     } catch (error) {
       console.error('Error ending session:', error);
     } finally {
-      // Navigate back regardless of errors
-      navigate('/ai-chat');
+      // Navigate back with conversation ID to auto-select it
+      if (conversationId) {
+        navigate(`/ai-chat?conversation=${conversationId}`);
+      } else {
+        navigate('/ai-chat');
+      }
     }
   };
 

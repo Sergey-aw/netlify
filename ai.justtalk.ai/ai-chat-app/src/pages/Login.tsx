@@ -84,7 +84,7 @@ export default function Login() {
       // User now has an active anonymous session and will receive email verification
       // After verification, they can set their password
       // All data (profile, subscription, etc.) will remain with the same user ID
-      // Navigate to onboarding
+      // Navigate to onboarding goals (pronunciation already completed)
       navigate('/onboarding/goals');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign up');

@@ -62,7 +62,7 @@ export default function WelcomeSync() {
           {/* Continue Button */}
           <div className="pt-4">
             <Button
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/onboarding/pronunciation')}
               className="w-full bg-gray-900 hover:bg-gray-800 text-white py-7 rounded-[24px] text-lg font-semibold shadow-lg"
             >
               Get Started
