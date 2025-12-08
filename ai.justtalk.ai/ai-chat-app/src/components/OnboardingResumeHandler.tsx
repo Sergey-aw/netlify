@@ -52,7 +52,7 @@ export function OnboardingResumeHandler() {
           return;
         }
         
-        const { shouldResume, route } = shouldResumeOnboarding();
+        const { shouldResume } = shouldResumeOnboarding();
         if (shouldResume) {
           console.log('[OnboardingResume] User needs to sign in');
           navigate('/login');

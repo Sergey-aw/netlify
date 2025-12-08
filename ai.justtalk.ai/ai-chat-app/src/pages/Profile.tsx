@@ -43,7 +43,7 @@ export default function Profile() {
   });
 
   // Get old subscription query (can be removed later)
-  const { data: oldSubscription } = useQuery({
+  useQuery({
     queryKey: ['my-subscription'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();

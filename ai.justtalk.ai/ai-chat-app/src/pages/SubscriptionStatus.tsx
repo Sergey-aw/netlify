@@ -64,7 +64,7 @@ export default function SubscriptionStatus() {
   }
 
   const usagePercentage = subscription.monthly_message_limit
-    ? (subscription.messages_used_this_period / subscription.monthly_message_limit) * 100
+    ? ((subscription.messages_used_this_period || 0) / subscription.monthly_message_limit) * 100
     : 0;
 
   const periodEnd = new Date(subscription.current_period_end);
