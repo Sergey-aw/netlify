@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from 'sonner'
 
 // Contexts
 import { AuthProvider } from './contexts/AuthContext'
@@ -18,7 +19,7 @@ import AIChatHome from './pages/AIChatHome'
 import AIChatConversation from './pages/AIChatConversation'
 import AIChatVoice from './pages/AIChatVoice'
 import RolePlays from './pages/RolePlays'
-import Dictionary from './pages/Dictionary'
+import VocabularyBuilder from './pages/VocabularyBuilder'
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
 import SubscriptionPlans from './pages/SubscriptionPlans'
@@ -46,6 +47,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrowserRouter>
+          <Toaster />
           <OnboardingResumeHandler />
           <Routes>
             {/* Public Routes - Welcome Screens First */}
@@ -69,7 +71,7 @@ function App() {
             <Route path="/ai-chat/conversation/:id?" element={<ProtectedRoute><AIChatConversation /></ProtectedRoute>} />
             <Route path="/ai-chat/voice/:id?" element={<ProtectedRoute><AIChatVoice /></ProtectedRoute>} />
             <Route path="/role-plays" element={<ProtectedRoute><RolePlays /></ProtectedRoute>} />
-            <Route path="/dictionary" element={<ProtectedRoute><Dictionary /></ProtectedRoute>} />
+            <Route path="/dictionary" element={<ProtectedRoute><VocabularyBuilder /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/subscription-plans" element={<SubscriptionPlans />} />
