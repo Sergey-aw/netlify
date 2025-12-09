@@ -39,24 +39,7 @@ import LogoBars from '@/assets/logo_bars.svg';
 import Logo from '@/assets/logo.svg';
 import { cn } from '@/lib/utils';
 import OpenAI from 'openai';
-
-const SCENARIO_ICONS: Record<string, string> = {
-  career: '✏️',
-  travel: '🧑‍💻',
-  academic: '🎓',
-  conversation: '🗣️',
-  test_prep: '📝',
-  kids: '🎨',
-};
-
-const SCENARIO_NAMES: Record<string, string> = {
-  career: 'Writing',
-  travel: 'Programming',
-  academic: 'Education',
-  conversation: 'Conversation',
-  test_prep: 'Test Prep',
-  kids: 'Kids',
-};
+import { ELEVENLABS_AGENTS } from '@/config/elevenlabs-agents';
 
 export default function AIChatHome() {
   const navigate = useNavigate();
@@ -185,23 +168,6 @@ export default function AIChatHome() {
     enabled: !!selectedConversation,
   });
 
-  // Get agent config for learning goals
-  const { data: agentConfig } = useQuery({
-    queryKey: ['agent-config'],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-
-      const { data } = await supabase
-        .from('justai_agent_configs')
-        .select('*')
-        .eq('student_id', user.id)
-        .single();
-
-      return data;
-    },
-  });
-
   // Check subscription status
   const { data: hasAccess } = useQuery({
     queryKey: ['subscription-access'],
@@ -215,11 +181,9 @@ export default function AIChatHome() {
     }
   }, [hasAccess, navigate]);
 
-  const handleStartScenario = (scenario: string) => {
-    navigate('/ai-chat/conversation/new', { state: { scenario } });
-  };
-
   const handleVoiceClick = () => {
+    console.log('🎤 Free speech button clicked - using default agent from Supabase secrets');
+    
     if (voiceButtonRef.current) {
       const rect = voiceButtonRef.current.getBoundingClientRect();
       setTransitionStart({
@@ -229,8 +193,39 @@ export default function AIChatHome() {
       setIsTransitioning(true);
       
       // Navigate after a short delay to let the animation start
+      // NOTE: No agentId passed - will use default ELEVENLABS_AGENT_ID from Supabase secrets
       setTimeout(() => {
         navigate('/ai-chat/voice/new', { state: { fromTransition: true } });
+      }, 50);
+    }
+  };
+
+  const handleAgentClick = (agentId: string, agentElevenLabsId: string, agentName: string) => {
+    console.log('🎯 Agent card clicked:', {
+      agentId,
+      agentElevenLabsId,
+      agentName,
+    });
+    
+    if (voiceButtonRef.current) {
+      const rect = voiceButtonRef.current.getBoundingClientRect();
+      setTransitionStart({
+        x: rect.left,
+        y: rect.top,
+      });
+      setIsTransitioning(true);
+      
+      // Navigate with agent information
+      setTimeout(() => {
+        console.log('🚀 Navigating to voice chat with agent:', agentElevenLabsId);
+        navigate('/ai-chat/voice/new', { 
+          state: { 
+            fromTransition: true,
+            agentId: agentElevenLabsId, // This is the ElevenLabs agent ID
+            agentName: agentName,
+            scenario: agentId,
+          } 
+        });
       }, 50);
     }
   };
@@ -698,19 +693,22 @@ export default function AIChatHome() {
                 {/* Scenario Cards */}
                 <div className="mb-6">
                   <div className="flex flex-wrap gap-3 justify-center">
-                    {(agentConfig?.learning_goals || ['conversation']).map((goal: string) => (
+                    {ELEVENLABS_AGENTS.map((agent) => (
                       <Card
-                        key={goal}
+                        key={agent.id}
                         className="px-3 py-1 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all bg-white border border-gray-200 shadow-sm"
-                        onClick={() => handleStartScenario(goal)}
+                        onClick={() => handleAgentClick(agent.id, agent.agentId, agent.name)}
                       >
                         <div className="flex items-center gap-2.5">
-                          <span className="text-xl">{SCENARIO_ICONS[goal]}</span>
-                          <p className="text-base font-normal text-gray-700">{SCENARIO_NAMES[goal]}</p>
+                          <span className="text-xl">{agent.icon}</span>
+                          <p className="text-base font-normal text-gray-700">{agent.name}</p>
                         </div>
                       </Card>
                     ))}
                   </div>
+                  <p className="text-center text-sm text-gray-500 mt-3">
+                    Choose the role play to start voice conversation
+                  </p>
                 </div>
               </main>
             </>

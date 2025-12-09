@@ -16,6 +16,8 @@ import { cn } from '@/lib/utils';
 import { getElevenLabsSignedUrl } from '@/lib/justai-api';
 import { supabase } from '@/lib/supabase';
 import { useSession } from '@/hooks/useSession';
+import { FeedbackDrawer, type FeedbackData } from '@/components/FeedbackDrawer';
+import { getAgentByElevenLabsId } from '@/config/elevenlabs-agents';
 
 interface TranscriptSegment {
   speaker: 'student' | 'ai';
@@ -41,6 +43,27 @@ export default function AIChatVoice() {
   const [elevenLabsConvId, setElevenLabsConvId] = useState<string | null>(null);
   const sessionStartTime = useRef<Date | null>(null);
   const sessionSaved = useRef(false);
+  const [showFeedbackDrawer, setShowFeedbackDrawer] = useState(false);
+  const [feedbackData, setFeedbackData] = useState<FeedbackData | null>(null);
+  const [isFetchingFeedback, setIsFetchingFeedback] = useState(false);
+  const [showContinuePrompt, setShowContinuePrompt] = useState(false);
+
+  // Get agent info from navigation state
+  const selectedAgentId = location.state?.agentId; // ElevenLabs agent ID (undefined = use default)
+  const selectedAgentName = location.state?.agentName || 'AI Teacher';
+  const selectedScenario = location.state?.scenario || 'general_conversation';
+  
+  // Get agent config for recommended duration
+  const agentConfig = selectedAgentId 
+    ? getAgentByElevenLabsId(selectedAgentId)
+    : null;
+  const recommendedDuration = agentConfig?.recommendedDuration || 300; // Default 5 minutes
+
+  console.log('🤖 Selected Agent:', {
+    agentId: selectedAgentId || 'DEFAULT (from Supabase secrets)',
+    agentName: selectedAgentName,
+    scenario: selectedScenario,
+  });
 
   // Get user's preferred voice
   const { data: userProfile } = useQuery({
@@ -224,8 +247,8 @@ export default function AIChatVoice() {
             student_id: user.id,
             conversation_type: 'voice_session',
             is_voice_session: true,
-            title: 'Voice Chat Session',
-            scenario: 'general_conversation',
+            title: `Voice Chat: ${selectedAgentName}`,
+            scenario: selectedScenario,
           })
           .select()
           .single();
@@ -233,15 +256,17 @@ export default function AIChatVoice() {
         if (convError) throw convError;
         setConversationId(convData.id);
         
-        // Get signed URL from backend with voice override
+        // Get signed URL from backend with voice override and agent ID
         const { signedUrl } = await getElevenLabsSignedUrl({
           conversationId: 'temp-' + crypto.randomUUID(), // Temporary ID for signed URL
           voiceId: userProfile.justai_preferred_voice,
-          voiceName: 'Eric', // The voice name for system prompt
+          voiceName: selectedAgentName,
+          agentId: selectedAgentId, // Pass the selected agent ID
         });
         
         console.log('🔍 Signed URL received:', signedUrl);
         console.log('🎤 Using voice ID:', userProfile.justai_preferred_voice || 'default agent voice');
+        console.log('🤖 Using agent ID:', selectedAgentId || 'default agent');
         
         // Extract conversation ID from signed URL
         // URL format: wss://api.elevenlabs.io/v1/convai/conversation?agent_id=...&conversation_id=...
@@ -502,6 +527,31 @@ export default function AIChatVoice() {
 
   const endSession = async () => {
     try {
+      // Check if session is long enough for feedback BEFORE ending
+      const actualDuration = sessionDuration;
+      const isShortSession = actualDuration < recommendedDuration;
+      
+      if (isShortSession) {
+        // Show "talk more" prompt WITHOUT ending the session
+        setShowContinuePrompt(true);
+        setShowFeedbackDrawer(true);
+      } else {
+        // Session is long enough - end it and show feedback
+        await finalizeAndShowFeedback();
+      }
+    } catch (error) {
+      console.error('Error ending session:', error);
+      // Still navigate back on error
+      navigateBack();
+    }
+  };
+  
+  const finalizeAndShowFeedback = async () => {
+    try {
+      // Show drawer with loading state first
+      setShowFeedbackDrawer(true);
+      setIsFetchingFeedback(true);
+      
       // End ElevenLabs session
       if (conversation.status === 'connected') {
         await conversation.endSession();
@@ -510,18 +560,112 @@ export default function AIChatVoice() {
       // Save session data and wait for completion
       await saveAndProcessSession();
       
-      // Add a small delay to ensure all database operations complete
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait longer for ElevenLabs to process the conversation
+      // Their API needs time to finalize the transcript
+      console.log('⏳ Waiting for ElevenLabs to process conversation...');
+      await new Promise(resolve => setTimeout(resolve, 3000)); // 3 seconds
+      
+      // Fetch and show full feedback
+      await fetchFeedback();
     } catch (error) {
-      console.error('Error ending session:', error);
-    } finally {
-      // Navigate back with conversation ID to auto-select it
-      if (conversationId) {
-        navigate(`/ai-chat?conversation=${conversationId}`);
-      } else {
-        navigate('/ai-chat');
-      }
+      console.error('Error finalizing session:', error);
+      setIsFetchingFeedback(false);
+      throw error;
     }
+  };
+  
+  const fetchFeedback = async () => {
+    if (!conversationId || !elevenLabsConvId || !user?.id) {
+      console.warn('Missing required data for feedback');
+      return;
+    }
+    
+    console.log('🔍 Fetching feedback for:', { conversationId, elevenLabsConvId, userId: user.id });
+    
+    setIsFetchingFeedback(true);
+    try {
+      const session = await supabase.auth.getSession();
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-conversation-feedback`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.data.session?.access_token}`,
+          },
+          body: JSON.stringify({
+            conversationId,
+            elevenLabsConvId,
+            studentId: user.id,
+          }),
+        }
+      );
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Feedback result:', result);
+        if (result.success && result.feedback) {
+          setFeedbackData(result.feedback);
+        } else {
+          console.error('Feedback result missing data:', result);
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to fetch feedback:', response.status, errorText);
+      }
+    } catch (error) {
+      console.error('Error fetching feedback:', error);
+    } finally {
+      setIsFetchingFeedback(false);
+    }
+  };
+  
+  const navigateBack = () => {
+    if (conversationId) {
+      navigate(`/ai-chat?conversation=${conversationId}`);
+    } else {
+      navigate('/ai-chat');
+    }
+  };
+  
+  const handleFeedbackClose = () => {
+    setShowFeedbackDrawer(false);
+    
+    // If it was a short session prompt, actually end and save the session now
+    if (showContinuePrompt) {
+      setShowContinuePrompt(false);
+      // End the session and navigate
+      finalizeAndNavigate();
+    } else {
+      // Full feedback was shown, just navigate
+      navigateBack();
+    }
+  };
+  
+  const finalizeAndNavigate = async () => {
+    try {
+      // End ElevenLabs session
+      if (conversation.status === 'connected') {
+        await conversation.endSession();
+      }
+
+      // Save session data
+      await saveAndProcessSession();
+      
+      // Small delay for DB operations
+      await new Promise(resolve => setTimeout(resolve, 300));
+    } catch (error) {
+      console.error('Error finalizing session:', error);
+    } finally {
+      navigateBack();
+    }
+  };
+  
+  const handleContinueTalking = () => {
+    // Close drawer and let user continue talking
+    setShowFeedbackDrawer(false);
+    setShowContinuePrompt(false);
+    // Session remains active - user can keep talking
   };
 
   return (
@@ -565,10 +709,10 @@ export default function AIChatVoice() {
             {isConnecting
               ? 'Connecting...'
               : isRecording
-              ? 'Listening...'
+              ? "I'm listening..."
               : isAISpeaking
-              ? 'Speaking...'
-              : 'Ready to chat!'}
+              ? `${selectedAgentName} is speaking...`
+              : `Chat with ${selectedAgentName}`}
           </h2>
           <p className="text-sm text-muted-foreground">
             {isConnecting
@@ -681,6 +825,18 @@ export default function AIChatVoice() {
           </Button>
         </div>
       </div>
+      
+      {/* Feedback Drawer */}
+      <FeedbackDrawer
+        open={showFeedbackDrawer}
+        onOpenChange={handleFeedbackClose}
+        conversationId={conversationId}
+        elevenLabsConvId={elevenLabsConvId}
+        isLoading={isFetchingFeedback}
+        feedbackData={feedbackData}
+        onContinue={handleContinueTalking}
+        showContinuePrompt={showContinuePrompt}
+      />
     </div>
   );
 }

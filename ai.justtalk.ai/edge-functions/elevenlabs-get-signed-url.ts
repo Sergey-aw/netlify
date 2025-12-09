@@ -22,17 +22,27 @@ serve(async (req) => {
 
   try {
     const apiKey = Deno.env.get('ELEVENLABS_API_KEY')
-    const agentId = Deno.env.get('ELEVENLABS_AGENT_ID')
+    const defaultAgentId = Deno.env.get('ELEVENLABS_AGENT_ID')
 
-    if (!apiKey || !agentId) {
-      throw new Error('ELEVENLABS_API_KEY or ELEVENLABS_AGENT_ID is not set')
+    if (!apiKey) {
+      throw new Error('ELEVENLABS_API_KEY is not set')
     }
 
-    // Get request body (conversation_id, scenario, voiceId, and voiceName are optional metadata)
+    // Get request body (conversation_id, scenario, voiceId, voiceName, and agentId are optional)
     const body = await req.json().catch(() => ({}))
     console.log('Request body:', body)
     console.log('body.voiceId:', body.voiceId)
     console.log('body.voiceName:', body.voiceName)
+    console.log('body.agentId:', body.agentId)
+
+    // Use provided agentId or fall back to default from ELEVENLABS_AGENT_ID secret
+    const agentId = body.agentId || defaultAgentId
+    
+    if (!agentId) {
+      throw new Error('No agent ID provided and ELEVENLABS_AGENT_ID is not set')
+    }
+
+    console.log('Using agent ID:', agentId, body.agentId ? '(from request)' : '(from default ELEVENLABS_AGENT_ID)')
 
     // Build URL with agent_id
     const url = new URL(`https://api.elevenlabs.io/v1/convai/conversation/get_signed_url`)

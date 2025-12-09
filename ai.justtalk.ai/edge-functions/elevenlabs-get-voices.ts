@@ -29,7 +29,7 @@ serve(async (req) => {
 
     // Fetch voices from the "Agents Voices" collection
     const voicesResponse = await fetch(
-      `https://api.elevenlabs.io/v2/voices?collection_id=4844zEjQaj8zg0a0JKrm&page_size=100`,
+      `https://api.elevenlabs.io/v2/voices?collection_id=xhOJh7ETDoba2X0uoYTP&page_size=100`,
       {
         method: 'GET',
         headers: {
