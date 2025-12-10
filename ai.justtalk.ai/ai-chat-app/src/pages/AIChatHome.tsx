@@ -38,7 +38,6 @@ import { checkSubscriptionAccess } from '@/lib/justai-api';
 import LogoBars from '@/assets/logo_bars.svg';
 import Logo from '@/assets/logo.svg';
 import { cn } from '@/lib/utils';
-import OpenAI from 'openai';
 import { ELEVENLABS_AGENTS } from '@/config/elevenlabs-agents';
 
 export default function AIChatHome() {
@@ -105,12 +104,6 @@ export default function AIChatHome() {
       }
     }
   }, []);
-
-  // Initialize OpenAI client
-  const openai = new OpenAI({
-    apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-    dangerouslyAllowBrowser: true,
-  });
 
   // Get current user
   const { data: user, isLoading: userLoading } = useQuery({
@@ -291,23 +284,30 @@ export default function AIChatHome() {
     
     try {
       const nativeLanguage = user?.native_language || 'Russian';
+      const session = await supabase.auth.getSession();
       
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a professional translator. Translate the following English text to ${nativeLanguage}. Only return the translation, no explanations.`,
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/translate-text`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.data.session?.access_token}`,
           },
-          {
-            role: 'user',
-            content: content,
-          },
-        ],
-        temperature: 0.3,
-      });
+          body: JSON.stringify({
+            text: content,
+            targetLanguage: nativeLanguage,
+          }),
+        }
+      );
 
-      const translation = completion.choices[0]?.message?.content || 'Translation failed';
+      if (!response.ok) {
+        throw new Error('Translation failed');
+      }
+
+      const data = await response.json();
+      const translation = data.translation || 'Translation failed';
+      
       setTranslations((prev) => {
         const newTranslations = { ...prev, [messageId]: translation };
         // Save to localStorage
