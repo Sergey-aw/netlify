@@ -118,13 +118,13 @@ export default function SignIn() {
       <Card className="w-full max-w-[480px] shadow-sm">
         <CardContent className="pt-12 pb-8 px-8">
           {/* Logo */}
-          <div className="flex justify-center mb-4">
+          <div className="flex justify-center mb-8">
             <img src={Logo} alt="JustTalk" className="h-12" />
           </div>
 
           {/* Title */}
-          <h1 className="text-center text-[#666666] text-base font-normal mb-10">
-            Login to your account to practice English with JustTalk AI voice conversations
+          <h1 className="text-center text-[#666666] text-sm font-normal mb-10">
+            Login to your account to practice<br /> English with our advanced JustTalk AI teacher
           </h1>
           
           <form onSubmit={handleSignIn} className="space-y-4">
