@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
 import { saveOnboardingEmail } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { checkEmailExists } from '@/lib/justai-api';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 import { saveOnboardingState } from '@/lib/onboarding-state';
+import Logo from '@/assets/logo.svg';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -94,50 +96,85 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Create Your Account</CardTitle>
-          <CardDescription>
+    <div className="flex items-center justify-center min-h-screen bg-[#F5F5F5] p-4">
+      <Card className="w-full max-w-[480px] shadow-sm">
+        <CardContent className="pt-12 pb-8 px-8">
+          {/* Logo */}
+          <div className="flex justify-center mb-8">
+            <img src={Logo} alt="JustTalk" className="h-12" />
+          </div>
+
+          {/* Title */}
+          <h1 className="text-center text-[#666666] text-lg font-normal mb-2">
+            Create your JustTalk account
+          </h1>
+          <p className="text-center text-muted-foreground text-sm mb-10">
             Enter your email to get started. We'll send you a link to set up your password.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
+          </p>
+          
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Email field */}
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium text-foreground">
+                Email
+              </Label>
               <Input
+                id="email"
                 type="email"
-                placeholder="your.email@example.com"
                 value={email}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                required
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="m@example.com"
                 disabled={loading}
+                required
               />
             </div>
 
+            {/* Error message */}
             {error && (
-              <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3">
-                {error}
+              <div className="flex items-center space-x-2 text-destructive bg-destructive/10 border border-destructive/20 rounded-md p-3">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <p className="text-sm">{error}</p>
               </div>
             )}
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            {/* Continue button */}
+            <Button
+              type="submit"
+              className="w-full bg-[hsl(var(--brand-blue))] hover:bg-[hsl(var(--brand-blue))]/90 text-white"
+              disabled={loading}
+            >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {loading ? 'Creating Account...' : 'Continue'}
             </Button>
           </form>
 
-          <div className="mt-4 text-center text-sm text-gray-600">
-            <p>You can complete onboarding while we verify your email</p>
-            <div className="mt-2">
-              <span>Already have an account? </span>
-              <Link to="/signin" className="text-blue-600 hover:text-blue-700 font-medium">
-                Sign In
-              </Link>
-            </div>
+          {/* Info text */}
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            You can complete onboarding while we verify your email
+          </p>
+
+          {/* Sign in link */}
+          <div className="mt-6 text-center text-sm">
+            <span className="text-muted-foreground">Already have an account? </span>
+            <Link to="/signin" className="text-foreground underline font-medium hover:no-underline">
+              Sign in
+            </Link>
           </div>
         </CardContent>
       </Card>
+
+      {/* Footer */}
+      <div className="fixed bottom-6 left-0 right-0 text-center text-xs text-muted-foreground">
+        <span>By clicking continue, you agree to our </span>
+        <Link to="/terms" className="underline hover:no-underline">
+          Terms of Service
+        </Link>
+        <span> and </span>
+        <Link to="/privacy" className="underline hover:no-underline">
+          Privacy Policy
+        </Link>
+        <span>.</span>
+      </div>
     </div>
   );
 }

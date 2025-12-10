@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { supabase } from '@/lib/supabase';
 import { checkEmailExists } from '@/lib/justai-api';
-import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
+import Logo from '@/assets/logo.svg';
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -111,112 +114,127 @@ export default function SignIn() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-blue-50 to-white p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Welcome Back</CardTitle>
-          <CardDescription className="text-base mt-2">
-            Sign in to your JustAI account
-          </CardDescription>
-        </CardHeader>
-        
-        <CardContent>
+    <div className="flex items-center justify-center min-h-screen bg-[#F5F5F5] p-4">
+      <Card className="w-full max-w-[480px] shadow-sm">
+        <CardContent className="pt-12 pb-8 px-8">
+          {/* Logo */}
+          <div className="flex justify-center mb-4">
+            <img src={Logo} alt="JustTalk" className="h-12" />
+          </div>
+
+          {/* Title */}
+          <h1 className="text-center text-[#666666] text-base font-normal mb-10">
+            Login to your account to practice English with JustTalk AI voice conversations
+          </h1>
+          
           <form onSubmit={handleSignIn} className="space-y-4">
             {/* Email field */}
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium text-gray-700">
+              <Label htmlFor="email" className="text-sm font-medium text-foreground">
                 Email
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your.email@example.com"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  disabled={isLoading}
-                  required
-                />
-              </div>
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="m@example.com"
+                disabled={isLoading}
+                required
+              />
             </div>
 
             {/* Password field */}
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  disabled={isLoading}
-                  required
-                />
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-sm font-medium text-foreground">
+                  Password
+                </Label>
+                <Link 
+                  to="/forgot-password" 
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Forgot your password?
+                </Link>
               </div>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+                required
+              />
             </div>
 
             {/* Error message */}
             {error && (
-              <div className="flex items-center space-x-2 text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
-                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              <div className="flex items-center space-x-2 text-destructive bg-destructive/10 border border-destructive/20 rounded-md p-3">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 <p className="text-sm">{error}</p>
               </div>
             )}
 
-            {/* Sign in button */}
+            {/* Login button */}
             <Button
               type="submit"
-              className="w-full"
+              className="w-full bg-[hsl(var(--brand-blue))] hover:bg-[hsl(var(--brand-blue))]/90 text-white"
               disabled={isLoading}
             >
-              {isLoading ? 'Signing in...' : 'Sign In'}
-              <ArrowRight className="w-4 h-4 ml-2" />
+              {isLoading ? 'Logging in...' : 'Login'}
             </Button>
           </form>
 
-          {/* Magic link option */}
-          <div className="mt-4">
+          {/* Divider */}
+          <div className="my-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
+                <div className="w-full border-t"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Or</span>
+                <span className="px-2 bg-background text-muted-foreground">Or</span>
               </div>
             </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleMagicLink}
-              disabled={isLoading || !email}
-              className="w-full mt-4"
-            >
-              Send Magic Link
-            </Button>
-            {!email && (
-              <p className="text-xs text-gray-500 text-center mt-2">
-                Enter your email above to use magic link
-              </p>
-            )}
           </div>
 
+          {/* Magic link button */}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleMagicLink}
+            disabled={isLoading || !email}
+            className="w-full"
+          >
+            Send Magic Link
+          </Button>
+          {!email && (
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Enter your email above to use magic link
+            </p>
+          )}
+
           {/* Sign up link */}
-          <div className="mt-6 text-center text-sm">
-            <span className="text-gray-600">Don't have an account? </span>
-            <Link to="/login" className="text-blue-600 hover:text-blue-700 font-medium">
-              Sign Up
+          <div className="mt-8 text-center text-sm">
+            <span className="text-muted-foreground">Don't have an account? </span>
+            <Link to="/login" className="text-foreground underline font-medium hover:no-underline">
+              Sign up
             </Link>
           </div>
         </CardContent>
       </Card>
+
+      {/* Footer */}
+      <div className="fixed bottom-6 left-0 right-0 text-center text-xs text-muted-foreground">
+        <span>By clicking continue, you agree to our </span>
+        <Link to="/terms" className="underline hover:no-underline">
+          Terms of Service
+        </Link>
+        <span> and </span>
+        <Link to="/privacy" className="underline hover:no-underline">
+          Privacy Policy
+        </Link>
+        <span>.</span>
+      </div>
     </div>
   );
 }
