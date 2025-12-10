@@ -219,18 +219,27 @@ export default function SubscriptionStatus() {
             <CardTitle>Manage Subscription</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button variant="outline" className="w-full" disabled>
-              Update Payment Method
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => navigate('/subscription/manage')}
+            >
+              View Full Details
             </Button>
-            <Button variant="outline" className="w-full" disabled>
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => navigate('/subscription/manage')}
+            >
               Change Plan
             </Button>
-            <Button variant="outline" className="w-full text-destructive" disabled>
+            <Button 
+              variant="outline" 
+              className="w-full text-destructive"
+              onClick={() => navigate('/subscription/manage')}
+            >
               Cancel Subscription
             </Button>
-            <p className="text-xs text-muted-foreground text-center pt-2">
-              Subscription management will be available soon
-            </p>
           </CardContent>
         </Card>
       </div>

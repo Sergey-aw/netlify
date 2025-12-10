@@ -1,10 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useRef } from 'react';
-import { ArrowLeft, Play, Pause } from 'lucide-react';
+import { ArrowLeft, Play, Pause, CreditCard, ChevronRight } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
+import { useSubscription } from '@/hooks/useSubscription';
 
 interface Voice {
   voice_id: string;
@@ -24,6 +26,7 @@ export default function Settings() {
   const queryClient = useQueryClient();
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const { subscription, hasActiveSubscription } = useSubscription();
 
   // Get current user
   const { data: user } = useQuery({
@@ -149,6 +152,54 @@ export default function Settings() {
       </header>
 
       <main className="px-4 py-6 max-w-4xl mx-auto space-y-6">
+        {/* Subscription Section */}
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold">Subscription</h3>
+            {hasActiveSubscription && subscription && (
+              <Badge variant="outline" className="capitalize">
+                {subscription.subscription_type}
+              </Badge>
+            )}
+          </div>
+          
+          {hasActiveSubscription && subscription ? (
+            <button
+              onClick={() => navigate('/subscription/manage')}
+              className="w-full flex items-center justify-between p-3 rounded-lg border-2 border-gray-200 hover:border-gray-300 transition-all text-left"
+            >
+              <div className="flex items-center gap-3">
+                <CreditCard className="w-5 h-5 text-gray-500" />
+                <div>
+                  <p className="font-medium">Manage Subscription</p>
+                  <p className="text-xs text-gray-500">
+                    {subscription.monthly_message_limit
+                      ? `${subscription.messages_used_this_period || 0}/${subscription.monthly_message_limit} messages used`
+                      : `${subscription.messages_used_this_period || 0} messages this month`}
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate('/subscription/plans')}
+              className="w-full flex items-center justify-between p-3 rounded-lg border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 transition-all text-left"
+            >
+              <div className="flex items-center gap-3">
+                <CreditCard className="w-5 h-5 text-blue-600" />
+                <div>
+                  <p className="font-medium text-blue-900">Subscribe to JustAI</p>
+                  <p className="text-xs text-blue-700">
+                    Get unlimited AI conversations
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-blue-600" />
+            </button>
+          )}
+        </Card>
+
         {/* Learning Preferences */}
         <Card className="p-4">
           <h3 className="font-semibold mb-3">Learning Preferences</h3>
