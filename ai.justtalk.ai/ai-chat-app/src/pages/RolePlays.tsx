@@ -1,14 +1,37 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, ChevronRight, Clock } from 'lucide-react';
+import { Play, ChevronRight, Clock, PanelLeft } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ELEVENLABS_AGENTS } from '@/config/elevenlabs-agents';
+import { supabase } from '@/lib/supabase';
+import { AppSidebar } from '@/components/AppSidebar';
 
 export default function RolePlays() {
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [showSidebar, setShowSidebar] = useState(false);
+
+  // Get current user
+  const { data: user } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+  });
 
   // Extract unique categories from agents
   const categories = ['All', ...Array.from(new Set(ELEVENLABS_AGENTS.map(agent => agent.category)))];
@@ -48,10 +71,29 @@ export default function RolePlays() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24 page-enter">
+      {/* Sidebar */}
+      <AppSidebar open={showSidebar} onOpenChange={setShowSidebar} />
+
       {/* Header */}
-      <header className="bg-white px-4 py-6 border-b">
-        <h1 className="text-2xl font-bold mb-2">Role-play Scenarios</h1>
-        <p className="text-sm text-muted-foreground">
+      <header className="bg-white px-4 py-4">
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="-ml-2"
+            onClick={() => setShowSidebar(!showSidebar)}
+          >
+            <PanelLeft className="w-6 h-6 text-gray-600" />
+          </Button>
+          <div className="flex-1 text-center">
+            <h1 className="text-xl font-semibold">Role-play Scenarios</h1>
+          </div>
+          <Avatar className="w-10 h-10 cursor-pointer" onClick={() => navigate('/profile')}>
+            <AvatarImage src={user?.profile_photo_url} />
+            <AvatarFallback>{user?.display_name?.[0] || 'U'}</AvatarFallback>
+          </Avatar>
+        </div>
+        <p className="text-sm text-muted-foreground text-center mt-2">
           Practice real-life conversations with AI voice agents
         </p>
       </header>

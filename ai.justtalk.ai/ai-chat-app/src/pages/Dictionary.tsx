@@ -1,8 +1,13 @@
 import { useState } from 'react';
-import { Search, Volume2, BookmarkPlus, BookmarkCheck } from 'lucide-react';
+import { Search, Volume2, BookmarkPlus, BookmarkCheck, PanelLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { supabase } from '@/lib/supabase';
+import { AppSidebar } from '@/components/AppSidebar';
 
 interface WordEntry {
   word: string;
@@ -41,8 +46,28 @@ const recentWords: WordEntry[] = [
 ];
 
 export default function Dictionary() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [words, setWords] = useState<WordEntry[]>(recentWords);
+  const [showSidebar, setShowSidebar] = useState(false);
+
+  // Get current user
+  const { data: user } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const toggleSave = (word: string) => {
     setWords(words.map(w => 
@@ -57,9 +82,28 @@ export default function Dictionary() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24 page-enter">
+      {/* Sidebar */}
+      <AppSidebar open={showSidebar} onOpenChange={setShowSidebar} />
+
       {/* Header */}
-      <header className="bg-white px-4 py-6 border-b">
-        <h1 className="text-2xl font-bold mb-4">Dictionary</h1>
+      <header className="bg-white px-4 py-4">
+        <div className="flex items-center justify-between max-w-7xl mx-auto mb-4">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="-ml-2"
+            onClick={() => setShowSidebar(!showSidebar)}
+          >
+            <PanelLeft className="w-6 h-6 text-gray-600" />
+          </Button>
+          <div className="flex-1 text-center">
+            <h1 className="text-xl font-semibold">Dictionary</h1>
+          </div>
+          <Avatar className="w-10 h-10 cursor-pointer" onClick={() => navigate('/profile')}>
+            <AvatarImage src={user?.profile_photo_url} />
+            <AvatarFallback>{user?.display_name?.[0] || 'U'}</AvatarFallback>
+          </Avatar>
+        </div>
         
         {/* Search Bar */}
         <div className="flex items-center gap-2 bg-gray-100 rounded-full px-4 py-3">

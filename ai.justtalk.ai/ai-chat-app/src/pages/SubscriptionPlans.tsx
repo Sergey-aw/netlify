@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Check, AlertCircle } from 'lucide-react';
+import { Check, AlertCircle, PanelLeft } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
@@ -9,6 +10,7 @@ import { createCheckoutSession } from '@/lib/justai-api';
 import { useSession } from '@/hooks/useSession';
 import { updateOnboardingStep } from '@/lib/onboarding-state';
 import type { SubscriptionPlan } from '@/lib/justai-types';
+import { AppSidebar } from '@/components/AppSidebar';
 
 export default function SubscriptionPlans() {
   const navigate = useNavigate();
@@ -16,6 +18,7 @@ export default function SubscriptionPlans() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [showCanceledMessage, setShowCanceledMessage] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
   
   // Use session hook for better session management
   const { session, user, isAuthenticated, isAnonymous } = useSession();
@@ -46,6 +49,24 @@ export default function SubscriptionPlans() {
 
       if (error) throw error;
       return data as SubscriptionPlan[];
+    },
+  });
+
+  // Get current user for header
+  const { data: currentUser } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+      return data;
     },
   });
 
@@ -120,11 +141,28 @@ export default function SubscriptionPlans() {
 
   return (
     <div className="min-h-screen bg-background pb-24">
+      {/* Sidebar */}
+      <AppSidebar open={showSidebar} onOpenChange={setShowSidebar} />
+
       {/* Header */}
       <header className="bg-background px-4 py-4 border-b">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="rounded-full">
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="-ml-2"
+            onClick={() => setShowSidebar(!showSidebar)}
+          >
+            <PanelLeft className="w-6 h-6 text-gray-600" />
+          </Button>
+          <div className="flex-1 text-center">
+            <h1 className="text-xl font-semibold">Subscription Plans</h1>
+          </div>
+          <Avatar className="w-10 h-10 cursor-pointer" onClick={() => navigate('/profile')}>
+            <AvatarImage src={currentUser?.profile_photo_url} />
+            <AvatarFallback>{currentUser?.display_name?.[0] || 'U'}</AvatarFallback>
+          </Avatar>
+        </div>
       </header>
 
       {/* Email Verification Notice */}

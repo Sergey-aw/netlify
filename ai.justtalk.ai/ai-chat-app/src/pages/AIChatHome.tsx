@@ -4,16 +4,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   PanelLeft,
   Sparkles,
-  History,
   ChevronLeft,
   Volume2,
   CircleStop,
   Languages,
   Bookmark,
-  Star,
-  MessageSquare,
-  BookOpen,
-  User,
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -24,18 +19,7 @@ import {
   Drawer,
   DrawerContent,
 } from '@/components/ui/drawer';
-import {
-  SidebarProvider,
-  SidebarHeader,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarSeparator,
-} from '@/components/ui/sidebar';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { AppSidebar } from '@/components/AppSidebar';
 import { VoiceButtonTransition } from '@/components/VoiceButtonTransition';
 import { supabase } from '@/lib/supabase';
 import { checkSubscriptionAccess } from '@/lib/justai-api';
@@ -125,26 +109,6 @@ export default function AIChatHome() {
     },
   });
 
-  // Get previous conversations
-  const { data: conversations } = useQuery({
-    queryKey: ['conversations', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      
-      const { data, error } = await supabase
-        .from('justai_conversations')
-        .select('id, title, scenario, created_at, last_message_at, is_voice_session')
-        .eq('student_id', user.id)
-        .order('last_message_at', { ascending: false, nullsFirst: false })
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user?.id,
-  });
-
   // Get messages for selected conversation
   const { data: messages } = useQuery({
     queryKey: ['conversation-messages', selectedConversation],
@@ -195,26 +159,8 @@ export default function AIChatHome() {
     }
   };
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) {
-      return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    } else if (diffDays === 1) {
-      return 'Yesterday';
-    } else if (diffDays < 7) {
-      return date.toLocaleDateString('en-US', { weekday: 'short' });
-    } else {
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    }
-  };
-
   const handleConversationClick = (conversationId: string) => {
     setSelectedConversation(conversationId);
-    setShowSidebar(false);
   };
 
   const handleTranslate = async (messageId: string, content: string) => {
@@ -462,114 +408,13 @@ export default function AIChatHome() {
 
       {/* Main Content Container with Sidebar */}
       <div className="flex-1 relative overflow-hidden">
-        {/* Sidebar - Sheet for Mobile */}
-        <Sheet open={showSidebar} onOpenChange={setShowSidebar} modal={false}>
-          <SheetContent side="left" className="p-0 w-80">
-            <SidebarProvider className="flex flex-col h-full">
-              {/* Logo Header */}
-              <SidebarHeader className="flex-shrink-0">
-                <div className="flex items-center py-2 px-2">
-                  <img src={Logo} alt="JustTalk AI" className="h-8" />
-                </div>
-              </SidebarHeader>
-
-              {/* Navigation Menu */}
-              <SidebarGroup className="pt-2 flex-shrink-0">
-                
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => {
-                          navigate('/ai-chat/conversation/new');
-                          setShowSidebar(false);
-                        }}
-                      >
-                        <Star className="w-4 h-4" />
-                        <span>JustTalk</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => {
-                          navigate('/role-plays');
-                          setShowSidebar(false);
-                        }}
-                      >
-                        <MessageSquare className="w-4 h-4" />
-                        <span>Role-plays</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => {
-                          navigate('/dictionary');
-                          setShowSidebar(false);
-                        }}
-                      >
-                        <BookOpen className="w-4 h-4" />
-                        <span>Dictionary</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => {
-                          navigate('/profile');
-                          setShowSidebar(false);
-                        }}
-                      >
-                        <User className="w-4 h-4" />
-                        <span>Profile</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-
-              <SidebarSeparator />
-
-              {/* Conversations Section */}
-              <SidebarGroup className="flex-1 min-h-0 flex flex-col">
-                <SidebarGroupLabel className="px-4 flex-shrink-0">Conversations</SidebarGroupLabel>
-                <SidebarGroupContent className="overflow-y-auto flex-1 min-h-0">
-            
-                  <SidebarMenu>
-                    {conversations && conversations.length > 0 ? (
-                      conversations.map((conv) => (
-                        <SidebarMenuItem key={conv.id}>
-                          <SidebarMenuButton
-                            onClick={() => handleConversationClick(conv.id)}
-                            isActive={selectedConversation === conv.id}
-                            className="h-auto py-3"
-                          >
-                            <div className="flex items-start gap-3 w-full">
-                              <div className="text-xl flex-shrink-0">
-                                {conv.is_voice_session ? '🎤' : '💬'}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-medium text-sm truncate">
-                                  {conv.title || 'Untitled Conversation'}
-                                </h3>
-                                <p className="text-xs opacity-70">
-                                  {formatTime(conv.last_message_at || conv.created_at)}
-                                </p>
-                              </div>
-                            </div>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      ))
-                    ) : (
-                      <div className="text-center py-8 px-4 text-muted-foreground">
-                        <History className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                        <p className="text-sm">No conversations yet</p>
-                      </div>
-                    )}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            </SidebarProvider>
-          </SheetContent>
-        </Sheet>
+        {/* Sidebar */}
+        <AppSidebar
+          open={showSidebar}
+          onOpenChange={setShowSidebar}
+          selectedConversation={selectedConversation}
+          onConversationClick={handleConversationClick}
+        />
 
         {/* Main Content Area */}
         <div className="h-full bg-gray-100 rounded-[40px] pt-0 pb-0 m-2 flex flex-col">
