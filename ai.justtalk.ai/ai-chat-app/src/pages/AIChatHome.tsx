@@ -38,7 +38,6 @@ import { checkSubscriptionAccess } from '@/lib/justai-api';
 import LogoBars from '@/assets/logo_bars.svg';
 import Logo from '@/assets/logo.svg';
 import { cn } from '@/lib/utils';
-import { ELEVENLABS_AGENTS } from '@/config/elevenlabs-agents';
 
 export default function AIChatHome() {
   const navigate = useNavigate();
@@ -189,36 +188,6 @@ export default function AIChatHome() {
       // NOTE: No agentId passed - will use default ELEVENLABS_AGENT_ID from Supabase secrets
       setTimeout(() => {
         navigate('/ai-chat/voice/new', { state: { fromTransition: true } });
-      }, 50);
-    }
-  };
-
-  const handleAgentClick = (agentId: string, agentElevenLabsId: string, agentName: string) => {
-    console.log('🎯 Agent card clicked:', {
-      agentId,
-      agentElevenLabsId,
-      agentName,
-    });
-    
-    if (voiceButtonRef.current) {
-      const rect = voiceButtonRef.current.getBoundingClientRect();
-      setTransitionStart({
-        x: rect.left,
-        y: rect.top,
-      });
-      setIsTransitioning(true);
-      
-      // Navigate with agent information
-      setTimeout(() => {
-        console.log('🚀 Navigating to voice chat with agent:', agentElevenLabsId);
-        navigate('/ai-chat/voice/new', { 
-          state: { 
-            fromTransition: true,
-            agentId: agentElevenLabsId, // This is the ElevenLabs agent ID
-            agentName: agentName,
-            scenario: agentId,
-          } 
-        });
       }, 50);
     }
   };
@@ -690,24 +659,48 @@ export default function AIChatHome() {
                   )}
                 </div>
 
-                {/* Scenario Cards */}
+                {/* Navigation Cards */}
                 <div className="mb-6">
                   <div className="flex flex-wrap gap-3 justify-center">
-                    {ELEVENLABS_AGENTS.map((agent) => (
-                      <Card
-                        key={agent.id}
-                        className="px-3 py-1 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all bg-white border border-gray-200 shadow-sm"
-                        onClick={() => handleAgentClick(agent.id, agent.agentId, agent.name)}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-xl">{agent.icon}</span>
-                          <p className="text-base font-normal text-gray-700">{agent.name}</p>
-                        </div>
-                      </Card>
-                    ))}
+                    <Card
+                      className="px-3 py-1 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all bg-white border border-gray-200 shadow-sm"
+                      onClick={() => navigate('/ai-chat/conversation/new')}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-xl">💬</span>
+                        <p className="text-base font-normal text-gray-700">Chat</p>
+                      </div>
+                    </Card>
+                    <Card
+                      className="px-3 py-1 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all bg-white border border-gray-200 shadow-sm"
+                      onClick={() => navigate('/role-plays')}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-xl">💭</span>
+                        <p className="text-base font-normal text-gray-700">Role-plays</p>
+                      </div>
+                    </Card>
+                    <Card
+                      className="px-3 py-1 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all bg-white border border-gray-200 shadow-sm"
+                      onClick={() => navigate('/dictionary')}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-xl">📖</span>
+                        <p className="text-base font-normal text-gray-700">Dictionary</p>
+                      </div>
+                    </Card>
+                    <Card
+                      className="px-3 py-1 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all bg-white border border-gray-200 shadow-sm"
+                      onClick={() => navigate('/profile')}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-xl">👤</span>
+                        <p className="text-base font-normal text-gray-700">Profile</p>
+                      </div>
+                    </Card>
                   </div>
                   <p className="text-center text-sm text-gray-500 mt-3">
-                    Choose the role play to start voice conversation
+                    Explore different sections of your learning experience
                   </p>
                 </div>
               </main>

@@ -1,103 +1,50 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, ChevronRight, Clock, Star } from 'lucide-react';
+import { Play, ChevronRight, Clock } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { BottomNav } from '@/components/BottomNav';
-
-interface RolePlay {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
-  duration: string;
-  icon: string;
-  isPopular?: boolean;
-}
-
-const rolePlayScenarios: RolePlay[] = [
-  {
-    id: '1',
-    title: 'Job Interview',
-    description: 'Practice answering common interview questions',
-    category: 'Career',
-    difficulty: 'Intermediate',
-    duration: '10-15 min',
-    icon: '💼',
-    isPopular: true,
-  },
-  {
-    id: '2',
-    title: 'Restaurant Order',
-    description: 'Order food and interact with a waiter',
-    category: 'Daily Life',
-    difficulty: 'Beginner',
-    duration: '5-10 min',
-    icon: '🍽️',
-    isPopular: true,
-  },
-  {
-    id: '3',
-    title: 'Travel Check-in',
-    description: 'Check in at a hotel and ask for amenities',
-    category: 'Travel',
-    difficulty: 'Beginner',
-    duration: '5-10 min',
-    icon: '✈️',
-  },
-  {
-    id: '4',
-    title: 'Business Meeting',
-    description: 'Present ideas and discuss with colleagues',
-    category: 'Career',
-    difficulty: 'Advanced',
-    duration: '15-20 min',
-    icon: '📊',
-  },
-  {
-    id: '5',
-    title: 'Doctor Visit',
-    description: 'Describe symptoms and understand medical advice',
-    category: 'Healthcare',
-    difficulty: 'Intermediate',
-    duration: '10-15 min',
-    icon: '🏥',
-  },
-  {
-    id: '6',
-    title: 'Shopping',
-    description: 'Ask for products and negotiate prices',
-    category: 'Daily Life',
-    difficulty: 'Beginner',
-    duration: '5-10 min',
-    icon: '🛍️',
-  },
-];
+import { ELEVENLABS_AGENTS } from '@/config/elevenlabs-agents';
 
 export default function RolePlays() {
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
-  const categories = ['All', 'Career', 'Daily Life', 'Travel', 'Healthcare'];
+  // Extract unique categories from agents
+  const categories = ['All', ...Array.from(new Set(ELEVENLABS_AGENTS.map(agent => agent.category)))];
 
-  const filteredScenarios =
+  const filteredAgents =
     selectedCategory === 'All'
-      ? rolePlayScenarios
-      : rolePlayScenarios.filter((rp) => rp.category === selectedCategory);
+      ? ELEVENLABS_AGENTS
+      : ELEVENLABS_AGENTS.filter((agent) => agent.category === selectedCategory);
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'Beginner':
-        return 'bg-green-100 text-green-700';
-      case 'Intermediate':
-        return 'bg-yellow-100 text-yellow-700';
-      case 'Advanced':
-        return 'bg-red-100 text-red-700';
-      default:
-        return 'bg-gray-100 text-gray-700';
-    }
+  const formatDuration = (seconds?: number) => {
+    if (!seconds) return 'Flexible';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+  };
+
+  const handleAgentClick = (agentId: string, agentElevenLabsId: string, agentName: string, scenario: string) => {
+    console.log('🎯 Role-play agent clicked:', {
+      agentId,
+      agentElevenLabsId,
+      agentName,
+      scenario,
+    });
+    
+    // Navigate to voice chat with agent information
+    navigate('/ai-chat/voice/new', { 
+      state: { 
+        fromTransition: true,
+        agentId: agentElevenLabsId,
+        agentName: agentName,
+        scenario: scenario,
+      } 
+    });
   };
 
   return (
@@ -106,7 +53,7 @@ export default function RolePlays() {
       <header className="bg-white px-4 py-6 border-b">
         <h1 className="text-2xl font-bold mb-2">Role-play Scenarios</h1>
         <p className="text-sm text-muted-foreground">
-          Practice real-life conversations with AI
+          Practice real-life conversations with AI voice agents
         </p>
       </header>
 
@@ -119,7 +66,7 @@ export default function RolePlays() {
               variant={selectedCategory === category ? 'default' : 'outline'}
               size="sm"
               onClick={() => setSelectedCategory(category)}
-              className="rounded-full whitespace-nowrap"
+              className="rounded-full whitespace-nowrap capitalize"
             >
               {category}
             </Button>
@@ -128,48 +75,37 @@ export default function RolePlays() {
 
         {/* Role-play Cards */}
         <div className="space-y-4">
-          {filteredScenarios.map((rolePlay) => (
+          {filteredAgents.map((agent) => (
             <Card
-              key={rolePlay.id}
+              key={agent.id}
               className="p-4 cursor-pointer hover:shadow-md hover:border-primary transition-all"
-              onClick={() => navigate('/ai-chat/conversation/new', {
-                state: { rolePlay }
-              })}
+              onClick={() => handleAgentClick(agent.id, agent.agentId, agent.name, agent.id)}
             >
               <div className="flex items-start gap-4">
                 {/* Icon */}
-                <div className="text-4xl flex-shrink-0">{rolePlay.icon}</div>
+                <div className="text-4xl flex-shrink-0">{agent.icon}</div>
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-base">{rolePlay.title}</h3>
-                      {rolePlay.isPopular && (
-                        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                      )}
+                      <h3 className="font-semibold text-base">{agent.name}</h3>
                     </div>
                     <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
                   </div>
 
                   <p className="text-sm text-muted-foreground mb-3">
-                    {rolePlay.description}
+                    {agent.description}
                   </p>
 
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge
-                      variant="secondary"
-                      className={getDifficultyColor(rolePlay.difficulty)}
-                    >
-                      {rolePlay.difficulty}
+                    <Badge variant="outline" className="text-xs capitalize">
+                      {agent.category}
                     </Badge>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Clock className="w-3 h-3" />
-                      <span>{rolePlay.duration}</span>
+                      <span>{formatDuration(agent.recommendedDuration)}</span>
                     </div>
-                    <Badge variant="outline" className="text-xs">
-                      {rolePlay.category}
-                    </Badge>
                   </div>
                 </div>
 
@@ -179,9 +115,7 @@ export default function RolePlays() {
                   className="rounded-full flex-shrink-0"
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate('/ai-chat/conversation/new', {
-                      state: { rolePlay }
-                    });
+                    handleAgentClick(agent.id, agent.agentId, agent.name, agent.id);
                   }}
                 >
                   <Play className="w-5 h-5" />
