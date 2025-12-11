@@ -4,11 +4,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Menu,
   Sparkles,
-  MessageSquare,
-  MessageCircle,
-  BookOpen,
-  User,
-  Settings2,
   History,
   ChevronLeft,
   ChevronRight,
@@ -26,12 +21,6 @@ import {
   Drawer,
   DrawerContent,
 } from '@/components/ui/drawer';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { VoiceButtonTransition } from '@/components/VoiceButtonTransition';
 import { supabase } from '@/lib/supabase';
 import { checkSubscriptionAccess } from '@/lib/justai-api';
@@ -42,7 +31,6 @@ import { cn } from '@/lib/utils';
 export default function AIChatHome() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [searchInput, setSearchInput] = useState('');
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [transitionStart, setTransitionStart] = useState<{ x: number; y: number } | undefined>();
   const [showSidebar, setShowSidebar] = useState(false);
@@ -667,8 +655,8 @@ export default function AIChatHome() {
                       onClick={() => navigate('/ai-chat/conversation/new')}
                     >
                       <div className="flex items-center gap-2.5">
-                        <span className="text-xl">💬</span>
-                        <p className="text-base font-normal text-gray-700">Chat</p>
+                        <span className="text-xl">⭐️</span>
+                        <p className="text-base font-normal text-gray-700">JustTalk</p>
                       </div>
                     </Card>
                     <Card
@@ -707,75 +695,17 @@ export default function AIChatHome() {
             </>
           )}
 
-          {/* Bottom Input Bar - Inside Gray Container */}
-          <div className="px-5 pb-0">
-            <div className="max-w-2xl mx-auto">
-              <Card className="shadow-lg border-gray-200 rounded-3xl">
-              <div className="flex flex-col gap-0 px-5 py-4">
-                <textarea
-                  placeholder="How can I help you today?"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  onFocus={() => navigate('/ai-chat/conversation/new')}
-                  rows={2}
-                  className="w-full bg-transparent outline-none text-gray-900 placeholder:text-gray-400 text-base resize-none"
-                />
-                
-                <div className="flex items-center justify-between">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
-                        <Settings2 className="w-6 h-6" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent 
-                      className="w-40 rounded-2xl" 
-                      align="start" 
-                      side="top"
-                      sideOffset={12}
-                    >
-                      <DropdownMenuItem
-                        onClick={() => navigate('/ai-chat')}
-                        className="flex items-center gap-3 px-3 py-1.5 cursor-pointer"
-                      >
-                        <MessageSquare className="w-5 h-5 text-gray-600" />
-                        <span className="text-sm font-medium text-gray-700">Chat</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => navigate('/role-plays')}
-                        className="flex items-center gap-3 px-3 py-1.5 cursor-pointer"
-                      >
-                        <MessageCircle className="w-5 h-5 text-gray-600" />
-                        <span className="text-sm font-medium text-gray-700">Role-plays</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => navigate('/dictionary')}
-                        className="flex items-center gap-3 px-3 py-1.5 cursor-pointer"
-                      >
-                        <BookOpen className="w-5 h-5 text-gray-600" />
-                        <span className="text-sm font-medium text-gray-700">Dictionary</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => navigate('/profile')}
-                        className="flex items-center gap-3 px-3 py-1.5 cursor-pointer"
-                      >
-                        <User className="w-5 h-5 text-gray-600" />
-                        <span className="text-sm font-medium text-gray-700">Profile</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  <button
-                    onClick={handleVoiceClick}
-                    ref={voiceButtonRef}
-                    className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-all hover:scale-105 active:scale-95"
-                  >
-                    <img src={LogoBars} alt="Voice" className="w-4 h-4 brightness-0 invert" />
-                  </button>
-                </div>
-              </div>
-            </Card>
-          </div>
+          {/* Bottom Voice Button - Centered */}
+          <div className="px-5 pb-6">
+            <div className="flex justify-center">
+              <button
+                onClick={handleVoiceClick}
+                ref={voiceButtonRef}
+                className="w-16 h-16 flex items-center justify-center bg-[hsl(var(--brand-blue))] text-white rounded-full hover:bg-[hsl(var(--brand-blue))]/90 transition-all hover:scale-105 active:scale-95 shadow-lg"
+              >
+                <img src={LogoBars} alt="Voice" className="w-8 h-8 brightness-0 invert" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
