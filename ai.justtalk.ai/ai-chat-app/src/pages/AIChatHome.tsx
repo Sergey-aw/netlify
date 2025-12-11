@@ -2,15 +2,18 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Menu,
+  PanelLeft,
   Sparkles,
   History,
   ChevronLeft,
-  ChevronRight,
   Volume2,
   CircleStop,
   Languages,
   Bookmark,
+  Star,
+  MessageSquare,
+  BookOpen,
+  User,
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -21,6 +24,18 @@ import {
   Drawer,
   DrawerContent,
 } from '@/components/ui/drawer';
+import {
+  SidebarProvider,
+  SidebarHeader,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupContent,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarSeparator,
+} from '@/components/ui/sidebar';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { VoiceButtonTransition } from '@/components/VoiceButtonTransition';
 import { supabase } from '@/lib/supabase';
 import { checkSubscriptionAccess } from '@/lib/justai-api';
@@ -425,7 +440,7 @@ export default function AIChatHome() {
             className="-ml-2"
             onClick={() => setShowSidebar(!showSidebar)}
           >
-            {showSidebar ? <ChevronLeft className="w-6 h-6 text-gray-600" /> : <Menu className="w-6 h-6 text-gray-600" />}
+            {showSidebar ? <ChevronLeft className="w-6 h-6 text-gray-600" /> : <PanelLeft className="w-6 h-6 text-gray-600" />}
           </Button>
           <Button
             onClick={() => navigate('/ai-chat/voice/new')}
@@ -447,70 +462,122 @@ export default function AIChatHome() {
 
       {/* Main Content Container with Sidebar */}
       <div className="flex-1 relative overflow-hidden">
-        {/* Sidebar - Conversations List (Overlay) */}
-        <div
-          className={cn(
-            'absolute top-0 left-0 h-full z-20 bg-white border-r overflow-y-auto shadow-lg transition-transform duration-300',
-            'w-80',
-            showSidebar ? 'translate-x-0' : '-translate-x-full'
-          )}
-        >
-          <div className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Conversations</h2>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowSidebar(false)}
-                className="rounded-full"
-              >
-                <ChevronRight className="w-5 h-5 text-gray-600" />
-              </Button>
-            </div>
-            
-            <div className="space-y-1">
-              {conversations && conversations.length > 0 ? (
-                conversations.map((conv) => (
-                  <div
-                    key={conv.id}
-                    className={cn(
-                      'p-3 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors',
-                      selectedConversation === conv.id && 'bg-blue-50'
-                    )}
-                    onClick={() => handleConversationClick(conv.id)}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="text-2xl flex-shrink-0">
-                        {conv.is_voice_session ? '🎤' : '💬'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-sm text-gray-900 truncate">
-                          {conv.title || 'Untitled Conversation'}
-                        </h3>
-                        <p className="text-xs text-gray-500">
-                          {formatTime(conv.last_message_at || conv.created_at)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <History className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                  <p className="text-sm">No conversations yet</p>
+        {/* Sidebar - Sheet for Mobile */}
+        <Sheet open={showSidebar} onOpenChange={setShowSidebar}>
+          <SheetContent side="left" className="p-0 w-80">
+            <SidebarProvider className="flex flex-col h-full">
+              {/* Logo Header */}
+              <SidebarHeader className="flex-shrink-0">
+                <div className="flex items-center py-2 px-2">
+                  <img src={Logo} alt="JustTalk AI" className="h-8" />
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
+              </SidebarHeader>
+
+              {/* Navigation Menu */}
+              <SidebarGroup className="pt-2 flex-shrink-0">
+                
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={() => {
+                          navigate('/ai-chat/conversation/new');
+                          setShowSidebar(false);
+                        }}
+                      >
+                        <Star className="w-4 h-4" />
+                        <span>JustTalk</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={() => {
+                          navigate('/role-plays');
+                          setShowSidebar(false);
+                        }}
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        <span>Role-plays</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={() => {
+                          navigate('/dictionary');
+                          setShowSidebar(false);
+                        }}
+                      >
+                        <BookOpen className="w-4 h-4" />
+                        <span>Dictionary</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={() => {
+                          navigate('/profile');
+                          setShowSidebar(false);
+                        }}
+                      >
+                        <User className="w-4 h-4" />
+                        <span>Profile</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+
+              <SidebarSeparator />
+
+              {/* Conversations Section */}
+              <SidebarGroup className="flex-1 min-h-0 flex flex-col">
+                <SidebarGroupLabel className="px-4 flex-shrink-0">Conversations</SidebarGroupLabel>
+                <SidebarGroupContent className="overflow-y-auto flex-1 min-h-0">
+            
+                  <SidebarMenu>
+                    {conversations && conversations.length > 0 ? (
+                      conversations.map((conv) => (
+                        <SidebarMenuItem key={conv.id}>
+                          <SidebarMenuButton
+                            onClick={() => handleConversationClick(conv.id)}
+                            isActive={selectedConversation === conv.id}
+                            className="h-auto py-3"
+                          >
+                            <div className="flex items-start gap-3 w-full">
+                              <div className="text-xl flex-shrink-0">
+                                {conv.is_voice_session ? '🎤' : '💬'}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-medium text-sm truncate">
+                                  {conv.title || 'Untitled Conversation'}
+                                </h3>
+                                <p className="text-xs opacity-70">
+                                  {formatTime(conv.last_message_at || conv.created_at)}
+                                </p>
+                              </div>
+                            </div>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 px-4 text-muted-foreground">
+                        <History className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                        <p className="text-sm">No conversations yet</p>
+                      </div>
+                    )}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </SidebarProvider>
+          </SheetContent>
+        </Sheet>
 
         {/* Main Content Area */}
-        <div className="h-full bg-gray-100 rounded-[40px] pt-0 pb-6 m-2 flex flex-col overflow-hidden">
+        <div className="h-full bg-gray-100 rounded-[40px] pt-0 pb-0 m-2 flex flex-col">
           {selectedConversation && messages ? (
             // Conversation View
             <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full px-6 overflow-hidden">
               {/* Messages - Scrollable */}
-              <div className="flex-1 overflow-y-auto space-y-4 pt-0 pb-4">
+              <div className="flex-1 overflow-y-auto space-y-4 pt-6 pb-6">
                 {messages.map((message) => (
                   <div
                     key={message.id}
@@ -524,7 +591,7 @@ export default function AIChatHome() {
                         <AvatarFallback>🤖</AvatarFallback>
                       </Avatar>
                     )}
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 pt-0">
                       <div
                         className={cn(
                           'px-4 py-3 rounded-2xl transition-all duration-300 ease-in-out',
@@ -687,26 +754,26 @@ export default function AIChatHome() {
                       </div>
                     </Card>
                   </div>
-                  <p className="text-center text-sm text-gray-500 mt-3">
-                    Explore different sections of your learning experience
-                  </p>
+                  
                 </div>
               </main>
             </>
           )}
 
-          {/* Bottom Voice Button - Centered */}
-          <div className="px-5 pb-6">
-            <div className="flex justify-center">
-              <button
-                onClick={handleVoiceClick}
-                ref={voiceButtonRef}
-                className="w-16 h-16 flex items-center justify-center bg-[hsl(var(--brand-blue))] text-white rounded-full hover:bg-[hsl(var(--brand-blue))]/90 transition-all hover:scale-105 active:scale-95 shadow-lg"
-              >
-                <img src={LogoBars} alt="Voice" className="w-8 h-8 brightness-0 invert" />
-              </button>
+          {/* Bottom Voice Button - Centered (only show when no conversation selected) */}
+          {!selectedConversation && (
+            <div className="px-5 pb-6">
+              <div className="flex justify-center">
+                <button
+                  onClick={handleVoiceClick}
+                  ref={voiceButtonRef}
+                  className="w-16 h-16 flex items-center justify-center bg-[hsl(var(--brand-blue))] text-white rounded-full hover:bg-[hsl(var(--brand-blue))]/90 transition-all hover:scale-105 active:scale-95 shadow-lg"
+                >
+                  <img src={LogoBars} alt="Voice" className="w-8 h-8 brightness-0 invert" />
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

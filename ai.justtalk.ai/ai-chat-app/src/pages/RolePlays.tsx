@@ -4,7 +4,6 @@ import { Play, ChevronRight, Clock } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { BottomNav } from '@/components/BottomNav';
 import { ELEVENLABS_AGENTS } from '@/config/elevenlabs-agents';
 
 export default function RolePlays() {
@@ -125,8 +124,6 @@ export default function RolePlays() {
           ))}
         </div>
       </main>
-
-      <BottomNav />
     </div>
   );
 }

@@ -3,7 +3,6 @@ import { Search, BookOpen, TrendingUp, Filter, Check } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { BottomNav } from '@/components/BottomNav';
 import { useVocabularyBuilder } from '@/hooks/useVocabularyBuilder';
 import { useVocabSets, useVocabSetWords } from '@/hooks/useVocabSets';
 import { useLexemeSearch } from '@/hooks/useLexemeSearch';
@@ -228,8 +227,6 @@ export default function VocabularyBuilder() {
           </div>
         </div>
       )}
-
-      <BottomNav />
     </div>
   );
 }

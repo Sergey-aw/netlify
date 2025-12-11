@@ -14,7 +14,6 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { BottomNav } from '@/components/BottomNav';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -265,8 +264,6 @@ export default function Profile() {
           Log Out
         </Button>
       </main>
-
-      <BottomNav />
     </div>
   );
 }

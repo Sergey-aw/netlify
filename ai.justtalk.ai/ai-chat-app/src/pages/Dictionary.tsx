@@ -3,7 +3,6 @@ import { Search, Volume2, BookmarkPlus, BookmarkCheck } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { BottomNav } from '@/components/BottomNav';
 
 interface WordEntry {
   word: string;
@@ -149,8 +148,6 @@ export default function Dictionary() {
           </div>
         )}
       </main>
-
-      <BottomNav />
     </div>
   );
 }

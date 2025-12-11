@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Check, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { BottomNav } from '@/components/BottomNav';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { createCheckoutSession } from '@/lib/justai-api';
@@ -270,8 +269,6 @@ export default function SubscriptionPlans() {
           </p>
         </div>
       </div>
-
-      <BottomNav />
     </div>
   );
 }

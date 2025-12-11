@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { BottomNav } from '@/components/BottomNav';
 import { useSubscription } from '@/hooks/useSubscription';
 import { markSubscriptionActive } from '@/lib/onboarding-state';
 import { supabase } from '@/lib/supabase';
@@ -190,7 +189,6 @@ export default function SubscriptionManagement() {
             View Plans
           </Button>
         </div>
-        <BottomNav />
       </div>
     );
   }
@@ -503,8 +501,6 @@ export default function SubscriptionManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <BottomNav />
     </div>
   );
 }
