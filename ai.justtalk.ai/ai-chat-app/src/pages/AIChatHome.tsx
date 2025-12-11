@@ -463,7 +463,7 @@ export default function AIChatHome() {
       {/* Main Content Container with Sidebar */}
       <div className="flex-1 relative overflow-hidden">
         {/* Sidebar - Sheet for Mobile */}
-        <Sheet open={showSidebar} onOpenChange={setShowSidebar}>
+        <Sheet open={showSidebar} onOpenChange={setShowSidebar} modal={false}>
           <SheetContent side="left" className="p-0 w-80">
             <SidebarProvider className="flex flex-col h-full">
               {/* Logo Header */}
