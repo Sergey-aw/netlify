@@ -6,6 +6,7 @@ import {
   MessageSquare,
   BookOpen,
   User,
+  Home,
 } from 'lucide-react';
 import {
   Sheet,
@@ -117,6 +118,14 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
           <SidebarGroup className="pt-2 flex-shrink-0">
             <SidebarGroupContent>
               <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => handleNavigate('/ai-chat')}
+                  >
+                    <Home className="w-4 h-4" />
+                    <span>Home</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     onClick={() => handleNavigate('/ai-chat/conversation/new')}

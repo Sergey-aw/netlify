@@ -180,8 +180,8 @@ export default function Profile() {
       <AppSidebar open={showSidebar} onOpenChange={setShowSidebar} />
 
       {/* Header */}
-      <header className="bg-white px-4 py-4">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
+      <header className="px-4 py-4">
+        <div className="flex items-start justify-between max-w-7xl mx-auto">
           <Button 
             variant="ghost" 
             size="icon" 
@@ -190,43 +190,36 @@ export default function Profile() {
           >
             <PanelLeft className="w-6 h-6 text-gray-600" />
           </Button>
-          <div className="flex-1 text-center">
-            <h1 className="text-xl font-semibold">Profile</h1>
-          </div>
-          <div className="w-10" />
+          {userLoading ? (
+            <div className="flex-1" />
+          ) : (
+            <div className="flex-1 flex items-start gap-4 pt-1 pl-4">
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold mb-1">
+                  {user?.display_name || 'Student'}
+                </h1>
+                <p className="text-sm text-muted-foreground mb-2">
+                  {user?.email || ''}
+                </p>
+                <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                  Intermediate Level
+                </Badge>
+              </div>
+              <Avatar className="w-20 h-20 flex-shrink-0">
+                <AvatarImage src={user?.profile_photo_url} />
+                <AvatarFallback className="text-2xl">
+                  {user?.display_name?.[0] || 'U'}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          )}
         </div>
       </header>
 
       {/* Profile Content */}
       <div className="px-4 py-6">
-        {userLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <p className="text-muted-foreground">Loading...</p>
-          </div>
-        ) : (
-          <div className="flex items-center gap-4 mb-6">
-            <Avatar className="w-20 h-20">
-              <AvatarImage src={user?.profile_photo_url} />
-              <AvatarFallback className="text-2xl">
-                {user?.display_name?.[0] || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-1">
-                {user?.display_name || 'Student'}
-              </h2>
-              <p className="text-sm text-muted-foreground mb-2">
-                {user?.email || ''}
-              </p>
-              <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-                Intermediate Level
-              </Badge>
-            </div>
-          </div>
-        )}
-
         {/* Level Progress */}
-        <div className="mt-6">
+        <div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">Progress to Next Level</span>
             <span className="text-sm text-muted-foreground">65%</span>
