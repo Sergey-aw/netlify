@@ -28,7 +28,7 @@ export const ELEVENLABS_AGENTS: ElevenLabsAgent[] = [
     icon: '🗣️',
     category: 'skills',
     agentId: 'agent_6301kbzbpp6xfezsw2zrf71vvkah', // Replace with your actual agent ID
-    recommendedDuration: 480, // 8 minutes
+    recommendedDuration: 60, // 8 minutes
   },
   {
     id: 'Interviews: Focus on conversation',
@@ -37,7 +37,7 @@ export const ELEVENLABS_AGENTS: ElevenLabsAgent[] = [
     icon: '🗣️   ',
     category: 'professional',
     agentId: 'agent_0401kbzbr6z5ezb867w9h3zsthwt', // Replace with your actual agent ID
-    recommendedDuration: 420, // 7 minutes
+    recommendedDuration: 60, // 7 minutes
   },
    {
     id: 'Freetalk: Best for engagement',
@@ -46,7 +46,7 @@ export const ELEVENLABS_AGENTS: ElevenLabsAgent[] = [
     icon: '🎙️',
     category: 'professional',
     agentId: 'agent_1201kbzc4wmef1ka9hhv3fbhqmt4', // Replace with your actual agent ID
-    recommendedDuration: 600, // 10 minutes
+    recommendedDuration: 60, // 10 minutes
   },
   {
     id: 'Dating & Relationships: Maya Chen',
@@ -55,7 +55,7 @@ export const ELEVENLABS_AGENTS: ElevenLabsAgent[] = [
     icon: '🎙️',
     category: 'dating',
     agentId: 'agent_8801kc9vqcphf2c8h1ft1z2jbmng', // Replace with your actual agent ID
-    recommendedDuration: 600, // 10 minutes
+    recommendedDuration: 60, // 10 minutes
   },
   {
     id: 'Dating & Relationships: Maya Chen Second Date',
@@ -64,7 +64,7 @@ export const ELEVENLABS_AGENTS: ElevenLabsAgent[] = [
     icon: '🎙️',
     category: 'dating',
     agentId: 'agent_4501kca0jwe6fvbv74amm8fp9bf4', // Replace with your actual agent ID
-    recommendedDuration: 600, // 10 minutes
+    recommendedDuration: 60, // 10 minutes
   },
    {
     id: 'TOEFL: Task 1 - Describe Graph',
@@ -73,7 +73,7 @@ export const ELEVENLABS_AGENTS: ElevenLabsAgent[] = [
     icon: '🎙️',
     category: 'education',
     agentId: 'agent_4301kc80gab4fksvn8dzqvkkzs9r', // Replace with your actual agent ID
-    recommendedDuration: 600, // 10 minutes
+    recommendedDuration: 60, // 10 minutes
   },
   {
     id: 'IELTS: Part 1',
@@ -82,7 +82,7 @@ export const ELEVENLABS_AGENTS: ElevenLabsAgent[] = [
     icon: '🎙️',
     category: 'education',
     agentId: 'agent_7101kc80c55ge9pr8rc29fkdy0jm', // Replace with your actual agent ID
-    recommendedDuration: 600, // 10 minutes
+    recommendedDuration: 60, // 10 minutes
   },
   {
     id: 'Business: Giving a Status Update',
@@ -91,7 +91,7 @@ export const ELEVENLABS_AGENTS: ElevenLabsAgent[] = [
     icon: '🎙️',
     category: 'education',
     agentId: 'agent_7101kc805a5tes7r911sebmqcyzs', // Replace with your actual agent ID
-    recommendedDuration: 600, // 10 minutes
+    recommendedDuration: 60, // 10 minutes
   },
   {
     id: 'Social: Describing Childhood',
@@ -100,7 +100,7 @@ export const ELEVENLABS_AGENTS: ElevenLabsAgent[] = [
     icon: '🎙️',
     category: 'social',
     agentId: 'agent_0401kc7zwbrceh08t39c3xcbcwqz', // Replace with your actual agent ID
-    recommendedDuration: 600, // 10 minutes
+    recommendedDuration: 60, // 10 minutes
   },
   {
     id: 'Social: Meeting someone new at a party',
@@ -109,7 +109,7 @@ export const ELEVENLABS_AGENTS: ElevenLabsAgent[] = [
     icon: '🎙️',
     category: 'social',
     agentId: 'agent_0001kc7zb0kmfy5tn4aw6xqz9bmj', // Replace with your actual agent ID
-    recommendedDuration: 600, // 10 minutes
+    recommendedDuration: 60, // 10 minutes
   },
    {
     id: 'Daily Life: Changing rooms (Clothes)',
@@ -118,7 +118,7 @@ export const ELEVENLABS_AGENTS: ElevenLabsAgent[] = [
     icon: '🎙️',
     category: 'Daily Life',
     agentId: 'agent_0901kc7z3yewfhysrbb1zkztx8bg', // Replace with your actual agent ID
-    recommendedDuration: 600, // 10 minutes
+    recommendedDuration: 60, // 10 minutes
   },
   {
     id: 'Travel: Airport check-in',
@@ -127,7 +127,7 @@ export const ELEVENLABS_AGENTS: ElevenLabsAgent[] = [
     icon: '🎙️',
     category: 'Travel',
     agentId: 'agent_8901kc7yzafzf8kvzmrz92444mje', // Replace with your actual agent ID
-    recommendedDuration: 600, // 10 minutes
+    recommendedDuration: 60, // 10 minutes
   },
    {
     id: 'Interview: Strengths and Weaknesses',
@@ -136,7 +136,7 @@ export const ELEVENLABS_AGENTS: ElevenLabsAgent[] = [
     icon: '🎙️',
     category: 'Interview',
     agentId: 'agent_7101kc7yqwnyef7867pkh9epas2b', // Replace with your actual agent ID
-    recommendedDuration: 600, // 10 minutes
+    recommendedDuration: 60, // 10 minutes
   },
   {
     id: 'Interview: Tell me about yourself',
@@ -145,7 +145,7 @@ export const ELEVENLABS_AGENTS: ElevenLabsAgent[] = [
     icon: '🎙️',
     category: 'Interview',
     agentId: 'agent_7801kc7yfx17fqa80c7d5favvdnm', // Replace with your actual agent ID
-    recommendedDuration: 600, // 10 minutes
+    recommendedDuration: 60, // 10 minutes
   },
   {
     id: 'Daily Life: Visiting a doctor',
@@ -154,7 +154,7 @@ export const ELEVENLABS_AGENTS: ElevenLabsAgent[] = [
     icon: '🎙️',
     category: 'Daily Life',
     agentId: 'agent_6601kc7xzfnde2hs8vnr9757y25c', // Replace with your actual agent ID
-    recommendedDuration: 600, // 10 minutes
+    recommendedDuration: 60, // 10 minutes
   },
    {
     id: 'Daily Life: Returning an item / asking for a refund',
@@ -163,7 +163,7 @@ export const ELEVENLABS_AGENTS: ElevenLabsAgent[] = [
     icon: '🎙️',
     category: 'Daily Life',
     agentId: 'agent_2601kc7xm849es58ftg0rjwptveq', // Replace with your actual agent ID
-    recommendedDuration: 600, // 10 minutes
+    recommendedDuration: 60, // 10 minutes
   },
   {
     id: 'Daily Life: Ordering at a Cafe',
@@ -172,7 +172,7 @@ export const ELEVENLABS_AGENTS: ElevenLabsAgent[] = [
     icon: '🎙️',
     category: 'Daily Life',
     agentId: 'agent_2001kc7qrf91eabrk82nqjnrvxrd', // Replace with your actual agent ID
-    recommendedDuration: 600, // 10 minutes
+    recommendedDuration: 60, // 10 minutes
   },
 ];
 
