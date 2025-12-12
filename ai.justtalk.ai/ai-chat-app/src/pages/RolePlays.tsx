@@ -50,21 +50,23 @@ export default function RolePlays() {
     return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
   };
 
-  const handleAgentClick = (agentId: string, agentElevenLabsId: string, agentName: string, scenario: string) => {
+  const handleAgentClick = (agentId: string, agentElevenLabsId: string, agentName: string, scenario: string, description: string) => {
     console.log('🎯 Role-play agent clicked:', {
       agentId,
       agentElevenLabsId,
       agentName,
       scenario,
+      description,
     });
     
     // Navigate to voice chat with agent information
+    // Using the ElevenLabs agent ID from the config
     navigate('/ai-chat/voice/new', { 
       state: { 
         fromTransition: true,
-        agentId: agentElevenLabsId,
+        agentId: agentElevenLabsId, // This is the correct ElevenLabs agent ID
         agentName: agentName,
-        scenario: scenario,
+        scenario: description, // Use description as scenario for better context
       } 
     });
   };
@@ -120,7 +122,7 @@ export default function RolePlays() {
             <Card
               key={agent.id}
               className="p-4 cursor-pointer hover:shadow-md hover:border-primary transition-all"
-              onClick={() => handleAgentClick(agent.id, agent.agentId, agent.name, agent.id)}
+              onClick={() => handleAgentClick(agent.id, agent.agentId, agent.name, agent.id, agent.description)}
             >
               <div className="flex items-start gap-4">
                 {/* Icon */}
@@ -156,7 +158,7 @@ export default function RolePlays() {
                   className="rounded-full flex-shrink-0"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleAgentClick(agent.id, agent.agentId, agent.name, agent.id);
+                    handleAgentClick(agent.id, agent.agentId, agent.name, agent.id, agent.description);
                   }}
                 >
                   <Play className="w-5 h-5" />

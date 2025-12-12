@@ -57,6 +57,15 @@ export const ELEVENLABS_AGENTS: ElevenLabsAgent[] = [
     agentId: 'agent_8801kc9vqcphf2c8h1ft1z2jbmng', // Replace with your actual agent ID
     recommendedDuration: 600, // 10 minutes
   },
+  {
+    id: 'Dating & Relationships: Maya Chen Second Date',
+    name: 'Dating & Relationships, Maya Chen Second Date',
+    description: 'Dating & Relationships: Maya Chen Second Date',
+    icon: '🎙️',
+    category: 'dating',
+    agentId: 'agent_4501kca0jwe6fvbv74amm8fp9bf4', // Replace with your actual agent ID
+    recommendedDuration: 600, // 10 minutes
+  },
    {
     id: 'TOEFL: Task 1 - Describe Graph',
     name: 'TOEFL: Task 1 - Describe Graph',
