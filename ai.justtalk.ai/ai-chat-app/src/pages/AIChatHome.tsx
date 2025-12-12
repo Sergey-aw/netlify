@@ -2,16 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Menu,
+  PanelLeft,
   Sparkles,
-  MessageSquare,
-  MessageCircle,
-  BookOpen,
-  User,
-  Settings2,
-  History,
   ChevronLeft,
-  ChevronRight,
   Volume2,
   CircleStop,
   Languages,
@@ -26,24 +19,17 @@ import {
   Drawer,
   DrawerContent,
 } from '@/components/ui/drawer';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { AppSidebar } from '@/components/AppSidebar';
 import { VoiceButtonTransition } from '@/components/VoiceButtonTransition';
 import { supabase } from '@/lib/supabase';
 import { checkSubscriptionAccess } from '@/lib/justai-api';
 import LogoBars from '@/assets/logo_bars.svg';
 import Logo from '@/assets/logo.svg';
 import { cn } from '@/lib/utils';
-import { ELEVENLABS_AGENTS } from '@/config/elevenlabs-agents';
 
 export default function AIChatHome() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [searchInput, setSearchInput] = useState('');
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [transitionStart, setTransitionStart] = useState<{ x: number; y: number } | undefined>();
   const [showSidebar, setShowSidebar] = useState(false);
@@ -123,26 +109,6 @@ export default function AIChatHome() {
     },
   });
 
-  // Get previous conversations
-  const { data: conversations } = useQuery({
-    queryKey: ['conversations', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      
-      const { data, error } = await supabase
-        .from('justai_conversations')
-        .select('id, title, scenario, created_at, last_message_at, is_voice_session')
-        .eq('student_id', user.id)
-        .order('last_message_at', { ascending: false, nullsFirst: false })
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user?.id,
-  });
-
   // Get messages for selected conversation
   const { data: messages } = useQuery({
     queryKey: ['conversation-messages', selectedConversation],
@@ -193,56 +159,8 @@ export default function AIChatHome() {
     }
   };
 
-  const handleAgentClick = (agentId: string, agentElevenLabsId: string, agentName: string) => {
-    console.log('🎯 Agent card clicked:', {
-      agentId,
-      agentElevenLabsId,
-      agentName,
-    });
-    
-    if (voiceButtonRef.current) {
-      const rect = voiceButtonRef.current.getBoundingClientRect();
-      setTransitionStart({
-        x: rect.left,
-        y: rect.top,
-      });
-      setIsTransitioning(true);
-      
-      // Navigate with agent information
-      setTimeout(() => {
-        console.log('🚀 Navigating to voice chat with agent:', agentElevenLabsId);
-        navigate('/ai-chat/voice/new', { 
-          state: { 
-            fromTransition: true,
-            agentId: agentElevenLabsId, // This is the ElevenLabs agent ID
-            agentName: agentName,
-            scenario: agentId,
-          } 
-        });
-      }, 50);
-    }
-  };
-
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) {
-      return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    } else if (diffDays === 1) {
-      return 'Yesterday';
-    } else if (diffDays < 7) {
-      return date.toLocaleDateString('en-US', { weekday: 'short' });
-    } else {
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    }
-  };
-
   const handleConversationClick = (conversationId: string) => {
     setSelectedConversation(conversationId);
-    setShowSidebar(false);
   };
 
   const handleTranslate = async (messageId: string, content: string) => {
@@ -468,7 +386,7 @@ export default function AIChatHome() {
             className="-ml-2"
             onClick={() => setShowSidebar(!showSidebar)}
           >
-            {showSidebar ? <ChevronLeft className="w-6 h-6 text-gray-600" /> : <Menu className="w-6 h-6 text-gray-600" />}
+            {showSidebar ? <ChevronLeft className="w-6 h-6 text-gray-600" /> : <PanelLeft className="w-6 h-6 text-gray-600" />}
           </Button>
           <Button
             onClick={() => navigate('/ai-chat/voice/new')}
@@ -490,70 +408,21 @@ export default function AIChatHome() {
 
       {/* Main Content Container with Sidebar */}
       <div className="flex-1 relative overflow-hidden">
-        {/* Sidebar - Conversations List (Overlay) */}
-        <div
-          className={cn(
-            'absolute top-0 left-0 h-full z-20 bg-white border-r overflow-y-auto shadow-lg transition-transform duration-300',
-            'w-80',
-            showSidebar ? 'translate-x-0' : '-translate-x-full'
-          )}
-        >
-          <div className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Conversations</h2>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowSidebar(false)}
-                className="rounded-full"
-              >
-                <ChevronRight className="w-5 h-5 text-gray-600" />
-              </Button>
-            </div>
-            
-            <div className="space-y-1">
-              {conversations && conversations.length > 0 ? (
-                conversations.map((conv) => (
-                  <div
-                    key={conv.id}
-                    className={cn(
-                      'p-3 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors',
-                      selectedConversation === conv.id && 'bg-blue-50'
-                    )}
-                    onClick={() => handleConversationClick(conv.id)}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="text-2xl flex-shrink-0">
-                        {conv.is_voice_session ? '🎤' : '💬'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-sm text-gray-900 truncate">
-                          {conv.title || 'Untitled Conversation'}
-                        </h3>
-                        <p className="text-xs text-gray-500">
-                          {formatTime(conv.last_message_at || conv.created_at)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <History className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                  <p className="text-sm">No conversations yet</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        {/* Sidebar */}
+        <AppSidebar
+          open={showSidebar}
+          onOpenChange={setShowSidebar}
+          selectedConversation={selectedConversation}
+          onConversationClick={handleConversationClick}
+        />
 
         {/* Main Content Area */}
-        <div className="h-full bg-gray-100 rounded-[40px] pt-0 pb-6 m-2 flex flex-col overflow-hidden">
+        <div className="h-full bg-gray-100 rounded-[40px] pt-0 pb-0 m-2 flex flex-col">
           {selectedConversation && messages ? (
             // Conversation View
             <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full px-6 overflow-hidden">
               {/* Messages - Scrollable */}
-              <div className="flex-1 overflow-y-auto space-y-4 pt-0 pb-4">
+              <div className="flex-1 overflow-y-auto space-y-4 pt-6 pb-6">
                 {messages.map((message) => (
                   <div
                     key={message.id}
@@ -567,7 +436,7 @@ export default function AIChatHome() {
                         <AvatarFallback>🤖</AvatarFallback>
                       </Avatar>
                     )}
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 pt-0">
                       <div
                         className={cn(
                           'px-4 py-3 rounded-2xl transition-all duration-300 ease-in-out',
@@ -690,100 +559,66 @@ export default function AIChatHome() {
                   )}
                 </div>
 
-                {/* Scenario Cards */}
+                {/* Navigation Cards */}
                 <div className="mb-6">
                   <div className="flex flex-wrap gap-3 justify-center">
-                    {ELEVENLABS_AGENTS.map((agent) => (
-                      <Card
-                        key={agent.id}
-                        className="px-3 py-1 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all bg-white border border-gray-200 shadow-sm"
-                        onClick={() => handleAgentClick(agent.id, agent.agentId, agent.name)}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-xl">{agent.icon}</span>
-                          <p className="text-base font-normal text-gray-700">{agent.name}</p>
-                        </div>
-                      </Card>
-                    ))}
+                    <Card
+                      className="px-3 py-1 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all bg-white border border-gray-200 shadow-sm"
+                      onClick={() => navigate('/ai-chat/conversation/new')}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-xl">⭐️</span>
+                        <p className="text-base font-normal text-gray-700">JustTalk</p>
+                      </div>
+                    </Card>
+                    <Card
+                      className="px-3 py-1 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all bg-white border border-gray-200 shadow-sm"
+                      onClick={() => navigate('/role-plays')}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-xl">💭</span>
+                        <p className="text-base font-normal text-gray-700">Role-plays</p>
+                      </div>
+                    </Card>
+                    <Card
+                      className="px-3 py-1 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all bg-white border border-gray-200 shadow-sm"
+                      onClick={() => navigate('/dictionary')}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-xl">📖</span>
+                        <p className="text-base font-normal text-gray-700">Dictionary</p>
+                      </div>
+                    </Card>
+                    <Card
+                      className="px-3 py-1 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all bg-white border border-gray-200 shadow-sm"
+                      onClick={() => navigate('/profile')}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-xl">👤</span>
+                        <p className="text-base font-normal text-gray-700">Profile</p>
+                      </div>
+                    </Card>
                   </div>
-                  <p className="text-center text-sm text-gray-500 mt-3">
-                    Choose the role play to start voice conversation
-                  </p>
+                  
                 </div>
               </main>
             </>
           )}
 
-          {/* Bottom Input Bar - Inside Gray Container */}
-          <div className="px-5 pb-0">
-            <div className="max-w-2xl mx-auto">
-              <Card className="shadow-lg border-gray-200 rounded-3xl">
-              <div className="flex flex-col gap-0 px-5 py-4">
-                <textarea
-                  placeholder="How can I help you today?"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  onFocus={() => navigate('/ai-chat/conversation/new')}
-                  rows={2}
-                  className="w-full bg-transparent outline-none text-gray-900 placeholder:text-gray-400 text-base resize-none"
-                />
-                
-                <div className="flex items-center justify-between">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
-                        <Settings2 className="w-6 h-6" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent 
-                      className="w-40 rounded-2xl" 
-                      align="start" 
-                      side="top"
-                      sideOffset={12}
-                    >
-                      <DropdownMenuItem
-                        onClick={() => navigate('/ai-chat')}
-                        className="flex items-center gap-3 px-3 py-1.5 cursor-pointer"
-                      >
-                        <MessageSquare className="w-5 h-5 text-gray-600" />
-                        <span className="text-sm font-medium text-gray-700">Chat</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => navigate('/role-plays')}
-                        className="flex items-center gap-3 px-3 py-1.5 cursor-pointer"
-                      >
-                        <MessageCircle className="w-5 h-5 text-gray-600" />
-                        <span className="text-sm font-medium text-gray-700">Role-plays</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => navigate('/dictionary')}
-                        className="flex items-center gap-3 px-3 py-1.5 cursor-pointer"
-                      >
-                        <BookOpen className="w-5 h-5 text-gray-600" />
-                        <span className="text-sm font-medium text-gray-700">Dictionary</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => navigate('/profile')}
-                        className="flex items-center gap-3 px-3 py-1.5 cursor-pointer"
-                      >
-                        <User className="w-5 h-5 text-gray-600" />
-                        <span className="text-sm font-medium text-gray-700">Profile</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  <button
-                    onClick={handleVoiceClick}
-                    ref={voiceButtonRef}
-                    className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-all hover:scale-105 active:scale-95"
-                  >
-                    <img src={LogoBars} alt="Voice" className="w-4 h-4 brightness-0 invert" />
-                  </button>
-                </div>
+          {/* Bottom Voice Button - Centered (only show when no conversation selected) */}
+          {!selectedConversation && (
+            <div className="px-5 pb-6">
+              <div className="flex justify-center">
+                <button
+                  onClick={handleVoiceClick}
+                  ref={voiceButtonRef}
+                  className="w-16 h-16 flex items-center justify-center bg-[hsl(var(--brand-blue))] text-white rounded-full hover:bg-[hsl(var(--brand-blue))]/90 transition-all hover:scale-105 active:scale-95 shadow-lg"
+                >
+                  <img src={LogoBars} alt="Voice" className="w-8 h-8 brightness-0 invert" />
+                </button>
               </div>
-            </Card>
-          </div>
-          </div>
+            </div>
+          )}
         </div>
       </div>
 

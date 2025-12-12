@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { 
@@ -7,22 +8,24 @@ import {
   Target, 
   Award,
   ChevronRight,
-  LogOut
+  LogOut,
+  PanelLeft
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { BottomNav } from '@/components/BottomNav';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
+import { AppSidebar } from '@/components/AppSidebar';
 
 export default function Profile() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { subscription, messagesRemaining } = useSubscription();
+  const [showSidebar, setShowSidebar] = useState(false);
 
   // Get current user
   const { data: user, isLoading: userLoading } = useQuery({
@@ -173,34 +176,48 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24 page-enter">
-      {/* Header */}
-      <header className="bg-white px-4 py-6 border-b">
-        {userLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <p className="text-muted-foreground">Loading...</p>
-          </div>
-        ) : (
-          <div className="flex items-center gap-4 mb-6">
-            <Avatar className="w-20 h-20">
-              <AvatarImage src={user?.profile_photo_url} />
-              <AvatarFallback className="text-2xl">
-                {user?.display_name?.[0] || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold mb-1">
-                {user?.display_name || 'Student'}
-              </h1>
-              <p className="text-sm text-muted-foreground mb-2">
-                {user?.email || ''}
-              </p>
-              <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-                Intermediate Level
-              </Badge>
-            </div>
-          </div>
-        )}
+      {/* Sidebar */}
+      <AppSidebar open={showSidebar} onOpenChange={setShowSidebar} />
 
+      {/* Header */}
+      <header className="px-4 py-4">
+        <div className="flex items-start justify-between max-w-7xl mx-auto">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="-ml-2"
+            onClick={() => setShowSidebar(!showSidebar)}
+          >
+            <PanelLeft className="w-6 h-6 text-gray-600" />
+          </Button>
+          {userLoading ? (
+            <div className="flex-1" />
+          ) : (
+            <div className="flex-1 flex items-start gap-4 pt-1 pl-4">
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold mb-1">
+                  {user?.display_name || 'Student'}
+                </h1>
+                <p className="text-sm text-muted-foreground mb-2">
+                  {user?.email || ''}
+                </p>
+                <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                  Intermediate Level
+                </Badge>
+              </div>
+              <Avatar className="w-20 h-20 flex-shrink-0">
+                <AvatarImage src={user?.profile_photo_url} />
+                <AvatarFallback className="text-2xl">
+                  {user?.display_name?.[0] || 'U'}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          )}
+        </div>
+      </header>
+
+      {/* Profile Content */}
+      <div className="px-4 py-6">
         {/* Level Progress */}
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -209,11 +226,9 @@ export default function Profile() {
           </div>
           <Progress value={65} className="h-2" />
         </div>
-      </header>
 
-      <main className="px-4 py-6 max-w-4xl mx-auto space-y-6">
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-3 mt-6">
           {stats.map((stat) => {
             const Icon = stat.icon;
             return (
@@ -227,7 +242,7 @@ export default function Profile() {
         </div>
 
         {/* Menu Items */}
-        <Card className="divide-y">
+        <Card className="divide-y mt-6">
           {menuItems.map((item, index) => {
             const Icon = item.icon;
             return (
@@ -259,14 +274,12 @@ export default function Profile() {
         <Button
           onClick={handleLogout}
           variant="outline"
-          className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+          className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 mt-6"
         >
           <LogOut className="w-4 h-4 mr-2" />
           Log Out
         </Button>
-      </main>
-
-      <BottomNav />
+      </div>
     </div>
   );
 }
