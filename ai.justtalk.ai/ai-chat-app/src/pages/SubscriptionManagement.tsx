@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useSession } from '@/hooks/useSession';
 import { markSubscriptionActive } from '@/lib/onboarding-state';
 import { supabase } from '@/lib/supabase';
 import {
@@ -37,6 +38,7 @@ export default function SubscriptionManagement() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { subscription, hasActiveSubscription } = useSubscription();
+  const { getAccessToken } = useSession();
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -85,15 +87,15 @@ export default function SubscriptionManagement() {
   // Upgrade mutation
   const upgradeMutation = useMutation({
     mutationFn: async (newPriceId: string) => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
+      const accessToken = getAccessToken();
+      if (!accessToken) throw new Error('Not authenticated');
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upgrade-subscription`,
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${session.access_token}`,
+            'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ newPriceId }),
@@ -133,6 +135,95 @@ export default function SubscriptionManagement() {
     },
   });
 
+  // Cancel mutation
+  const cancelMutation = useMutation({
+    mutationFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Cancel mutation - session check:', { hasSession: !!session, token: session?.access_token?.substring(0, 20) });
+      
+      if (!session?.access_token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cancel-subscription`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.details || error.error || 'Failed to cancel subscription');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscription'] });
+      setCancelDialogOpen(false);
+      toast({
+        title: 'Subscription canceled',
+        description: 'Your subscription will remain active until the end of the billing period.',
+        variant: 'default',
+      });
+    },
+    onError: (error: Error) => {
+      console.error('Cancellation failed:', error);
+      toast({
+        title: 'Cancellation failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Reactivate mutation
+  const reactivateMutation = useMutation({
+    mutationFn: async () => {
+      const accessToken = getAccessToken();
+      if (!accessToken) throw new Error('Not authenticated');
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reactivate-subscription`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.details || error.error || 'Failed to reactivate subscription');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscription'] });
+      toast({
+        title: 'Subscription reactivated',
+        description: 'Your subscription will continue as normal.',
+        variant: 'default',
+      });
+    },
+    onError: (error: Error) => {
+      console.error('Reactivation failed:', error);
+      toast({
+        title: 'Reactivation failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   const handleUpgradeClick = async (plan: SubscriptionPlan) => {
     setSelectedPlan(plan);
     setUpgradeDialogOpen(true);
@@ -140,15 +231,15 @@ export default function SubscriptionManagement() {
     setProrationPreview(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
+      const accessToken = getAccessToken();
+      if (!accessToken) throw new Error('Not authenticated');
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/preview-subscription-upgrade`,
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${session.access_token}`,
+            'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ newPriceId: plan.stripe_price_id }),
@@ -231,11 +322,16 @@ export default function SubscriptionManagement() {
 
       <div className="px-4 py-6 max-w-2xl mx-auto space-y-4">
         {/* Current Plan Card */}
-        <Card className="bg-gradient-to-br from-blue-500 to-purple-600 text-white border-0">
+        <Card className="bg-[hsl(var(--brand-blue))] text-white border-0">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardDescription className="text-white/80">Your Plan</CardDescription>
+                <CardDescription className="text-white/80">
+                  {subscription.cancel_at_period_end 
+                    ? `Cancels on ${new Date(subscription.current_period_end).toLocaleDateString()}`
+                    : 'Your Plan'
+                  }
+                </CardDescription>
                 <CardTitle className="text-2xl capitalize">
                   {subscription.subscription_type}
                   <Badge className="ml-2 bg-white/20 text-white border-0">
@@ -256,9 +352,11 @@ export default function SubscriptionManagement() {
                   </div>
                   <Progress value={percentage} className="h-2 bg-white/20" />
                 </div>
-                <p className="text-xs opacity-90">
-                  Resets {new Date(subscription.current_period_end).toLocaleDateString()}
-                </p>
+                {!subscription.cancel_at_period_end && (
+                  <p className="text-xs opacity-90">
+                    Resets {new Date(subscription.current_period_end).toLocaleDateString()}
+                  </p>
+                )}
               </>
             ) : (
               <p className="text-sm opacity-90">
@@ -316,7 +414,7 @@ export default function SubscriptionManagement() {
                   )}
                   <Button
                     onClick={() => handleUpgradeClick(plan)}
-                    className="w-full"
+                    className="w-full bg-black hover:bg-gray-900 text-white"
                     size="sm"
                   >
                     Upgrade Now
@@ -357,26 +455,43 @@ export default function SubscriptionManagement() {
               <div className="flex items-center gap-3">
                 <Calendar className="w-5 h-5 text-gray-500" />
                 <div>
-                  <p className="font-medium">Next Billing Date</p>
+                  <p className="font-medium">
+                    {subscription.cancel_at_period_end ? 'Active Until' : 'Next Billing Date'}
+                  </p>
                   <p className="text-sm text-gray-500">
                     {new Date(subscription.current_period_end).toLocaleDateString()}
                   </p>
                 </div>
               </div>
-              <p className="font-semibold">${(subscription.price_cents / 100).toFixed(2)}</p>
+              {subscription.cancel_at_period_end ? (
+                <p className="text-sm text-gray-600">No charge</p>
+              ) : (
+                <p className="font-semibold">${(subscription.price_cents / 100).toFixed(2)}</p>
+              )}
             </div>
           </CardContent>
         </Card>
 
         {/* Actions */}
         <div className="space-y-2">
-          <Button
-            variant="outline"
-            className="w-full text-red-600 hover:bg-red-50 hover:text-red-700"
-            onClick={() => setCancelDialogOpen(true)}
-          >
-            Cancel Subscription
-          </Button>
+          {subscription.cancel_at_period_end ? (
+            <Button
+              variant="outline"
+              className="w-full text-green-600 hover:bg-green-50 hover:text-green-700"
+              onClick={() => reactivateMutation.mutate()}
+              disabled={reactivateMutation.isPending}
+            >
+              {reactivateMutation.isPending ? 'Reactivating...' : 'Reactivate Subscription'}
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              className="w-full text-red-600 hover:bg-red-50 hover:text-red-700"
+              onClick={() => setCancelDialogOpen(true)}
+            >
+              Cancel Subscription
+            </Button>
+          )}
         </div>
       </div>
 
@@ -486,17 +601,15 @@ export default function SubscriptionManagement() {
             </AlertDescription>
           </Alert>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setCancelDialogOpen(false)} disabled={cancelMutation.isPending}>
               Keep Subscription
             </Button>
             <Button
               variant="destructive"
-              onClick={() => {
-                // TODO: Implement cancellation via Stripe
-                setCancelDialogOpen(false);
-              }}
+              onClick={() => cancelMutation.mutate()}
+              disabled={cancelMutation.isPending}
             >
-              Cancel Subscription
+              {cancelMutation.isPending ? 'Canceling...' : 'Cancel Subscription'}
             </Button>
           </DialogFooter>
         </DialogContent>

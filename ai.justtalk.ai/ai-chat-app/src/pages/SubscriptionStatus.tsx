@@ -98,37 +98,44 @@ export default function SubscriptionStatus() {
 
       <div className="space-y-6">
         {/* Plan Info */}
-        <Card>
+        <Card className="bg-[hsl(var(--brand-blue))] text-white border-0">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>JustAI {planName}</CardTitle>
-                <CardDescription>
-                  {subscription.billing_period === 'annual' ? 'Annual' : 'Monthly'} Plan
+                <CardTitle className="text-white">JustAI {planName}</CardTitle>
+                <CardDescription className="text-white/80">
+                  {subscription.cancel_at_period_end 
+                    ? `Cancels on ${periodEnd.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+                    : `${subscription.billing_period === 'annual' ? 'Annual' : 'Monthly'} Plan`
+                  }
                 </CardDescription>
               </div>
               <Badge
-                variant={subscription.status === 'active' ? 'default' : 'destructive'}
+                className={subscription.cancel_at_period_end ? 'bg-blue-100 text-blue-600' : 'bg-white/20 text-white border-0'}
               >
-                {subscription.status}
+                {subscription.cancel_at_period_end ? 'Canceling' : subscription.status}
               </Badge>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Price */}
-            <div>
-              <div className="text-2xl font-bold">
-                ${(subscription.price_cents / 100).toFixed(2)}
+            {!subscription.cancel_at_period_end && (
+              <div>
+                <div className="text-2xl font-bold text-white">
+                  ${(subscription.price_cents / 100).toFixed(2)}
+                </div>
+                <div className="text-sm text-white/80">
+                  {subscription.billing_period === 'annual' ? 'per year' : 'per month'}
+                </div>
               </div>
-              <div className="text-sm text-muted-foreground">
-                {subscription.billing_period === 'annual' ? 'per year' : 'per month'}
-              </div>
-            </div>
+            )}
 
-            {/* Renewal Date */}
+            {/* Renewal Date or Active Until */}
             <div>
-              <div className="text-sm font-medium">Next billing date</div>
-              <div className="text-muted-foreground">
+              <div className="text-sm font-medium text-white">
+                {subscription.cancel_at_period_end ? 'Active until' : 'Next billing date'}
+              </div>
+              <div className="text-white/80">
                 {periodEnd.toLocaleDateString('en-US', {
                   year: 'numeric',
                   month: 'long',
@@ -137,6 +144,11 @@ export default function SubscriptionStatus() {
                 {' '}
                 ({daysRemaining} days remaining)
               </div>
+              {subscription.cancel_at_period_end && (
+                <div className="text-sm text-white/80 mt-1">
+                  No further charges will be made
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -147,7 +159,10 @@ export default function SubscriptionStatus() {
             <CardHeader>
               <CardTitle>Usage This Period</CardTitle>
               <CardDescription>
-                Messages used: {subscription.messages_used_this_period} of {subscription.monthly_message_limit}
+                {subscription.cancel_at_period_end 
+                  ? `Messages used: ${subscription.messages_used_this_period} of ${subscription.monthly_message_limit} (will not reset)`
+                  : `Messages used: ${subscription.messages_used_this_period} of ${subscription.monthly_message_limit}`
+                }
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -233,13 +248,23 @@ export default function SubscriptionStatus() {
             >
               Change Plan
             </Button>
-            <Button 
-              variant="outline" 
-              className="w-full text-destructive"
-              onClick={() => navigate('/subscription/manage')}
-            >
-              Cancel Subscription
-            </Button>
+            {subscription.cancel_at_period_end ? (
+              <Button 
+                variant="outline" 
+                className="w-full text-green-600"
+                onClick={() => navigate('/subscription/manage')}
+              >
+                Reactivate Subscription
+              </Button>
+            ) : (
+              <Button 
+                variant="outline" 
+                className="w-full text-destructive"
+                onClick={() => navigate('/subscription/manage')}
+              >
+                Cancel Subscription
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
