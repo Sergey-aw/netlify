@@ -13,6 +13,7 @@ export interface Subscription {
   billing_period: 'monthly' | 'annual';
   current_period_start: string;
   current_period_end: string;
+  cancel_at_period_end: boolean;
   stripe_subscription_id: string | null;
   stripe_customer_id: string | null;
   created_at: string;
@@ -44,7 +45,7 @@ export function useSubscription(): SubscriptionAccess {
 
       const { data, error } = await supabase
         .from('justai_subscriptions')
-        .select('id, student_id, subscription_type, status, monthly_message_limit, price_cents, currency, billing_period, current_period_start, current_period_end, stripe_subscription_id, stripe_customer_id, created_at, updated_at')
+        .select('id, student_id, subscription_type, status, monthly_message_limit, price_cents, currency, billing_period, current_period_start, current_period_end, cancel_at_period_end, stripe_subscription_id, stripe_customer_id, created_at, updated_at')
         .eq('student_id', user.id)
         .eq('status', 'active')
         .single();
