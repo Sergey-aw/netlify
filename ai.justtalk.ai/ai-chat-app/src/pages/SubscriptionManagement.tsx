@@ -38,7 +38,7 @@ export default function SubscriptionManagement() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { subscription, hasActiveSubscription } = useSubscription();
-  const { session, getAccessToken } = useSession();
+  const { getAccessToken } = useSession();
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
