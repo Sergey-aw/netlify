@@ -329,14 +329,17 @@ export default function AIChatVoice() {
           console.error('❌ Failed to extract conversation ID from signed URL:', err);
         }
         
-        // Start conversation with ElevenLabs with voice override
+        // Start conversation with ElevenLabs
+        // Only override voice for free speech (no selectedAgentId), not for roleplays
         const sessionInfo = await conversation.startSession({
           signedUrl,
-          overrides: {
-            tts: {
-              voiceId: userProfile.justai_preferred_voice,
+          ...((!selectedAgentId && userProfile?.justai_preferred_voice) && {
+            overrides: {
+              tts: {
+                voiceId: userProfile.justai_preferred_voice,
+              },
             },
-          },
+          }),
         });
 
         // sessionInfo is the ElevenLabs conversation ID (e.g., "conv_4301kbt9pxksf9cvhpspb1788w09")
