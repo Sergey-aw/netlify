@@ -703,7 +703,12 @@ export default function RolePlaysV2() {
             const { completedSteps, totalSteps, progressPercent, averageScore, isArchived } =
               getAgentProgress(agent);
 
-            const isLocked = !agent.progress && agent.is_multi_step && agent.steps?.every((s) => s.progress?.status === 'locked' || !s.progress);
+            // Agent is only locked if all steps are explicitly locked (not just missing progress)
+            // First step should never cause parent to be locked
+            const isLocked = agent.is_multi_step && agent.steps?.every((s) => {
+              const isFirstStep = s.step_number === 1;
+              return s.progress?.status === 'locked' || (!s.progress && !isFirstStep);
+            });
 
             return (
               <Card
@@ -892,7 +897,9 @@ export default function RolePlaysV2() {
           <div className="space-y-3">
             {(selectedAgent.steps || [selectedAgent]).map((step) => {
               const progress = step.progress;
-              const isLocked = progress?.status === 'locked' || !progress;
+              // First step should never be locked if there's no progress record
+              const isFirstStep = step.step_number === 1 || !selectedAgent.is_multi_step;
+              const isLocked = progress?.status === 'locked' || (!progress && !isFirstStep);
               const isCompleted = progress?.status === 'completed';
               const isInProgress = progress?.status === 'in_progress';
 
