@@ -99,6 +99,17 @@ serve(async (req) => {
     const elevenLabsData = await elevenLabsResponse.json()
     console.log('ElevenLabs conversation data:', JSON.stringify(elevenLabsData, null, 2))
 
+    // Extract dynamic variables from analysis for next conversation
+    const analysis = elevenLabsData.analysis || {}
+    const dynamicVariables = {
+      conversation_summary: analysis.conversation_summary || null,
+      emotional_notes: analysis.emotional_notes || null,
+      open_threads: analysis.open_threads || null,
+      unlock_next_scenario: analysis.unlock_next_scenario || false,
+      extracted_at: new Date().toISOString(),
+    }
+    console.log('Extracted dynamic variables:', dynamicVariables)
+
     // Extract metadata for costs and usage
     const metadata = elevenLabsData.metadata || {}
     const charging = metadata.charging || {}
@@ -312,6 +323,86 @@ serve(async (req) => {
     }
 
     console.log('Voice session processing complete')
+
+    // Save dynamic variables to conversation for context continuity
+    if (Object.values(dynamicVariables).some(v => v !== null && v !== false)) {
+      const { error: conversationUpdateError } = await supabase
+        .from('justai_conversations')
+        .update({
+          session_memory: dynamicVariables,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', voiceSession.conversation_id)
+
+      if (conversationUpdateError) {
+        console.error('Error saving dynamic variables:', conversationUpdateError)
+      } else {
+        console.log('Dynamic variables saved to conversation session_memory')
+      }
+    }
+
+    // Update student progress if this was a roleplay with an agent
+    const conversation = voiceSession.justai_conversations
+    if (conversation && conversation.agent_id) {
+      console.log(`Updating student progress for agent: ${conversation.agent_id}`)
+      
+      const messageCount = messagesToInsert.filter(m => m.role === 'user').length
+      const durationSeconds = callDurationSecs || voiceSession.total_duration_seconds || 0
+      
+      try {
+        // Use the database function to update progress
+        const { error: progressError } = await supabase.rpc('update_student_progress', {
+          p_student_id: conversation.student_id,
+          p_agent_id: conversation.agent_id,
+          p_messages_sent: messageCount,
+          p_time_spent_seconds: durationSeconds,
+          p_conversation_id: conversation.id,
+        })
+        
+        if (progressError) {
+          console.error('Error updating student progress:', progressError)
+          // Don't throw - progress update is non-critical
+        } else {
+          console.log('Student progress updated successfully')
+          
+          // Check if this completes a step (20+ messages)
+          if (messageCount >= 20) {
+            // Mark step as completed
+            const { error: completeError } = await supabase
+              .from('justai_student_progress')
+              .update({
+                status: 'completed',
+                completed_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              })
+              .eq('student_id', conversation.student_id)
+              .eq('agent_id', conversation.agent_id)
+              .neq('status', 'completed') // Only update if not already completed
+            
+            if (completeError) {
+              console.error('Error marking step completed:', completeError)
+            } else {
+              console.log('Step marked as completed')
+              
+              // Try to unlock next step
+              const { error: unlockError } = await supabase.rpc('check_unlock_next_step', {
+                p_student_id: conversation.student_id,
+                p_current_agent_id: conversation.agent_id,
+              })
+              
+              if (unlockError) {
+                console.error('Error checking unlock next step:', unlockError)
+              } else {
+                console.log('Checked for next step unlock')
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error in progress tracking:', error)
+        // Don't fail the whole request
+      }
+    }
 
     return new Response(
       JSON.stringify({

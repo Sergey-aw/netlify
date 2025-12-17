@@ -6,6 +6,7 @@ export interface ElevenLabsAgent {
   name: string;
   description: string;
   icon: string;
+  imageUrl?: string; // Optional image URL for agent avatar
   category: string;
   agentId: string; // ElevenLabs agent ID
   recommendedDuration?: number; // Recommended duration in seconds
@@ -53,6 +54,7 @@ export const ELEVENLABS_AGENTS: ElevenLabsAgent[] = [
     name: 'Dating & Relationships, Maya Chen',
     description: 'Dating & Relationships: Maya Chen',
     icon: '🎙️',
+    imageUrl: '/src/assets/speed_dating.jpg',
     category: 'dating',
     agentId: 'agent_8801kc9vqcphf2c8h1ft1z2jbmng', // Replace with your actual agent ID
     recommendedDuration: 60, // 10 minutes
@@ -62,6 +64,7 @@ export const ELEVENLABS_AGENTS: ElevenLabsAgent[] = [
     name: 'Dating & Relationships, Maya Chen Second Date',
     description: 'Dating & Relationships: Maya Chen Second Date',
     icon: '🎙️',
+    imageUrl: '/src/assets/speed_dating.jpg',
     category: 'dating',
     agentId: 'agent_4501kca0jwe6fvbv74amm8fp9bf4', // Replace with your actual agent ID
     recommendedDuration: 60, // 10 minutes

@@ -52,6 +52,7 @@ export default function AIChatVoice() {
   const selectedAgentId = location.state?.agentId; // ElevenLabs agent ID (undefined = use default)
   const selectedAgentName = location.state?.agentName || 'AI Teacher';
   const selectedScenario = location.state?.scenario || 'general_conversation';
+  const agentDatabaseId = location.state?.agentDatabaseId; // Database ID from justai_agents table
   
   // Get agent config for recommended duration
   const agentConfig = selectedAgentId 
@@ -63,6 +64,7 @@ export default function AIChatVoice() {
     agentId: selectedAgentId || 'DEFAULT (from Supabase secrets)',
     agentName: selectedAgentName,
     scenario: selectedScenario,
+    agentDatabaseId: agentDatabaseId || 'None (no progress tracking)',
   });
 
   // Get user's preferred voice
@@ -249,6 +251,7 @@ export default function AIChatVoice() {
             is_voice_session: true,
             title: `Voice Chat: ${selectedAgentName}`,
             scenario: selectedScenario,
+            agent_id: agentDatabaseId || null, // Link to agent for progress tracking
           })
           .select()
           .single();
@@ -256,12 +259,52 @@ export default function AIChatVoice() {
         if (convError) throw convError;
         setConversationId(convData.id);
         
+        // Fetch previous step's dynamic variables for context continuity
+        let previousStepVariables = null;
+        if (agentDatabaseId) {
+          // Get the current agent to find parent and previous step
+          const { data: currentAgent } = await supabase
+            .from('justai_agents')
+            .select('parent_agent_id, step_number')
+            .eq('id', agentDatabaseId)
+            .single();
+          
+          if (currentAgent?.parent_agent_id && currentAgent.step_number && currentAgent.step_number > 1) {
+            // Find the previous step in this multi-step scenario
+            const { data: previousStepAgent } = await supabase
+              .from('justai_agents')
+              .select('id')
+              .eq('parent_agent_id', currentAgent.parent_agent_id)
+              .eq('step_number', currentAgent.step_number - 1)
+              .single();
+            
+            if (previousStepAgent) {
+              // Get the most recent completed conversation for this agent
+              const { data: previousConversation } = await supabase
+                .from('justai_conversations')
+                .select('session_memory')
+                .eq('student_id', user.id)
+                .eq('agent_id', previousStepAgent.id)
+                .not('session_memory', 'is', null)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+              
+              if (previousConversation?.session_memory) {
+                previousStepVariables = previousConversation.session_memory;
+                console.log('Found dynamic variables from previous step:', previousStepVariables);
+              }
+            }
+          }
+        }
+        
         // Get signed URL from backend with voice override and agent ID
         const { signedUrl } = await getElevenLabsSignedUrl({
           conversationId: 'temp-' + crypto.randomUUID(), // Temporary ID for signed URL
           voiceId: userProfile.justai_preferred_voice,
           voiceName: selectedAgentName,
           agentId: selectedAgentId, // Pass the selected agent ID
+          dynamicVariables: previousStepVariables, // Pass context from previous step
         });
         
         console.log('🔍 Signed URL received:', signedUrl);

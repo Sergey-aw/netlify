@@ -125,8 +125,18 @@ export default function RolePlays() {
               onClick={() => handleAgentClick(agent.id, agent.agentId, agent.name, agent.id, agent.description)}
             >
               <div className="flex items-start gap-4">
-                {/* Icon */}
-                <div className="text-4xl flex-shrink-0">{agent.icon}</div>
+                {/* Icon or Image */}
+                {agent.imageUrl ? (
+                  <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden">
+                    <img 
+                      src={agent.imageUrl} 
+                      alt={agent.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="text-4xl flex-shrink-0">{agent.icon}</div>
+                )}
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">

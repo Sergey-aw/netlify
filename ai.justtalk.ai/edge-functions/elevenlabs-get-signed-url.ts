@@ -28,12 +28,13 @@ serve(async (req) => {
       throw new Error('ELEVENLABS_API_KEY is not set')
     }
 
-    // Get request body (conversation_id, scenario, voiceId, voiceName, and agentId are optional)
+    // Get request body (conversation_id, scenario, voiceId, voiceName, agentId, and dynamicVariables are optional)
     const body = await req.json().catch(() => ({}))
     console.log('Request body:', body)
     console.log('body.voiceId:', body.voiceId)
     console.log('body.voiceName:', body.voiceName)
     console.log('body.agentId:', body.agentId)
+    console.log('body.dynamicVariables:', body.dynamicVariables)
 
     // Use provided agentId or fall back to default from ELEVENLABS_AGENT_ID secret
     const agentId = body.agentId || defaultAgentId
@@ -48,15 +49,30 @@ serve(async (req) => {
     const url = new URL(`https://api.elevenlabs.io/v1/convai/conversation/get_signed_url`)
     url.searchParams.append('agent_id', agentId)
 
-    // If voiceId is provided, override the agent's voice configuration
+    // Build conversation config override with voice and dynamic variables
+    const configOverride: any = {}
+    
+    // Add voice override if provided
     if (body.voiceId) {
-      const override = JSON.stringify({
-        tts: {
-          voice_id: body.voiceId,
-        },
-      })
-      url.searchParams.append('conversation_config_override', override)
+      configOverride.tts = {
+        voice_id: body.voiceId,
+      }
       console.log('Adding voice override:', body.voiceId)
+    }
+    
+    // Add dynamic variables if provided (context from previous step)
+    if (body.dynamicVariables) {
+      configOverride.agent = {
+        prompt: {
+          dynamic_variables: body.dynamicVariables,
+        },
+      }
+      console.log('Adding dynamic variables:', body.dynamicVariables)
+    }
+    
+    // Apply override if we have any configuration
+    if (Object.keys(configOverride).length > 0) {
+      url.searchParams.append('conversation_config_override', JSON.stringify(configOverride))
     }
 
     // Create signed URL for WebSocket connection (GET request)

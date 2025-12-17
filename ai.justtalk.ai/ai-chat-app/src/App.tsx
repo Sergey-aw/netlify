@@ -19,6 +19,7 @@ import AIChatHome from './pages/AIChatHome'
 import AIChatConversation from './pages/AIChatConversation'
 import AIChatVoice from './pages/AIChatVoice'
 import RolePlays from './pages/RolePlays'
+import RolePlaysV2 from './pages/RolePlaysV2'
 import VocabularyBuilder from './pages/VocabularyBuilder'
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
@@ -70,7 +71,8 @@ function App() {
             <Route path="/ai-chat" element={<ProtectedRoute><AIChatHome /></ProtectedRoute>} />
             <Route path="/ai-chat/conversation/:id?" element={<ProtectedRoute><AIChatConversation /></ProtectedRoute>} />
             <Route path="/ai-chat/voice/:id?" element={<ProtectedRoute><AIChatVoice /></ProtectedRoute>} />
-            <Route path="/role-plays" element={<ProtectedRoute><RolePlays /></ProtectedRoute>} />
+            <Route path="/role-plays" element={<ProtectedRoute><RolePlaysV2 /></ProtectedRoute>} />
+            <Route path="/role-plays-v1" element={<ProtectedRoute><RolePlays /></ProtectedRoute>} />
             <Route path="/dictionary" element={<ProtectedRoute><VocabularyBuilder /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />

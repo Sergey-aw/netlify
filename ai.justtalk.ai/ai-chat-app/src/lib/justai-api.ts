@@ -12,6 +12,7 @@ export async function getElevenLabsSignedUrl(params: {
   voiceId?: string;
   voiceName?: string;
   agentId?: string; // ElevenLabs agent ID
+  dynamicVariables?: Record<string, any>; // Context from previous step
 }) {
   const session = await supabase.auth.getSession();
   const accessToken = session.data.session?.access_token;
@@ -26,6 +27,7 @@ export async function getElevenLabsSignedUrl(params: {
     voiceId: params.voiceId,
     voiceName: params.voiceName,
     agentId: params.agentId, // Pass agent ID to edge function
+    dynamicVariables: params.dynamicVariables, // Pass context from previous step
   };
   
   console.log('🚀 Sending request to edge function:', requestBody);

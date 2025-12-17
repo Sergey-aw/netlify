@@ -1,31 +1,47 @@
 # Agent Personality System - Implementation Plan
 
+## ⚡ OPTIMIZED APPROACH - Single Table Schema
+
+**See `JUSTAI_AGENTS_SCHEMA.md` for full details of the optimized implementation.**
+
+### Key Changes from Original Plan:
+- ✅ **1 table instead of 4** (`justai_agents` stores everything)
+- ✅ **Categories are strings**, not separate table (simpler, more flexible)
+- ✅ **Personality names are strings**, not FK references
+- ✅ **Hierarchical via self-reference** (parent_agent_id)
+- ✅ **Easier migration** from existing `elevenlabs-agents.ts`
+- ✅ **Fewer JOINs** needed for queries
+
+---
+
 ## Executive Summary
 
-Replace the current voice preference system with a personality-based agent system where:
-- Users select AI **personalities** instead of voices
-- Each personality has multiple **role-play scenarios** grouped by category
+Simplified agent-based roleplay system where:
+- **Categories** are defined in agent configuration (e.g., Interview, Dating, Business)
+- Each category has a **pre-selected persona** (represented by an ElevenLabs agent ID with defined behavior)
+- Each persona has multiple **role-play scenarios** within the category
 - Role-plays can have **multi-step progressions** (e.g., 5-step interview)
+- Each **step is represented by its own ElevenLabs agent ID**
 - Steps are **unlocked progressively** based on conversation milestones
-- User **progress is tracked** per personality and per role-play scenario
+- User **progress is tracked** per scenario and step
 
 ---
 
 ## Current System Analysis
 
 ### What We Have Now:
-1. **Voice Preference**: `profiles.justai_preferred_voice` (ElevenLabs voice ID)
-2. **Flat Agent List**: All agents in one array, filtered by category
-3. **No Progress Tracking**: Users can access any role-play anytime
-4. **Single-Step Role-plays**: Each agent = one conversation session
-5. **Voice-Agent Confusion**: Voice and agent are separate concepts
+1. **Flat Agent List**: All agents in one array with category tags
+2. **No Progress Tracking**: Users can access any role-play anytime
+3. **Single-Step Role-plays**: Each agent = one conversation session
+4. **No Persona Context**: Agents lack character/personality framing
 
 ### What Changes:
-1. **Personality Preference**: `profiles.justai_preferred_personality` (personality ID)
-2. **Hierarchical Structure**: Personality → Categories → Role-plays → Steps (each with agent_id)
-3. **Progress Tracking**: Database tracks completed steps and unlock conditions
-4. **Multi-Step Role-plays**: Role-plays can have sequential steps with unlock requirements
-5. **Agent-Based System**: Each step references an ElevenLabs agent (which includes voice + persona + context)
+1. **Category-Based Organization**: Categories come from agent config, displayed first
+2. **Pre-Selected Personas**: Each category has a default persona (agent ID with defined behavior on ElevenLabs)
+3. **Hierarchical Structure**: Category → Persona → Scenarios → Steps (each step = agent_id)
+4. **Progress Tracking**: Database tracks completed steps and unlock conditions
+5. **Multi-Step Role-plays**: Role-plays can have sequential steps with unlock requirements
+6. **Agent-Based Architecture**: Each persona and step is represented by an ElevenLabs agent ID
 
 ---
 
@@ -34,43 +50,51 @@ Replace the current voice preference system with a personality-based agent syste
 ### Data Model Hierarchy
 
 ```
-Personality (AI Teacher Character)
-├── Categories (Business, Dating, Travel, etc.)
-│   └── Role-Play Scenarios
-│       └── Steps (Step 1, Step 2, ..., Step N)
-│           └── ElevenLabs Agent ID
+Category (from agent config: Interview, Dating, Business, etc.)
+├── Persona (Pre-selected, represented by agent_id)
+│   ├── Character Description (additional context)
+│   └── Default Behavior (defined in ElevenLabs agent)
+└── Role-Play Scenarios
+    └── Steps (Step 1, Step 2, ..., Step N)
+        └── ElevenLabs Agent ID (each step = unique agent)
 ```
 
 ### Example Structure
 
 ```
-Sarah - Professional Coach (Personality)
-├── Interview Preparation (Category)
-│   ├── Tell Me About Yourself (Role-play)
-│   │   └── Step 1: Introduction [agent_abc123]
-│   ├── Strengths and Weaknesses (Role-play)
-│   │   ├── Step 1: Initial Response [agent_def456]
-│   │   ├── Step 2: Deep Dive [agent_ghi789] 🔒 (requires Step 1)
-│   │   └── Step 3: STAR Method [agent_jkl012] 🔒 (requires Step 2 + 50 messages)
-│   └── 5-Step Mock Interview (Role-play)
-│       ├── Step 1: Introduction & Small Talk [agent_xxx111]
-│       ├── Step 2: Background Questions [agent_xxx222] 🔒
-│       ├── Step 3: Behavioral Questions [agent_xxx333] 🔒
-│       ├── Step 4: Technical Questions [agent_xxx444] 🔒
-│       └── Step 5: Closing & Questions [agent_xxx555] 🔒
-├── Business Communication (Category)
-│   └── Status Updates (Role-play)
-│       └── Step 1: Weekly Report [agent_yyy111]
-└── ...
+Interview Preparation (Category - from agent config)
+├── Persona: Sarah - Professional Coach [agent_sarah_interview_001]
+│   └── Character: "Experienced career coach, encouraging style, patient and detail-oriented"
+└── Role-Play Scenarios:
+    ├── Tell Me About Yourself (Role-play)
+    │   └── Step 1: Introduction [agent_abc123]
+    ├── Strengths and Weaknesses (Role-play)
+    │   ├── Step 1: Initial Response [agent_def456]
+    │   ├── Step 2: Deep Dive [agent_ghi789] 🔒 (requires Step 1)
+    │   └── Step 3: STAR Method [agent_jkl012] 🔒 (requires Step 2 + 50 messages)
+    └── 5-Step Mock Interview (Role-play)
+        ├── Step 1: Introduction & Small Talk [agent_xxx111]
+        ├── Step 2: Background Questions [agent_xxx222] 🔒
+        ├── Step 3: Behavioral Questions [agent_xxx333] 🔒
+        ├── Step 4: Technical Questions [agent_xxx444] 🔒
+        └── Step 5: Closing & Questions [agent_xxx555] 🔒
 
-Maya - Dating Coach (Personality)
-├── First Dates (Category)
-│   ├── Coffee Shop Meet (Role-play)
-│   │   ├── Step 1: Initial Meeting [agent_zzz111]
-│   │   └── Step 2: Deeper Connection [agent_zzz222] 🔒
-│   └── Restaurant Date (Role-play)
-│       └── Step 1: Dinner Conversation [agent_www111]
-└── ...
+Dating & Relationships (Category - from agent config)
+├── Persona: Maya Chen - Dating Expert [agent_maya_dating_001]
+│   └── Character: "Warm dating coach, gentle style, empathetic and supportive"
+└── Role-Play Scenarios:
+    ├── Coffee Shop Meet (Role-play)
+    │   ├── Step 1: Initial Meeting [agent_zzz111]
+    │   └── Step 2: Deeper Connection [agent_zzz222] 🔒
+    └── Restaurant Date (Role-play)
+        └── Step 1: Dinner Conversation [agent_www111]
+
+Business Communication (Category - from agent config)
+├── Persona: Sarah - Professional Coach [agent_sarah_business_001]
+│   └── Character: "Same persona as Interview, different context"
+└── Role-Play Scenarios:
+    └── Status Updates (Role-play)
+        └── Step 1: Weekly Report [agent_yyy111]
 ```
 
 ---
@@ -241,7 +265,8 @@ CREATE TABLE public.justai_student_progress (
     'locked',     -- Not yet unlocked
     'unlocked',   -- Available to start
     'in_progress', -- Started but not completed
-    'completed'   -- Finished
+    'completed',  -- Finished
+    'archived'    -- Completed and archived to start a new roleplay
   )),
   
   -- Completion metrics
@@ -249,14 +274,18 @@ CREATE TABLE public.justai_student_progress (
   total_messages_sent INTEGER NOT NULL DEFAULT 0,
   total_time_spent_seconds INTEGER NOT NULL DEFAULT 0,
   
-  -- Best performance (for scoring/feedback)
-  best_session_score INTEGER, -- 0-100 score from AI analysis
+  -- Scoring (NEW: Track scores across all sessions)
+  best_session_score INTEGER, -- 0-100 score from AI analysis (highest score achieved)
+  latest_session_score INTEGER, -- 0-100 score from most recent session
+  average_session_score DECIMAL(5,2), -- Average score across all sessions
+  total_score_sum INTEGER NOT NULL DEFAULT 0, -- Sum of all session scores (for calculating average)
   best_session_conversation_id UUID REFERENCES justai_conversations(id),
   
   -- Unlock tracking
   unlocked_at TIMESTAMPTZ,
   first_started_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
+  archived_at TIMESTAMPTZ, -- NEW: When roleplay was archived
   
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -267,6 +296,7 @@ CREATE TABLE public.justai_student_progress (
 CREATE INDEX idx_student_progress_student ON justai_student_progress(student_id);
 CREATE INDEX idx_student_progress_step ON justai_student_progress(roleplay_step_id);
 CREATE INDEX idx_student_progress_status ON justai_student_progress(student_id, status);
+CREATE INDEX idx_student_progress_archived ON justai_student_progress(student_id, archived_at) WHERE archived_at IS NOT NULL;
 ```
 
 ### 6. Modified Table: `profiles`
@@ -286,15 +316,18 @@ CREATE INDEX IF NOT EXISTS idx_profiles_personality ON profiles(justai_preferred
 
 ### 7. Modified Table: `justai_conversations`
 
-Add references to personality and role-play step.
+Add references to personality, role-play step, and conversation score.
 
 ```sql
 ALTER TABLE justai_conversations 
   ADD COLUMN IF NOT EXISTS personality_id UUID REFERENCES justai_personalities(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS roleplay_step_id UUID REFERENCES justai_roleplay_steps(id) ON DELETE SET NULL;
+  ADD COLUMN IF NOT EXISTS roleplay_step_id UUID REFERENCES justai_roleplay_steps(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS conversation_score INTEGER CHECK (conversation_score >= 0 AND conversation_score <= 100),
+  ADD COLUMN IF NOT EXISTS score_calculated_at TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS idx_conversations_personality ON justai_conversations(personality_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_roleplay_step ON justai_conversations(roleplay_step_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_score ON justai_conversations(conversation_score) WHERE conversation_score IS NOT NULL;
 ```
 
 ---
@@ -348,28 +381,30 @@ User Signs Up
 User Opens "Role-plays"
      │
      ▼
-┌──────────────────────────────┐
-│ Load Current Personality     │
-│ (from profiles table)        │
-└────────────┬─────────────────┘
-             │
-             ▼
-┌──────────────────────────────┐
-│ Fetch Categories             │
-│ WHERE personality_id = X     │
-└────────────┬─────────────────┘
-             │
-             ▼
 ┌──────────────────────────────────────────┐
-│ Display Categories                       │
+│ Display Categories (from agent config)   │
 │  ┌─────────────────────────────────────┐ │
 │  │ 📋 Interview Preparation            │ │
 │  │ 💼 Business Communication           │ │
+│  │ 💕 Dating & Relationships           │ │
 │  │ 🌏 Travel Scenarios                 │ │
+│  │ 🏥 Daily Life                       │ │
 │  └─────────────────────────────────────┘ │
 └────────────┬─────────────────────────────┘
              │
              ▼ (User taps category)
+┌──────────────────────────────────────────┐
+│ Display Pre-Selected Persona             │
+│  ┌─────────────────────────────────────┐ │
+│  │ 👩‍💼 Sarah - Professional Coach       │ │
+│  │ "Encouraging career coach            │ │
+│  │  specializing in interviews"         │ │
+│  │                                      │ │
+│  │ [agent_sarah_interview_001]          │ │
+│  └─────────────────────────────────────┘ │
+└────────────┬─────────────────────────────┘
+             │
+             ▼
 ┌──────────────────────────────────────────┐
 │ Fetch Role-plays in Category             │
 │ + Join with student_progress             │
@@ -377,25 +412,30 @@ User Opens "Role-plays"
              │
              ▼
 ┌──────────────────────────────────────────────────────┐
-│ Display Role-plays with Progress                     │
+│ Display Scenarios with Progress                      │
 │  ┌──────────────────────────────────────────────┐   │
 │  │ ✅ Tell Me About Yourself (Completed)        │   │
+│  │    [agent_abc123]                            │   │
 │  ├──────────────────────────────────────────────┤   │
 │  │ 🔓 Strengths & Weaknesses (1/3 steps)        │   │
 │  │    Progress: ▓▓▓▓░░░░░░ 33%                  │   │
+│  │    Step 1: [agent_def456] ✅                 │   │
+│  │    Step 2: [agent_ghi789] 🔓                 │   │
+│  │    Step 3: [agent_jkl012] 🔒                 │   │
 │  ├──────────────────────────────────────────────┤   │
 │  │ 🔒 5-Step Mock Interview (Locked)            │   │
 │  │    Complete "Strengths" first                │   │
 │  └──────────────────────────────────────────────┘   │
 └────────────┬─────────────────────────────────────────┘
              │
-             ▼ (User taps unlocked role-play)
+             ▼ (User taps unlocked step)
 ┌──────────────────────────────────────────┐
-│ Show Role-play Steps                     │
+│ Start Conversation with Step Agent       │
+│ Load agent_id for selected step          │
 └────────────┬─────────────────────────────┘
              │
              ▼
-    Step Selection Screen
+    Voice Conversation Session
 ```
 
 ### Diagram 3: Multi-Step Role-Play Progress Flow
@@ -612,6 +652,75 @@ User Selects "5-Step Mock Interview"
    END;
    $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+   -- Function to archive current roleplay progress
+   CREATE OR REPLACE FUNCTION archive_roleplay_progress(
+     p_student_id UUID,
+     p_roleplay_id UUID
+   ) RETURNS void AS $$
+   BEGIN
+     -- Archive all steps in the roleplay
+     UPDATE justai_student_progress
+     SET 
+       status = 'archived',
+       archived_at = NOW(),
+       updated_at = NOW()
+     WHERE student_id = p_student_id
+       AND roleplay_step_id IN (
+         SELECT id FROM justai_roleplay_steps
+         WHERE roleplay_id = p_roleplay_id
+       )
+       AND status IN ('unlocked', 'in_progress', 'completed');
+   END;
+   $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+   -- Function to update conversation score and progress
+   CREATE OR REPLACE FUNCTION update_conversation_score(
+     p_conversation_id UUID,
+     p_score INTEGER
+   ) RETURNS void AS $$
+   DECLARE
+     v_student_id UUID;
+     v_roleplay_step_id UUID;
+     v_current_sessions_count INTEGER;
+   BEGIN
+     -- Get conversation details
+     SELECT student_id, roleplay_step_id
+     INTO v_student_id, v_roleplay_step_id
+     FROM justai_conversations
+     WHERE id = p_conversation_id;
+
+     -- Update conversation score
+     UPDATE justai_conversations
+     SET 
+       conversation_score = p_score,
+       score_calculated_at = NOW()
+     WHERE id = p_conversation_id;
+
+     -- Update student progress with score
+     IF v_roleplay_step_id IS NOT NULL THEN
+       -- Get current sessions count
+       SELECT sessions_count INTO v_current_sessions_count
+       FROM justai_student_progress
+       WHERE student_id = v_student_id
+         AND roleplay_step_id = v_roleplay_step_id;
+
+       UPDATE justai_student_progress
+       SET
+         latest_session_score = p_score,
+         best_session_score = GREATEST(COALESCE(best_session_score, 0), p_score),
+         total_score_sum = total_score_sum + p_score,
+         average_session_score = (total_score_sum + p_score)::DECIMAL / GREATEST(v_current_sessions_count, 1),
+         best_session_conversation_id = CASE 
+           WHEN p_score > COALESCE(best_session_score, 0) THEN p_conversation_id
+           ELSE best_session_conversation_id
+         END,
+         updated_at = NOW()
+       WHERE student_id = v_student_id
+         AND roleplay_step_id = v_roleplay_step_id;
+     END IF;
+   END;
+   $$ LANGUAGE plpgsql SECURITY DEFINER;
+
    -- Function to check and unlock next step
    CREATE OR REPLACE FUNCTION check_unlock_next_step(
      p_student_id UUID,
@@ -795,56 +904,96 @@ User Selects "5-Step Mock Interview"
 
 ---
 
-### Phase 3: Backend API Updates (Week 2)
+   -- Function to update progress after session
+   CREATE OR REPLACE FUNCTION update_student_progress(
+     p_student_id UUID,
+     p_roleplay_step_id UUID,
+     p_messages_sent INTEGER,
+     p_time_spent_seconds INTEGER,
+     p_conversation_id UUID DEFAULT NULL
+   ) RETURNS void AS $$
+   DECLARE
+     v_current_status TEXT;
+   BEGIN
+     -- Get current status
+     SELECT status INTO v_current_status
+     FROM justai_student_progress
+     WHERE student_id = p_student_id
+       AND roleplay_step_id = p_roleplay_step_id;
 
-**Priority: High**
+     INSERT INTO justai_student_progress (
+       student_id,
+       roleplay_step_id,
+       status,
+       sessions_count,
+       total_messages_sent,
+       total_time_spent_seconds,
+       first_started_at
+     ) VALUES (
+       p_student_id,
+       p_roleplay_step_id,
+       'in_progress',
+       1,
+       p_messages_sent,
+       p_time_spent_seconds,
+       NOW()
+     )
+     ON CONFLICT (student_id, roleplay_step_id)
+     DO UPDATE SET
+       sessions_count = justai_student_progress.sessions_count + 1,
+       total_messages_sent = justai_student_progress.total_messages_sent + p_messages_sent,
+       total_time_spent_seconds = justai_student_progress.total_time_spent_seconds + p_time_spent_seconds,
+       status = CASE 
+         -- Don't change status if already completed or archived
+         WHEN justai_student_progress.status IN ('completed', 'archived') THEN justai_student_progress.status
+         ELSE 'in_progress'
+       END,
+       updated_at = NOW();
 
-1. **Create Edge Function: `get-roleplay-structure`**
-   
-   Fetches the entire hierarchy for the user's selected personality.
-
-   ```typescript
-   // supabase/functions/get-roleplay-structure/index.ts
-   
-   interface RoleplayStructure {
-     personality: Personality;
-     categories: Array<{
-       category: Category;
-       roleplays: Array<{
-         roleplay: Roleplay;
-         steps: Array<{
-           step: RoleplayStep;
-           progress: StudentProgress | null;
-         }>;
-       }>;
-     }>;
-   }
-   
-   async function getRoleplayStructure(studentId: string, personalityId: string) {
-     // 1. Fetch personality
-     // 2. Fetch categories for personality
-     // 3. For each category, fetch roleplays
-     // 4. For each roleplay, fetch steps
-     // 5. For each step, fetch student progress
-     // 6. Calculate unlock status based on progress
-     
+     -- If conversation_id provided, fetch and update score
+     IF p_conversation_id IS NOT NULL THEN
+       PERFORM update_conversation_score(p_conversation_id, 
+         (SELECT conversation_score FROM justai_conversations WHERE id = p_conversation_id)
+       );
+     END IF;
+   END;
+   $$ LANGUAGE plpgsql SECURITY DEFINER;
      return structure;
    }
    ```
 
 2. **Update Edge Function: `process-voice-session`**
 
-   Add logic to update student progress after session ends.
+   Add logic to update student progress and score after session ends.
 
    ```typescript
    // After saving transcript and usage...
    
-   // Update progress
+   // Calculate conversation score (0-100) using AI analysis
+   const conversationScore = await calculateConversationScore({
+     transcript,
+     scenario,
+     messageCount,
+     grammarErrors,
+     vocabularyUsed
+   });
+   
+   // Save score to conversation
+   await supabase
+     .from('justai_conversations')
+     .update({ 
+       conversation_score: conversationScore,
+       score_calculated_at: new Date().toISOString()
+     })
+     .eq('id', conversationId);
+   
+   // Update progress with score
    await supabase.rpc('update_student_progress', {
      p_student_id: studentId,
      p_roleplay_step_id: roleplayStepId,
      p_messages_sent: messageCount,
-     p_time_spent_seconds: sessionDuration
+     p_time_spent_seconds: sessionDuration,
+     p_conversation_id: conversationId
    });
    
    // Check if step is completed (e.g., 20+ messages)
@@ -954,16 +1103,20 @@ User Selects "5-Step Mock Interview"
    }
    
    export interface Roleplay {
+   export interface StudentProgress {
      id: string;
-     category_id: string;
-     name: string;
-     description: string;
-     is_multi_step: boolean;
-     total_steps: number;
-     difficulty_level: 'beginner' | 'intermediate' | 'advanced';
-     is_premium: boolean;
+     student_id: string;
+     roleplay_step_id: string;
+     status: 'locked' | 'unlocked' | 'in_progress' | 'completed' | 'archived';
+     sessions_count: number;
+     total_messages_sent: number;
+     total_time_spent_seconds: number;
+     best_session_score: number | null;
+     latest_session_score: number | null;
+     average_session_score: number | null;
+     completed_at: string | null;
+     archived_at: string | null;
    }
-   
    export interface RoleplayStep {
      id: string;
      roleplay_id: string;
@@ -1071,26 +1224,7 @@ User Selects "5-Step Mock Interview"
            }
          );
          
-         return response.json();
-       }
-     });
-     
-     return (
-       <div>
-         <PersonalityHeader personality={structure.personality} />
-         
-         {structure.categories.map(category => (
-           <CategorySection
-             key={category.category.id}
-             category={category}
-           />
-         ))}
-       </div>
-     );
-   }
-   ```
-
-2. **Display Progress & Lock Status**
+2. **Display Progress, Lock Status & Scores**
    
    ```tsx
    // src/components/RoleplayCard.tsx
@@ -1098,10 +1232,18 @@ User Selects "5-Step Mock Interview"
    function RoleplayCard({ roleplay, steps }) {
      const totalSteps = steps.length;
      const completedSteps = steps.filter(s => s.progress?.status === 'completed').length;
+     const archivedSteps = steps.filter(s => s.progress?.status === 'archived').length;
      const unlockedSteps = steps.filter(s => s.progress?.status === 'unlocked').length;
      const progressPercent = (completedSteps / totalSteps) * 100;
      
-     const isLocked = unlockedSteps === 0 && completedSteps === 0;
+     const isLocked = unlockedSteps === 0 && completedSteps === 0 && archivedSteps === 0;
+     const isArchived = archivedSteps > 0;
+     
+     // Calculate average score across all steps
+     const scoresAvailable = steps.filter(s => s.progress?.average_session_score);
+     const averageScore = scoresAvailable.length > 0
+       ? scoresAvailable.reduce((sum, s) => sum + (s.progress?.average_session_score || 0), 0) / scoresAvailable.length
+       : null;
      
      return (
        <Card className={isLocked ? 'opacity-50' : ''}>
@@ -1111,26 +1253,18 @@ User Selects "5-Step Mock Interview"
              {roleplay.is_multi_step && (
                <p className="text-sm text-muted-foreground">
                  {completedSteps}/{totalSteps} steps completed
+                 {isArchived && ' (Archived)'}
                </p>
+             )}
+             {averageScore && (
+               <div className="flex items-center gap-2 mt-1">
+                 <span className="text-xs font-medium">Avg Score:</span>
+                 <ScoreBadge score={averageScore} />
+               </div>
              )}
            </div>
            
-           {isLocked ? (
-             <Lock className="w-5 h-5 text-gray-400" />
-           ) : (
-             <Play className="w-5 h-5 text-primary" />
-           )}
-         </div>
-         
-         {roleplay.is_multi_step && (
-           <Progress value={progressPercent} className="mt-2" />
-         )}
-       </Card>
-     );
-   }
-   ```
-
-3. **Step Selection Screen**
+3. **Step Selection Screen with Archive/Continue Options**
    
    ```tsx
    // src/pages/RoleplaySteps.tsx
@@ -1153,9 +1287,132 @@ User Selects "5-Step Mock Interview"
        }
      });
      
+     const hasActiveProgress = steps?.some(s => 
+       s.progress?.status && !['locked', 'archived'].includes(s.progress.status)
+     );
+     
+     const isArchived = steps?.some(s => s.progress?.status === 'archived');
+     
      const handleStartStep = (step) => {
        if (step.progress?.status === 'locked') {
          toast.error('This step is locked. Complete previous steps first.');
+         return;
+       }
+       
+       navigate('/ai-chat/voice/new', {
+         state: {
+           agentId: step.elevenlabs_agent_id,
+           roleplayStepId: step.id,
+           stepName: step.name
+         }
+       });
+     };
+     
+     const handleArchiveRoleplay = async () => {
+       const confirmed = await confirm(
+         'Archive this roleplay? Your progress will be saved, but you can start a new roleplay journey.'
+       );
+       
+       if (confirmed) {
+         await supabase.rpc('archive_roleplay_progress', {
+           p_student_id: user.id,
+           p_roleplay_id: roleplayId
+         });
+         
+         toast.success('Roleplay archived. You can now start fresh!');
+       }
+     };
+     
+     const handleRestartFromArchive = async () => {
+       // Unlock first step again to continue
+       await supabase.rpc('unlock_roleplay_first_step', {
+         p_student_id: user.id,
+         p_roleplay_id: roleplayId
+       });
+       
+       toast.success('Roleplay reactivated!');
+     };
+     
+     return (
+       <div>
+         {/* Archive/Continue options */}
+         {hasActiveProgress && !isArchived && (
+           <Card className="mb-4 p-4 bg-blue-50">
+             <div className="flex items-center justify-between">
+               <div>
+                 <h4 className="font-medium">Continue Your Journey</h4>
+                 <p className="text-sm text-muted-foreground">
+                   You have active progress in this roleplay
+                 </p>
+               </div>
+               <Button variant="outline" onClick={handleArchiveRoleplay}>
+                 Archive & Start New
+               </Button>
+             </div>
+           </Card>
+         )}
+         
+         {isArchived && (
+           <Card className="mb-4 p-4 bg-gray-50">
+             <div className="flex items-center justify-between">
+               <div>
+                 <h4 className="font-medium">Archived Roleplay</h4>
+                 <p className="text-sm text-muted-foreground">
+                   This roleplay is archived. Restart to continue practicing.
+                 </p>
+               </div>
+               <Button onClick={handleRestartFromArchive}>
+2. **Update Progress and Score on Session End**
+   
+   ```tsx
+   const endSession = async () => {
+     // ... existing code to save session ...
+     
+     // Calculate and save conversation score
+     const messageCount = transcript.filter(t => t.speaker === 'student').length;
+     const conversationScore = await calculateScore(transcript);
+     
+     await supabase
+       .from('justai_conversations')
+       .update({ 
+         conversation_score: conversationScore,
+         score_calculated_at: new Date().toISOString()
+       })
+       .eq('id', conversationId);
+     
+     // Update progress if this was a role-play step
+     if (roleplayStepId) {
+       await supabase.rpc('update_student_progress', {
+         p_student_id: user.id,
+         p_roleplay_step_id: roleplayStepId,
+         p_messages_sent: messageCount,
+         p_time_spent_seconds: sessionDuration,
+         p_conversation_id: conversationId
+       });
+       
+       // Check completion
+       if (messageCount >= 20) {
+         await supabase.rpc('mark_step_completed', {
+           p_student_id: user.id,
+           p_roleplay_step_id: roleplayStepId
+         });
+         
+         await supabase.rpc('check_unlock_next_step', {
+           p_student_id: user.id,
+           p_current_step_id: roleplayStepId
+         });
+         
+         // Show score and completion message
+         toast.success(
+           `🎉 Step completed! Score: ${conversationScore}/100. Check if new steps unlocked.`
+         );
+       } else {
+         // Just show score
+         toast.success(`Session saved! Your score: ${conversationScore}/100`);
+       }
+     }
+   };
+   ```   toast.error('This step is locked. Complete previous steps first.');
          return;
        }
        
@@ -1214,26 +1471,33 @@ User Selects "5-Step Mock Interview"
    ```tsx
    const endSession = async () => {
      // ... existing code to save session ...
-     
-     // Update progress if this was a role-play step
-     if (roleplayStepId) {
-       await supabase.rpc('update_student_progress', {
-         p_student_id: user.id,
-         p_roleplay_step_id: roleplayStepId,
-         p_messages_sent: transcript.filter(t => t.speaker === 'student').length,
-         p_time_spent_seconds: sessionDuration
-       });
-       
-       // Check completion
-       const messageCount = transcript.filter(t => t.speaker === 'student').length;
-       if (messageCount >= 20) {
-         await supabase.rpc('mark_step_completed', {
-           p_student_id: user.id,
-           p_roleplay_step_id: roleplayStepId
-         });
-         
-         await supabase.rpc('check_unlock_next_step', {
-           p_student_id: user.id,
+## Success Metrics
+
+### User Experience
+- ✅ Users can select and switch personalities
+- ✅ Role-plays are organized by category
+- ✅ Progress is visible and encouraging
+- ✅ Steps unlock smoothly without confusion
+- ✅ Locked steps show clear unlock requirements
+- ✅ **Scores provide clear performance feedback**
+- ✅ **Users can archive and restart roleplays for continuous learning**
+- ✅ **Average scores show improvement over time**
+
+### Technical
+- ✅ Database queries are optimized (< 200ms)
+- ✅ Progress updates happen reliably
+- ✅ No race conditions in unlock logic
+- ✅ RLS policies prevent data leaks
+- ✅ **Score calculations are consistent and accurate**
+- ✅ **Archive functionality preserves all historical data**
+
+### Business
+- ✅ Premium role-plays drive subscription upgrades
+- ✅ Multi-step journeys increase engagement
+- ✅ Progress tracking reduces churn
+- ✅ Personality-based branding strengthens product identity
+- ✅ **Score tracking encourages repeated practice**
+- ✅ **Archive feature enables long-term user retention**
            p_current_step_id: roleplayStepId
          });
          
@@ -1295,27 +1559,42 @@ Create admin panel to manage personalities, role-plays, and steps.
 3. **Remove Deprecated Code**
    - Remove `justai_preferred_voice` column (after confirming migration)
    - Archive `elevenlabs-agents.ts` file
+## Questions to Resolve
 
----
+1. **Completion Criteria**: How do we determine when a step is "completed"?
+   - Option A: Message count (e.g., 20 messages)
+   - Option B: Time spent (e.g., 5 minutes)
+   - Option C: AI-evaluated score (requires new analysis)
+   - **✅ RESOLVED**: Use message count (20+) as primary completion trigger. Scores are tracked separately for performance evaluation.
 
-## Success Metrics
+2. **Unlock Timing**: When should next step unlock?
+   - Option A: Immediately after completing previous step
+   - Option B: After 24 hours (to encourage spaced practice)
+   - **Recommendation**: Immediate unlock, add "practice again" option
 
-### User Experience
-- ✅ Users can select and switch personalities
-- ✅ Role-plays are organized by category
-- ✅ Progress is visible and encouraging
-- ✅ Steps unlock smoothly without confusion
-- ✅ Locked steps show clear unlock requirements
+3. **Premium Steps**: Should some steps be premium-only?
+   - **Recommendation**: Yes, mark advanced steps as `is_premium = true`
 
-### Technical
-- ✅ Database queries are optimized (< 200ms)
-- ✅ Progress updates happen reliably
-- ✅ No race conditions in unlock logic
-- ✅ RLS policies prevent data leaks
+4. **Personality Switching**: Can users change personalities?
+   - **Recommendation**: Yes, but warn they'll lose progress in current personality
 
-### Business
-- ✅ Premium role-plays drive subscription upgrades
-- ✅ Multi-step journeys increase engagement
+5. **Progress Reset**: Can users restart role-plays?
+   - **✅ RESOLVED**: Yes, users can archive current roleplay and start fresh. Archived progress is preserved with all scores.
+
+6. **Score Calculation**: What factors determine the conversation score?
+   - **Recommendation**: 
+     - Grammar accuracy (25%)
+     - Vocabulary usage (25%)
+     - Fluency/conversation flow (25%)
+     - Task completion (25%)
+   - Score range: 0-100
+
+7. **Archive vs Delete**: What happens to archived roleplays?
+   - **✅ RESOLVED**: 
+     - Archived roleplays preserve all progress and scores
+     - Users can view archived roleplay history
+     - Users can restart archived roleplays to continue practice
+     - Archiving allows starting new roleplays without losing previous work
 - ✅ Progress tracking reduces churn
 - ✅ Personality-based branding strengthens product identity
 

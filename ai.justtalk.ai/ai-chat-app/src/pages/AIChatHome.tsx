@@ -9,6 +9,11 @@ import {
   CircleStop,
   Languages,
   Bookmark,
+  MessageCircle,
+  Star,
+  TrendingUp,
+  Target,
+  AlertCircle,
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -34,6 +39,7 @@ export default function AIChatHome() {
   const [transitionStart, setTransitionStart] = useState<{ x: number; y: number } | undefined>();
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+  const [showFeedbackDrawer, setShowFeedbackDrawer] = useState(false);
 
   // Handle URL query parameter for auto-selecting conversation
   useEffect(() => {
@@ -123,6 +129,24 @@ export default function AIChatHome() {
 
       if (error) throw error;
       return data || [];
+    },
+    enabled: !!selectedConversation,
+  });
+
+  // Get conversation feedback (if available)
+  const { data: conversationFeedback } = useQuery({
+    queryKey: ['conversation-feedback', selectedConversation],
+    queryFn: async () => {
+      if (!selectedConversation) return null;
+      
+      const { data, error } = await supabase
+        .from('justai_conversations')
+        .select('language_feedback, conversation_score')
+        .eq('id', selectedConversation)
+        .single();
+
+      if (error) throw error;
+      return data;
     },
     enabled: !!selectedConversation,
   });
@@ -388,17 +412,36 @@ export default function AIChatHome() {
           >
             {showSidebar ? <ChevronLeft className="w-6 h-6 text-gray-600" /> : <PanelLeft className="w-6 h-6 text-gray-600" />}
           </Button>
-          <Button
-            onClick={() => navigate('/ai-chat/voice/new')}
-            variant="ghost"
-            size="sm"
-            className="rounded-full border border-gray-200 bg-white hover:bg-gray-50 px-4"
-          >
-            <Sparkles className="w-4 h-4 text-blue-500" />
-            <span className="text-gray-700 font-medium">
-              New chat
-            </span>
-          </Button>
+          {selectedConversation && conversationFeedback?.language_feedback ? (
+            <Button
+              onClick={() => setShowFeedbackDrawer(true)}
+              variant="ghost"
+              size="sm"
+              className="rounded-full border border-gray-200 bg-white hover:bg-gray-50 px-4"
+            >
+              <MessageCircle className="w-4 h-4 text-blue-500" />
+              <span className="text-gray-700 font-medium">
+                Feedback
+              </span>
+              {conversationFeedback?.conversation_score && (
+                <Badge variant="secondary" className="ml-2">
+                  {conversationFeedback.conversation_score}
+                </Badge>
+              )}
+            </Button>
+          ) : (
+            <Button
+              onClick={() => navigate('/ai-chat/voice/new')}
+              variant="ghost"
+              size="sm"
+              className="rounded-full border border-gray-200 bg-white hover:bg-gray-50 px-4"
+            >
+              <Sparkles className="w-4 h-4 text-blue-500" />
+              <span className="text-gray-700 font-medium">
+                New chat
+              </span>
+            </Button>
+          )}
           <Avatar className="w-10 h-10 cursor-pointer" onClick={() => navigate('/profile')}>
             <AvatarImage src={user?.profile_photo_url} />
             <AvatarFallback>{user?.display_name?.[0] || 'U'}</AvatarFallback>
@@ -728,6 +771,155 @@ export default function AIChatHome() {
               </div>
             </>
           ) : null}
+        </DrawerContent>
+      </Drawer>
+
+      {/* Feedback Drawer */}
+      <Drawer open={showFeedbackDrawer} onOpenChange={setShowFeedbackDrawer}>
+        <DrawerContent className="px-6 pb-6" aria-describedby="feedback-description">
+          <div className="sr-only" id="feedback-description">
+            Conversation feedback and analysis
+          </div>
+          {conversationFeedback?.language_feedback ? (
+            <>
+              {/* Feedback Header */}
+              <div className="pt-6 pb-4 border-b">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-blue-100 rounded-full">
+                      <MessageCircle className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold">Session Feedback</h2>
+                      {conversationFeedback?.conversation_score && (
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-sm text-gray-600">Overall Score:</span>
+                          <Badge variant="default" className="text-base">
+                            {conversationFeedback.conversation_score}/100
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Feedback Content */}
+              <div className="py-4 space-y-6 max-h-[60vh] overflow-y-auto">
+                {/* Diagnosis */}
+                {conversationFeedback.language_feedback?.diagnosis && (
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <h3 className="text-base font-semibold text-blue-900 mb-2">Diagnosis</h3>
+                        <p className="text-sm text-blue-800 leading-relaxed">
+                          {conversationFeedback.language_feedback.diagnosis}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Example - Original vs Better */}
+                {conversationFeedback.language_feedback?.example && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <Target className="w-5 h-5 text-gray-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <h3 className="text-base font-semibold text-gray-900 mb-3">Example</h3>
+                        
+                        {/* Original */}
+                        {conversationFeedback.language_feedback.example.original && (
+                          <div className="mb-3">
+                            <p className="text-xs font-medium text-gray-500 mb-1">What you said:</p>
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                              <p className="text-sm text-red-900 italic">
+                                "{conversationFeedback.language_feedback.example.original}"
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Better */}
+                        {conversationFeedback.language_feedback.example.better && (
+                          <div>
+                            <p className="text-xs font-medium text-gray-500 mb-1">Better way to say it:</p>
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                              <p className="text-sm text-green-900 font-medium">
+                                "{conversationFeedback.language_feedback.example.better}"
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Improvement Instruction */}
+                {conversationFeedback.language_feedback?.improvement_instruction && (
+                  <div className="bg-amber-50 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <TrendingUp className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <h3 className="text-base font-semibold text-amber-900 mb-2">How to Improve</h3>
+                        <p className="text-sm text-amber-800 leading-relaxed">
+                          {conversationFeedback.language_feedback.improvement_instruction}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Additional fields for other feedback formats */}
+                {/* Strengths */}
+                {conversationFeedback.language_feedback?.strengths && (
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <Star className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <h3 className="text-base font-semibold text-green-900 mb-2">Strengths</h3>
+                        <ul className="space-y-2">
+                          {conversationFeedback.language_feedback.strengths.map((strength: string, index: number) => (
+                            <li key={index} className="text-sm text-green-800 flex items-start gap-2">
+                              <span className="text-green-600">•</span>
+                              <span>{strength}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Grammar Focus */}
+                {conversationFeedback.language_feedback?.grammar_focus && (
+                  <div className="bg-purple-50 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <Bookmark className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <h3 className="text-base font-semibold text-purple-900 mb-2">Grammar Focus</h3>
+                        <ul className="space-y-2">
+                          {conversationFeedback.language_feedback.grammar_focus.map((item: string, index: number) => (
+                            <li key={index} className="text-sm text-purple-800 flex items-start gap-2">
+                              <span className="text-purple-600">•</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="py-12 text-center">
+              <MessageCircle className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+              <p className="text-gray-500">No feedback available for this conversation</p>
+            </div>
+          )}
         </DrawerContent>
       </Drawer>
     </div>
