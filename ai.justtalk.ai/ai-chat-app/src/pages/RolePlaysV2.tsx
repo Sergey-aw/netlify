@@ -58,7 +58,7 @@ export default function RolePlaysV2() {
   const [categories, setCategories] = useState<AgentCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
-  const [activePersonality, setActivePersonality] = useState<ActivePersonality>(PERSONALITIES['default']);
+  // const [activePersonality, setActivePersonality] = useState<ActivePersonality>(PERSONALITIES['default']);
   const [showFeedbackDrawer, setShowFeedbackDrawer] = useState(false);
   const [feedbackAgentId, setFeedbackAgentId] = useState<string | null>(null);
   const [feedbackConversationId, setFeedbackConversationId] = useState<string | null>(null);
@@ -135,11 +135,11 @@ export default function RolePlaysV2() {
         setCategories(categoriesData);
         
         // Get active personality from the first available agent
-        const firstAgent = categoriesData[0]?.agents[0];
-        if (firstAgent?.personality_name) {
-          const personality = PERSONALITIES[firstAgent.personality_name] || PERSONALITIES['default'];
-          setActivePersonality(personality);
-        }
+        // const firstAgent = categoriesData[0]?.agents[0];
+        // if (firstAgent?.personality_name) {
+        //   const personality = PERSONALITIES[firstAgent.personality_name] || PERSONALITIES['default'];
+        //   // setActivePersonality(personality);
+        // }
       } catch (error) {
         console.error('Error loading roleplay data:', error);
         toast.error('Failed to load roleplays. Please try again.');

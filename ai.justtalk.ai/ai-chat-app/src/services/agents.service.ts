@@ -3,7 +3,7 @@
 
 import { supabase } from '@/lib/supabase';
 import type { 
-  JustAIAgent, 
+  // JustAIAgent, 
   AgentWithProgress, 
   AgentCategory,
   UnlockRequirement,
