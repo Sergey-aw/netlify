@@ -2,53 +2,26 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play, Lock, ChevronRight, Trophy, Clock, PanelLeft, Archive, RotateCcw, Loader2, Sparkles, MessageCircle, Star, TrendingUp, Target, AlertCircle, Bookmark } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+  type CarouselApi,
+} from '@/components/ui/carousel';
 import { AppSidebar } from '@/components/AppSidebar';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
-import { getAgentsByCategory, unlockFirstStep, archiveRoleplay } from '@/services/agents.service';
+import { getAgentsByCategory, unlockFirstStep, archiveRoleplay, getPersonalitiesByCategory } from '@/services/agents.service';
 import type { AgentCategory, AgentWithProgress, StudentProgress } from '@/types/agents';
-
-interface ActivePersonality {
-  name: string;
-  description: string;
-  avatar: string;
-}
-
-// Mock personality data - will use real data from justai_agents.personality_name
-const PERSONALITIES: Record<string, ActivePersonality> = {
-  'Sarah - Professional Coach': {
-    name: 'Sarah',
-    description: 'Your dedicated language coach with 10+ years of experience. Sarah adapts to your learning style and provides constructive feedback.',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah&backgroundColor=b6e3f4',
-  },
-  'Maya Chen - Dating Expert': {
-    name: 'Maya Chen',
-    description: 'A warm and encouraging dating coach who helps you build confidence in social situations and romantic conversations.',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Maya&backgroundColor=ffd5dc',
-  },
-  'Maya Chen': {
-    name: 'Maya',
-    description: 'A 29-year-old product designer from San Francisco who loves hiking and photography. She is friendly and enjoys deep conversations about life and culture.',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Maya&backgroundColor=ffd5dc',
-  },
-  'Sarah': {
-    name: 'Sarah',
-    description: 'An experienced teacher who makes learning fun and effective through personalized roleplay scenarios.',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah&backgroundColor=b6e3f4',
-  },
-  'default': {
-    name: 'JustAI Coach',
-    description: 'Your AI language learning companion, ready to help you practice and improve through interactive conversations.',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=JustAI&backgroundColor=c7d2fe',
-  },
-};
 
 export default function RolePlaysV2() {
   const navigate = useNavigate();
@@ -58,11 +31,16 @@ export default function RolePlaysV2() {
   const [categories, setCategories] = useState<AgentCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
-  // const [activePersonality, setActivePersonality] = useState<ActivePersonality>(PERSONALITIES['default']);
   const [showFeedbackDrawer, setShowFeedbackDrawer] = useState(false);
   const [feedbackAgentId, setFeedbackAgentId] = useState<string | null>(null);
   const [feedbackConversationId, setFeedbackConversationId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('feedback');
+  const [selectedPersonality, setSelectedPersonality] = useState<string | null>(null);
+  const [showPersonalityDrawer, setShowPersonalityDrawer] = useState(false);
+  const [personalityForDescription, setPersonalityForDescription] = useState<{ name: string; description: string; avatar: string } | null>(null);
+  const [availablePersonalities, setAvailablePersonalities] = useState<Array<{ name: string; description: string; avatar: string }>>([]);
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   // Query for conversation feedback
   const { data: conversationFeedback } = useQuery({
@@ -133,13 +111,6 @@ export default function RolePlaysV2() {
         setUserId(user.id);
         const categoriesData = await getAgentsByCategory(user.id);
         setCategories(categoriesData);
-        
-        // Get active personality from the first available agent
-        // const firstAgent = categoriesData[0]?.agents[0];
-        // if (firstAgent?.personality_name) {
-        //   const personality = PERSONALITIES[firstAgent.personality_name] || PERSONALITIES['default'];
-        //   // setActivePersonality(personality);
-        // }
       } catch (error) {
         console.error('Error loading roleplay data:', error);
         toast.error('Failed to load roleplays. Please try again.');
@@ -150,6 +121,80 @@ export default function RolePlaysV2() {
     
     loadData();
   }, [navigate]);
+
+  // Load personalities when category is selected
+  useEffect(() => {
+    async function loadPersonalities() {
+      if (!selectedCategory) {
+        setAvailablePersonalities([]);
+        setSelectedPersonality(null);
+        return;
+      }
+
+      try {
+        const personalities = await getPersonalitiesByCategory(selectedCategory);
+        setAvailablePersonalities(personalities);
+        
+        // Set first personality as default
+        if (personalities.length > 0) {
+          setSelectedPersonality(personalities[0].name);
+        }
+      } catch (error) {
+        console.error('Error loading personalities:', error);
+      }
+    }
+
+    loadPersonalities();
+  }, [selectedCategory]);
+
+  // Reload agents when personality changes
+  useEffect(() => {
+    async function reloadAgents() {
+      if (!userId || !selectedCategory || !selectedPersonality) return;
+
+      try {
+        const categoriesData = await getAgentsByCategory(userId, selectedPersonality);
+        const categoryData = categoriesData.find(c => c.category === selectedCategory);
+        
+        if (categoryData) {
+          setCategories(prev => 
+            prev.map(c => c.category === selectedCategory ? categoryData : c)
+          );
+        }
+      } catch (error) {
+        console.error('Error reloading agents:', error);
+      }
+    }
+
+    reloadAgents();
+  }, [selectedPersonality, userId, selectedCategory]);
+
+  // Sync carousel with personality changes and track current slide
+  useEffect(() => {
+    if (!carouselApi) return;
+
+    // Update current slide when carousel changes
+    const onSelect = () => {
+      setCurrentSlide(carouselApi.selectedScrollSnap());
+    };
+
+    carouselApi.on('select', onSelect);
+    onSelect(); // Initial call
+
+    return () => {
+      carouselApi.off('select', onSelect);
+    };
+  }, [carouselApi]);
+
+  // Update selected personality when carousel scrolls
+  useEffect(() => {
+    if (availablePersonalities.length > 0 && currentSlide < availablePersonalities.length) {
+      const newPersonality = availablePersonalities[currentSlide];
+      if (newPersonality && newPersonality.name !== selectedPersonality) {
+        setSelectedPersonality(newPersonality.name);
+      }
+    }
+  }, [currentSlide, availablePersonalities]);
 
   const formatDuration = (seconds?: number | null) => {
     if (!seconds) return 'Flexible';
@@ -314,6 +359,45 @@ export default function RolePlaysV2() {
       isArchived: archivedSteps > 0,
     };
   };
+
+  const renderPersonalityDrawer = () => (
+    <Drawer open={showPersonalityDrawer} onOpenChange={setShowPersonalityDrawer}>
+      <DrawerContent className="px-6 pb-6" aria-describedby="personality-full-description">
+        <div className="sr-only" id="personality-full-description">
+          Full personality description
+        </div>
+        {personalityForDescription && (
+          <>
+            <div className="pt-6 pb-4 border-b">
+              <div className="flex items-center gap-4">
+                <Avatar className="w-16 h-16 border-2 border-primary/30">
+                  <AvatarImage src={personalityForDescription.avatar} alt={personalityForDescription.name} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
+                    {personalityForDescription.name.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <h2 className="text-xl font-bold mb-1">{personalityForDescription.name}</h2>
+                  <Badge variant="outline" className="text-xs">
+                    AI Coach
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
+            <div className="py-6 space-y-4">
+              <div>
+                <h3 className="font-semibold text-sm text-muted-foreground mb-2">About</h3>
+                <p className="text-base leading-relaxed">
+                  {personalityForDescription.description}
+                </p>
+              </div>
+            </div>
+          </>
+        )}
+      </DrawerContent>
+    </Drawer>
+  );
 
   const renderFeedbackDrawer = () => (
     <Drawer open={showFeedbackDrawer} onOpenChange={setShowFeedbackDrawer}>
@@ -559,6 +643,7 @@ export default function RolePlaysV2() {
             <p className="text-muted-foreground">Loading roleplays...</p>
           </div>
         </div>
+        {renderPersonalityDrawer()}
         {renderFeedbackDrawer()}
       </>
     );
@@ -635,12 +720,6 @@ export default function RolePlaysV2() {
   const selectedCategoryData = categories.find((c) => c.category === selectedCategory);
 
   if (selectedCategoryData && !selectedAgent) {
-    // Get personality from first agent in selected category
-    const categoryPersonality = selectedCategoryData.agents[0]?.personality_name;
-    const displayPersonality = categoryPersonality 
-      ? (PERSONALITIES[categoryPersonality] || PERSONALITIES['default'])
-      : PERSONALITIES['default'];
-
     return (
       <>
       <div className="min-h-screen bg-gray-50 pb-24 page-enter">
@@ -665,37 +744,78 @@ export default function RolePlaysV2() {
           </div>
         </header>
 
-        {/* Active Personality Section */}
-        <div className="max-w-7xl mx-auto px-4 pt-6 pb-4">
-          <Card className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border-primary/20">
-            <div className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="relative">
-                  <Avatar className="w-16 h-16 border-2 border-primary/30">
-                    <AvatarImage src={displayPersonality.avatar} alt={displayPersonality.name} />
-                    <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
-                      {displayPersonality.name.substring(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
-                    <Sparkles className="w-3 h-3 text-white" />
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-lg font-semibold text-gray-900">{displayPersonality.name}</h3>
-                    {/* <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
-                      Your AI Coach
-                    </Badge> */}
-                  </div>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    {displayPersonality.description}
-                  </p>
-                </div>
+        {/* Personality Carousel */}
+        {availablePersonalities.length > 0 && (
+          <div className="max-w-7xl mx-auto px-4 pt-6 pb-2">
+            <div className="flex flex-col items-center">
+              <Carousel
+                setApi={setCarouselApi}
+                className="w-full max-w-sm"
+                opts={{
+                  align: 'center',
+                  loop: true,
+                }}
+              >
+                <CarouselContent>
+                  {availablePersonalities.map((personality) => (
+                    <CarouselItem key={personality.name}>
+                      <div className="p-1">
+                        <Card
+                          className="cursor-pointer hover:shadow-lg transition-all border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10"
+                          onClick={() => {
+                            setPersonalityForDescription(personality);
+                            setShowPersonalityDrawer(true);
+                          }}
+                        >
+                          <CardContent className="flex flex-col items-center justify-center p-6 space-y-4">
+                            <div className="relative">
+                              <Avatar className="w-24 h-24 border-4 border-primary/30">
+                                <AvatarImage src={personality.avatar} alt={personality.name} />
+                                <AvatarFallback className="bg-primary/10 text-primary text-2xl font-semibold">
+                                  {personality.name.substring(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-4 border-white flex items-center justify-center shadow-lg">
+                                <Sparkles className="w-4 h-4 text-white" />
+                              </div>
+                            </div>
+                            <div className="text-center space-y-2">
+                              <h3 className="text-lg font-bold text-gray-900">{personality.name}</h3>
+                              <p className="text-sm text-gray-600 line-clamp-2">
+                                {personality.description}
+                              </p>
+                              <Badge variant="outline" className="text-xs">
+                                Tap to learn more
+                              </Badge>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <CarouselPrevious className="-left-4" />
+                <CarouselNext className="-right-4" />
+              </Carousel>
+              
+              {/* Carousel Dots */}
+              <div className="flex gap-2 mt-4">
+                {availablePersonalities.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => carouselApi?.scrollTo(index)}
+                    className={`w-2 h-2 rounded-full transition-all ${
+                      index === currentSlide
+                        ? 'bg-primary w-6'
+                        : 'bg-gray-300 hover:bg-gray-400'
+                    }`}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
               </div>
             </div>
-          </Card>
-        </div>
+          </div>
+        )}
 
         {/* Agents */}
         <div className="max-w-7xl mx-auto px-4 py-6 space-y-4">
@@ -802,6 +922,7 @@ export default function RolePlaysV2() {
           })}
         </div>
       </div>
+      {renderPersonalityDrawer()}
       {renderFeedbackDrawer()}
     </>
     );
@@ -1002,6 +1123,7 @@ export default function RolePlaysV2() {
           </div>
         </div>
       </div>
+      {renderPersonalityDrawer()}
       {renderFeedbackDrawer()}
     </>
     );
@@ -1013,6 +1135,7 @@ export default function RolePlaysV2() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <p className="text-muted-foreground">Loading...</p>
       </div>
+      {renderPersonalityDrawer()}
       {renderFeedbackDrawer()}
     </>
   );

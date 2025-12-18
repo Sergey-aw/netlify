@@ -11,17 +11,58 @@ import type {
 } from '@/types/agents';
 
 /**
- * Fetch all active agents grouped by category with user progress
+ * Get unique personalities within a category with their descriptions
  */
-export async function getAgentsByCategory(userId: string): Promise<AgentCategory[]> {
+export async function getPersonalitiesByCategory(category: string): Promise<Array<{ name: string; description: string; avatar: string }>> {
+  // Fetch top-level agents (parent agents or single agents) for this category
+  const { data: agents, error } = await supabase
+    .from('justai_agents')
+    .select('personality_name, description, name')
+    .eq('category', category)
+    .eq('is_active', true)
+    .is('parent_agent_id', null)
+    .not('personality_name', 'is', null);
+
+  if (error) throw error;
+
+  // Create a map to get unique personalities with their descriptions
+  const personalityMap = new Map<string, { description: string; name: string }>();
+  
+  agents?.forEach(agent => {
+    if (agent.personality_name && !personalityMap.has(agent.personality_name)) {
+      personalityMap.set(agent.personality_name, {
+        description: agent.description || '',
+        name: agent.name
+      });
+    }
+  });
+
+  // Convert to array with avatars
+  return Array.from(personalityMap.entries()).map(([name, data]) => ({
+    name,
+    description: data.description,
+    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}&backgroundColor=b6e3f4`,
+  }));
+}
+
+/**
+ * Fetch all active agents grouped by category with user progress, optionally filtered by personality
+ */
+export async function getAgentsByCategory(userId: string, personalityFilter?: string): Promise<AgentCategory[]> {
   // Fetch all parent/single agents (excluding steps)
-  const { data: agents, error: agentsError } = await supabase
+  let query = supabase
     .from('justai_agents')
     .select('*')
     .eq('is_active', true)
     .is('parent_agent_id', null)
     .order('category', { ascending: true })
     .order('display_order', { ascending: true });
+
+  if (personalityFilter) {
+    query = query.eq('personality_name', personalityFilter);
+  }
+
+  const { data: agents, error: agentsError } = await query;
 
   if (agentsError) throw agentsError;
 
