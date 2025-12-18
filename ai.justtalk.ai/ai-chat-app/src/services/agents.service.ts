@@ -17,7 +17,7 @@ export async function getPersonalitiesByCategory(category: string): Promise<Arra
   // Fetch top-level agents (parent agents or single agents) for this category
   const { data: agents, error } = await supabase
     .from('justai_agents')
-    .select('personality_name, description, name')
+    .select('personality_name, description, name, image_url')
     .eq('category', category)
     .eq('is_active', true)
     .is('parent_agent_id', null)
@@ -25,23 +25,24 @@ export async function getPersonalitiesByCategory(category: string): Promise<Arra
 
   if (error) throw error;
 
-  // Create a map to get unique personalities with their descriptions
-  const personalityMap = new Map<string, { description: string; name: string }>();
+  // Create a map to get unique personalities with their descriptions and image URLs
+  const personalityMap = new Map<string, { description: string; name: string; image_url: string | null }>();
   
   agents?.forEach(agent => {
     if (agent.personality_name && !personalityMap.has(agent.personality_name)) {
       personalityMap.set(agent.personality_name, {
         description: agent.description || '',
-        name: agent.name
+        name: agent.name,
+        image_url: agent.image_url
       });
     }
   });
 
-  // Convert to array with avatars
+  // Convert to array with avatars (use image_url if available, otherwise fallback to dicebear)
   return Array.from(personalityMap.entries()).map(([name, data]) => ({
     name,
     description: data.description,
-    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}&backgroundColor=b6e3f4`,
+    avatar: data.image_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}&backgroundColor=b6e3f4`,
   }));
 }
 
