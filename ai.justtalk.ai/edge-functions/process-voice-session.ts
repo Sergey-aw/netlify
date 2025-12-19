@@ -16,6 +16,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 
+// Helper function to remove voice tags like <Naomi>...</Naomi> from ElevenLabs transcripts
+function stripVoiceTags(text: string): string {
+  // Remove XML-style voice tags used by ElevenLabs multi-voice feature
+  return text.replace(/<[^>]+>/g, '')
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -153,7 +159,8 @@ serve(async (req) => {
       // entry.role: "user" or "agent"
       // entry.message: the text content
       const role = entry.role === 'user' ? 'user' : 'assistant'
-      const content = entry.message || ''
+      // Remove voice tags like <Naomi>...</Naomi> from the message
+      const content = stripVoiceTags(entry.message || '')
       
       if (content) {
         messagesToInsert.push({
@@ -242,7 +249,8 @@ serve(async (req) => {
 
     for (const entry of transcript) {
       const role = entry.role === 'user' ? 'student' : 'teacher' // Map to lesson speaker roles
-      const content = entry.message || ''
+      // Remove voice tags like <Naomi>...</Naomi> from the transcript
+      const content = stripVoiceTags(entry.message || '')
       const timeInCall = entry.time_in_call_secs || 0
       
       if (content) {
