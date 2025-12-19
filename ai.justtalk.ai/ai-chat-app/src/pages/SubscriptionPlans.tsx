@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { Check, AlertCircle, PanelLeft } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,17 @@ export default function SubscriptionPlans() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [showCanceledMessage, setShowCanceledMessage] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
+  
+  // Add swipe gesture to open sidebar
+  useSwipeGesture({
+    onSwipeRight: () => {
+      if (!showSidebar) {
+        setShowSidebar(true);
+      }
+    },
+    minSwipeDistance: 50,
+    maxVerticalDistance: 100,
+  });
   
   // Use session hook for better session management
   const { session, user, isAuthenticated, isAnonymous } = useSession();

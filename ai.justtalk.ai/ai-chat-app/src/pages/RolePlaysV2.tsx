@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { Play, Lock, ChevronRight, Trophy, Clock, PanelLeft, Archive, RotateCcw, Loader2, Sparkles, MessageCircle, Star, TrendingUp, Target, AlertCircle, Bookmark } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
@@ -27,6 +28,18 @@ export default function RolePlaysV2() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showSidebar, setShowSidebar] = useState(false);
+
+  // Add swipe gesture to open sidebar
+  useSwipeGesture({
+    onSwipeRight: () => {
+      if (!showSidebar) {
+        setShowSidebar(true);
+      }
+    },
+    minSwipeDistance: 50,
+    maxVerticalDistance: 100,
+    ignoreSelectors: ['[data-swipe-ignore]'],
+  });
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<AgentWithProgress | null>(null);
   const [showFeedbackDrawer, setShowFeedbackDrawer] = useState(false);
@@ -736,7 +749,7 @@ export default function RolePlaysV2() {
 
         {/* Personality Carousel */}
         {availablePersonalities.length > 0 && (
-          <div className="max-w-7xl mx-auto px-4 pt-6 pb-2">
+          <div className="max-w-7xl mx-auto px-4 pt-6 pb-2" data-swipe-ignore>
             <div className="flex flex-col items-center">
               <Carousel
                 setApi={setCarouselApi}
@@ -784,8 +797,8 @@ export default function RolePlaysV2() {
                     </CarouselItem>
                   ))}
                 </CarouselContent>
-                <CarouselPrevious className="-left-4" />
-                <CarouselNext className="-right-4" />
+                <CarouselPrevious className="-left-4 hidden" />
+                <CarouselNext className="-right-4 hidden" />
               </Carousel>
               
               {/* Carousel Dots */}

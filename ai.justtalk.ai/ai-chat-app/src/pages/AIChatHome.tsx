@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import {
   PanelLeft,
   Sparkles,
@@ -42,6 +43,17 @@ export default function AIChatHome() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [showFeedbackDrawer, setShowFeedbackDrawer] = useState(false);
+
+  // Add swipe gesture to open sidebar
+  useSwipeGesture({
+    onSwipeRight: () => {
+      if (!showSidebar) {
+        setShowSidebar(true);
+      }
+    },
+    minSwipeDistance: 50,
+    maxVerticalDistance: 100,
+  });
 
   // Handle URL query parameter or location state for auto-selecting conversation
   useEffect(() => {

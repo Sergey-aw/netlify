@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Settings, 
@@ -26,6 +27,17 @@ export default function Profile() {
   const { signOut } = useAuth();
   const { subscription, messagesRemaining } = useSubscription();
   const [showSidebar, setShowSidebar] = useState(false);
+
+  // Add swipe gesture to open sidebar
+  useSwipeGesture({
+    onSwipeRight: () => {
+      if (!showSidebar) {
+        setShowSidebar(true);
+      }
+    },
+    minSwipeDistance: 50,
+    maxVerticalDistance: 100,
+  });
 
   // Get current user
   const { data: user, isLoading: userLoading } = useQuery({

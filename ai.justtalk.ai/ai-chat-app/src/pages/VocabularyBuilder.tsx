@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { Search, BookOpen, TrendingUp, Check, PanelLeft } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,17 @@ export default function VocabularyBuilder() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedWords, setSelectedWords] = useState<Set<string>>(new Set());
   const [showSidebar, setShowSidebar] = useState(false);
+
+  // Add swipe gesture to open sidebar
+  useSwipeGesture({
+    onSwipeRight: () => {
+      if (!showSidebar) {
+        setShowSidebar(true);
+      }
+    },
+    minSwipeDistance: 50,
+    maxVerticalDistance: 100,
+  });
 
   // Get current user
   const { data: user } = useQuery({
