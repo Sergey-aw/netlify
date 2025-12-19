@@ -502,7 +502,7 @@ export default function AIChatHome() {
                   >
                     {message.role === 'assistant' && (
                       <Avatar className="w-8 h-8 flex-shrink-0">
-                        <AvatarImage src={conversationFeedback?.justai_agents?.image_url} />
+                        <AvatarImage src={(conversationFeedback?.justai_agents as any)?.[0]?.image_url || (conversationFeedback?.justai_agents as any)?.image_url} />
                         <AvatarFallback>🤖</AvatarFallback>
                       </Avatar>
                     )}
