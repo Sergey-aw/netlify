@@ -8,6 +8,7 @@ import {
   User,
   Home,
 } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   Sheet,
   SheetContent,
@@ -60,47 +61,116 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
     queryFn: async () => {
       if (!user?.id) return [];
       
-      const { data, error } = await supabase
+      // First, get conversations
+      const { data: convData, error: convError } = await supabase
         .from('justai_conversations')
-        .select('id, title, scenario, created_at, last_message_at, is_voice_session')
+        .select('id, title, scenario, created_at, last_message_at, is_voice_session, agent_id')
         .eq('student_id', user.id)
         .order('last_message_at', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false })
         .limit(20);
 
-      if (error) throw error;
-      return data || [];
+      if (convError) {
+        console.error('Error fetching conversations:', convError);
+        throw convError;
+      }
+
+      if (!convData || convData.length === 0) return [];
+
+      // Get unique agent IDs
+      const agentIds = [...new Set(convData.map(c => c.agent_id).filter(Boolean))];
+
+      // Fetch agent details if there are any agent IDs
+      let agentsMap: { [key: string]: any } = {};
+      if (agentIds.length > 0) {
+        const { data: agentsData, error: agentsError } = await supabase
+          .from('justai_agents')
+          .select('id, image_url, name')
+          .in('id', agentIds);
+
+        if (!agentsError && agentsData) {
+          console.log('Agents data fetched:', agentsData);
+          agentsMap = agentsData.reduce((map, agent) => {
+            map[agent.id] = agent;
+            return map;
+          }, {} as { [key: string]: any });
+        } else if (agentsError) {
+          console.error('Error fetching agents:', agentsError);
+        }
+      }
+
+      // Merge agent data with conversations
+      const result = convData.map(conv => ({
+        ...conv,
+        justai_agents: conv.agent_id ? agentsMap[conv.agent_id] : null
+      }));
+      
+      console.log('Final conversations with agents:', result);
+      return result;
     },
     enabled: !!user?.id,
   });
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
+    const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `${dateStr}, ${time}`;
+  };
+
+  const getDateGroup = (dateString: string) => {
+    const date = new Date(dateString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     
     if (diffDays === 0) {
-      return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      return 'Today';
     } else if (diffDays === 1) {
       return 'Yesterday';
     } else if (diffDays < 7) {
-      return date.toLocaleDateString('en-US', { weekday: 'short' });
+      return date.toLocaleDateString('en-US', { weekday: 'long' });
     } else {
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     }
+  };
+
+  // Group conversations by date
+  const groupedConversations = conversations?.reduce((groups: { [key: string]: any[] }, conv) => {
+    const group = getDateGroup(conv.last_message_at || conv.created_at);
+    if (!groups[group]) {
+      groups[group] = [];
+    }
+    groups[group].push(conv);
+    return groups;
+  }, {}) || {};
+
+  // Remove "Voice Chat: " prefix from title
+  const formatTitle = (title: string) => {
+    return title?.replace(/^Voice Chat:\s*/i, '') || 'Untitled Conversation';
   };
 
   const handleNavigate = (path: string) => {
-    navigate(path);
+    // Close the sidebar first, then navigate
     onOpenChange(false);
+    // Use setTimeout to ensure the sheet closes before navigation
+    setTimeout(() => {
+      navigate(path);
+    }, 100);
   };
 
-  const handleConversationClick = (conversationId: string) => {
+  const handleConversationClick = (conversationId: string, isVoiceSession?: boolean) => {
     if (onConversationClick) {
+      // If callback provided (on home page), use it to select conversation in-page
       onConversationClick(conversationId);
+      onOpenChange(false);
+    } else {
+      // If no callback (on other pages), navigate to home with conversation pre-selected
+      onOpenChange(false);
+      setTimeout(() => {
+        navigate('/ai-chat', { state: { selectedConversation: conversationId } });
+      }, 100);
     }
-    onOpenChange(false);
   };
 
   return (
@@ -168,35 +238,50 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
           <SidebarGroup className="flex-1 min-h-0 flex flex-col">
             <SidebarGroupLabel className="px-2 flex-shrink-0">Conversations</SidebarGroupLabel>
             <SidebarGroupContent className="overflow-y-auto flex-1 min-h-0">
-              <SidebarMenu>
-                {conversations && conversations.length > 0 ? (
-                  conversations.map((conv) => (
-                    <SidebarMenuItem key={conv.id}>
-                      <SidebarMenuButton
-                        onClick={() => handleConversationClick(conv.id)}
-                        isActive={selectedConversation === conv.id}
-                        className="h-auto py-3"
-                      >
-                        <div className="flex items-start gap-3 w-full">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-medium text-sm truncate">
-                              {conv.title || 'Untitled Conversation'}
-                            </h3>
-                            <p className="text-xs opacity-70">
-                              {formatTime(conv.last_message_at || conv.created_at)}
-                            </p>
-                          </div>
-                        </div>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))
-                ) : (
-                  <div className="text-center py-8 px-4 text-muted-foreground">
-                    <History className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">No conversations yet</p>
-                  </div>
-                )}
-              </SidebarMenu>
+              {conversations && conversations.length > 0 ? (
+                <div className="space-y-4">
+                  {Object.entries(groupedConversations).map(([dateGroup, convs]) => (
+                    <div key={dateGroup}>
+                      <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                        {dateGroup}
+                      </div>
+                      <SidebarMenu>
+                        {(convs as any[]).map((conv) => (
+                          <SidebarMenuItem key={conv.id}>
+                            <SidebarMenuButton
+                              onClick={() => handleConversationClick(conv.id, conv.is_voice_session)}
+                              isActive={selectedConversation === conv.id}
+                              className="h-auto py-2"
+                            >
+                              <div className="flex items-center gap-3 w-full">
+                                <Avatar className="w-8 h-8 flex-shrink-0">
+                                  <AvatarImage src={conv.justai_agents?.image_url} />
+                                  <AvatarFallback>
+                                    <MessageSquare className="w-4 h-4" />
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-medium text-sm truncate">
+                                    {formatTitle(conv.title)}
+                                  </h3>
+                                  <p className="text-xs opacity-70">
+                                    {formatTime(conv.last_message_at || conv.created_at)}
+                                  </p>
+                                </div>
+                              </div>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        ))}
+                      </SidebarMenu>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 px-4 text-muted-foreground">
+                  <History className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No conversations yet</p>
+                </div>
+              )}
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarProvider>

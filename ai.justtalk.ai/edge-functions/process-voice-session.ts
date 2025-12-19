@@ -365,8 +365,11 @@ serve(async (req) => {
         } else {
           console.log('Student progress updated successfully')
           
-          // Check if this completes a step (20+ messages)
-          if (messageCount >= 20) {
+          // Check if this completes a step based on ElevenLabs analysis
+          // Step is completed when unlock_next_scenario is true (quality-based completion)
+          if (dynamicVariables.unlock_next_scenario === true) {
+            console.log('Step completion criteria met: unlock_next_scenario=true')
+            
             // Mark step as completed
             const { error: completeError } = await supabase
               .from('justai_student_progress')

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   PanelLeft,
@@ -28,12 +28,14 @@ import { AppSidebar } from '@/components/AppSidebar';
 import { VoiceButtonTransition } from '@/components/VoiceButtonTransition';
 import { supabase } from '@/lib/supabase';
 import { checkSubscriptionAccess } from '@/lib/justai-api';
+import { getAgentsByCategory } from '@/services/agents.service';
 import LogoBars from '@/assets/logo_bars.svg';
 import Logo from '@/assets/logo.svg';
 import { cn } from '@/lib/utils';
 
 export default function AIChatHome() {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [transitionStart, setTransitionStart] = useState<{ x: number; y: number } | undefined>();
@@ -41,8 +43,21 @@ export default function AIChatHome() {
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [showFeedbackDrawer, setShowFeedbackDrawer] = useState(false);
 
-  // Handle URL query parameter for auto-selecting conversation
+  // Handle URL query parameter or location state for auto-selecting conversation
   useEffect(() => {
+    // Check location state first (from sidebar navigation)
+    const stateConversationId = location.state?.selectedConversation;
+    if (stateConversationId) {
+      setSelectedConversation(stateConversationId);
+      // Invalidate and refetch messages for this conversation
+      queryClient.invalidateQueries({ queryKey: ['conversation-messages', stateConversationId] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      // Clear the state
+      window.history.replaceState({}, '', '/ai-chat');
+      return;
+    }
+    
+    // Fall back to URL query parameter
     const params = new URLSearchParams(window.location.search);
     const conversationId = params.get('conversation');
     if (conversationId) {
@@ -53,7 +68,7 @@ export default function AIChatHome() {
       // Clean up URL without refreshing
       window.history.replaceState({}, '', '/ai-chat');
     }
-  }, [queryClient]);
+  }, [queryClient, location.state]);
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const [visibleTranslations, setVisibleTranslations] = useState<Set<string>>(new Set());
   const [loadingTranslation, setLoadingTranslation] = useState<Record<string, boolean>>({});
@@ -113,6 +128,17 @@ export default function AIChatHome() {
       if (error) throw error;
       return data;
     },
+  });
+
+  // Prefetch roleplay categories in the background
+  useQuery({
+    queryKey: ['roleplay-categories', user?.id, undefined],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      return await getAgentsByCategory(user.id);
+    },
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
   // Get messages for selected conversation

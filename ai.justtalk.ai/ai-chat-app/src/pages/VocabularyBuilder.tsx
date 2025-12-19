@@ -1,21 +1,44 @@
 import { useState } from 'react';
-import { Search, BookOpen, TrendingUp, Filter, Check } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { Search, BookOpen, TrendingUp, Check, PanelLeft } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useVocabularyBuilder } from '@/hooks/useVocabularyBuilder';
 import { useVocabSets, useVocabSetWords } from '@/hooks/useVocabSets';
 import { useLexemeSearch } from '@/hooks/useLexemeSearch';
 import { cn } from '@/lib/utils';
+import { AppSidebar } from '@/components/AppSidebar';
+import { supabase } from '@/lib/supabase';
 
 type TabType = 'active' | 'discover';
 
 export default function VocabularyBuilder() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('active');
   const [searchQuery, setSearchQuery] = useState('');
-  const [cefrFilter, setCefrFilter] = useState<string | null>(null);
   const [selectedWords, setSelectedWords] = useState<Set<string>>(new Set());
-  const [showFilters, setShowFilters] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
+
+  // Get current user
+  const { data: user } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+  });
 
   // Fetch active words
   const {
@@ -28,7 +51,6 @@ export default function VocabularyBuilder() {
   } = useVocabularyBuilder({
     filters: {
       search: searchQuery,
-      cefr: cefrFilter || undefined,
       status: 'active', // Only show active words
     },
   });
@@ -38,8 +60,6 @@ export default function VocabularyBuilder() {
 
   // Lexeme search
   const lexemeSearch = useLexemeSearch();
-
-  const cefrLevels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
   const toggleWordSelection = (wordId: string) => {
     const newSelection = new Set(selectedWords);
@@ -79,18 +99,25 @@ export default function VocabularyBuilder() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24 page-enter">
+      {/* Sidebar */}
+      <AppSidebar open={showSidebar} onOpenChange={setShowSidebar} />
+
       {/* Header */}
       <header className="bg-white px-4 py-6 border-b sticky top-0 z-10">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold">Vocabulary Builder</h1>
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setShowFilters(!showFilters)}
-            className="rounded-full"
+            className="-ml-2"
+            onClick={() => setShowSidebar(!showSidebar)}
           >
-            <Filter className="w-5 h-5" />
+            <PanelLeft className="w-6 h-6 text-gray-600" />
           </Button>
+          <h1 className="text-2xl font-bold flex-1 text-center">Vocabulary Builder</h1>
+          <Avatar className="w-10 h-10 cursor-pointer" onClick={() => navigate('/profile')}>
+            <AvatarImage src={user?.profile_photo_url} />
+            <AvatarFallback>{user?.display_name?.[0] || 'U'}</AvatarFallback>
+          </Avatar>
         </div>
 
         {/* Tabs */}
@@ -128,55 +155,18 @@ export default function VocabularyBuilder() {
           </button>
         </div>
 
-        {/* Search Bar - Only for Active tab */}
-        {activeTab === 'active' && (
-          <div className="flex items-center gap-2 bg-gray-100 rounded-full px-4 py-3">
-            <Search className="w-5 h-5 text-gray-500" />
-            <input
-              type="text"
-              placeholder="Search words..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 bg-transparent outline-none text-gray-900 placeholder:text-gray-400"
-            />
-          </div>
-        )}
+        {/* Search Bar */}
+        <div className="flex items-center gap-2 bg-gray-100 rounded-full px-4 py-3">
+          <Search className="w-5 h-5 text-gray-500" />
+          <input
+            type="text"
+            placeholder={activeTab === 'active' ? 'Search words...' : 'Type to search words...'}
+            value={activeTab === 'active' ? searchQuery : lexemeSearch.searchTerm}
+            onChange={(e) => activeTab === 'active' ? setSearchQuery(e.target.value) : lexemeSearch.setSearchTerm(e.target.value)}
+            className="flex-1 bg-transparent outline-none text-gray-900 placeholder:text-gray-400"
+          />
+        </div>
 
-        {/* Filters */}
-        {showFilters && activeTab === 'active' && (
-          <div className="mt-4 space-y-3">
-            <div>
-              <p className="text-sm font-medium text-gray-700 mb-2">CEFR Level</p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setCefrFilter(null)}
-                  className={cn(
-                    'px-3 py-1 rounded-full text-sm font-medium transition-colors',
-                    cefrFilter === null
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-200 text-gray-700'
-                  )}
-                >
-                  All
-                </button>
-                {cefrLevels.map((level) => (
-                  <button
-                    key={level}
-                    onClick={() => setCefrFilter(level)}
-                    className={cn(
-                      'px-3 py-1 rounded-full text-sm font-medium transition-colors',
-                      cefrFilter === level
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-200 text-gray-700'
-                    )}
-                  >
-                    {level}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
       </header>
 
       <main className="px-4 py-6 max-w-4xl mx-auto">
@@ -623,36 +613,25 @@ interface LexemeSearchSectionProps {
 }
 
 function LexemeSearchSection({ lexemeSearch, getCefrBadgeColor }: LexemeSearchSectionProps) {
-  const { searchTerm, setSearchTerm, results, isLoading, isSearching } = lexemeSearch;
+  const { searchTerm, results, isLoading, isSearching } = lexemeSearch;
 
   return (
     <div className="mb-6">
-      <h3 className="text-lg font-semibold mb-4">Search Dictionary</h3>
-      <div className="flex items-center gap-2 bg-gray-100 rounded-full px-4 py-3 mb-4">
-        <Search className="w-5 h-5 text-gray-500" />
-        <input
-          type="text"
-          placeholder="Type to search words..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="flex-1 bg-transparent outline-none text-gray-900 placeholder:text-gray-400"
-        />
-      </div>
-
       {searchTerm.length > 0 && searchTerm.length < 2 && (
-        <p className="text-sm text-gray-500">Type at least 2 characters to search</p>
+        <p className="text-sm text-gray-500 mb-4">Type at least 2 characters to search</p>
       )}
 
       {isLoading && isSearching && (
-        <p className="text-sm text-gray-500">Searching...</p>
+        <p className="text-sm text-gray-500 mb-4">Searching...</p>
       )}
 
       {isSearching && !isLoading && results.length === 0 && (
-        <p className="text-sm text-gray-500">No words found</p>
+        <p className="text-sm text-gray-500 mb-4">No words found</p>
       )}
 
       {isSearching && results.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-2 mb-6">
+          <h3 className="text-lg font-semibold mb-4">Search Results</h3>
           {results.map((result: any) => (
             <LexemeSearchResult
               key={result.lexeme_id}

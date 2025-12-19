@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play, Lock, ChevronRight, Trophy, Clock, PanelLeft, Archive, RotateCcw, Loader2, Sparkles, MessageCircle, Star, TrendingUp, Target, AlertCircle, Bookmark } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,16 +21,14 @@ import { AppSidebar } from '@/components/AppSidebar';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { getAgentsByCategory, unlockFirstStep, archiveRoleplay, getPersonalitiesByCategory } from '@/services/agents.service';
-import type { AgentCategory, AgentWithProgress, StudentProgress } from '@/types/agents';
+import type { AgentWithProgress, StudentProgress } from '@/types/agents';
 
 export default function RolePlaysV2() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<AgentWithProgress | null>(null);
-  const [categories, setCategories] = useState<AgentCategory[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
   const [showFeedbackDrawer, setShowFeedbackDrawer] = useState(false);
   const [feedbackAgentId, setFeedbackAgentId] = useState<string | null>(null);
   const [feedbackConversationId, setFeedbackConversationId] = useState<string | null>(null);
@@ -41,6 +39,51 @@ export default function RolePlaysV2() {
   const [availablePersonalities, setAvailablePersonalities] = useState<Array<{ name: string; description: string; avatar: string }>>([]);
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Get current user
+  const { data: userAuth } = useQuery({
+    queryKey: ['auth-user'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/login');
+        return null;
+      }
+      return user;
+    },
+  });
+
+  const userId = userAuth?.id || null;
+
+  // Fetch role play categories with React Query
+  const { data: categories = [], isPending: loading } = useQuery({
+    queryKey: ['roleplay-categories', userId, selectedPersonality],
+    queryFn: async () => {
+      if (!userId) return [];
+      return await getAgentsByCategory(userId, selectedPersonality || undefined);
+    },
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    placeholderData: (previousData) => previousData, // Keep previous data while fetching new data
+  });
+
+  // Get current user profile
+  const { data: user } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+  });
 
   // Query for conversation feedback
   const { data: conversationFeedback } = useQuery({
@@ -98,30 +141,6 @@ export default function RolePlaysV2() {
     enabled: !!feedbackAgentId && !!userId,
   });
 
-  // Fetch user and categories on mount
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          navigate('/login');
-          return;
-        }
-        
-        setUserId(user.id);
-        const categoriesData = await getAgentsByCategory(user.id);
-        setCategories(categoriesData);
-      } catch (error) {
-        console.error('Error loading roleplay data:', error);
-        toast.error('Failed to load roleplays. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    }
-    
-    loadData();
-  }, [navigate]);
-
   // Load personalities when category is selected
   useEffect(() => {
     async function loadPersonalities() {
@@ -146,28 +165,6 @@ export default function RolePlaysV2() {
 
     loadPersonalities();
   }, [selectedCategory]);
-
-  // Reload agents when personality changes
-  useEffect(() => {
-    async function reloadAgents() {
-      if (!userId || !selectedCategory || !selectedPersonality) return;
-
-      try {
-        const categoriesData = await getAgentsByCategory(userId, selectedPersonality);
-        const categoryData = categoriesData.find(c => c.category === selectedCategory);
-        
-        if (categoryData) {
-          setCategories(prev => 
-            prev.map(c => c.category === selectedCategory ? categoryData : c)
-          );
-        }
-      } catch (error) {
-        console.error('Error reloading agents:', error);
-      }
-    }
-
-    reloadAgents();
-  }, [selectedPersonality, userId, selectedCategory]);
 
   // Sync carousel with personality changes and track current slide
   useEffect(() => {
@@ -288,8 +285,7 @@ export default function RolePlaysV2() {
       await archiveRoleplay(userId, agentId);
       
       // Reload data
-      const categoriesData = await getAgentsByCategory(userId);
-      setCategories(categoriesData);
+      await queryClient.invalidateQueries({ queryKey: ['roleplay-categories', userId] });
       setSelectedAgent(null);
       
       toast.success('Your progress has been saved. You can now start fresh!');
@@ -306,8 +302,7 @@ export default function RolePlaysV2() {
       await unlockFirstStep(userId, agentId);
       
       // Reload data
-      const categoriesData = await getAgentsByCategory(userId);
-      setCategories(categoriesData);
+      await queryClient.invalidateQueries({ queryKey: ['roleplay-categories', userId] });
       
       toast.success('You can now continue practicing!');
     } catch (error) {
@@ -669,15 +664,10 @@ export default function RolePlaysV2() {
             <div className="flex-1 text-center">
               <h1 className="text-xl font-semibold">Role-play Journey</h1>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate('/profile')}
-            >
-              <Avatar className="w-8 h-8">
-                <AvatarFallback>U</AvatarFallback>
-              </Avatar>
-            </Button>
+            <Avatar className="w-10 h-10 cursor-pointer" onClick={() => navigate('/profile')}>
+              <AvatarImage src={user?.profile_photo_url} />
+              <AvatarFallback>{user?.display_name?.[0] || 'U'}</AvatarFallback>
+            </Avatar>
           </div>
         </header>
 
