@@ -411,7 +411,7 @@ export default function RolePlaysV2() {
                 <div className="flex items-center gap-3 flex-1">
                   <h2 className="text-xl font-bold">Overall Score:</h2>
                   {conversationFeedback?.conversation_score && (
-                    <Badge variant="default" className="text-base">
+                    <Badge variant="default" className="text-base bg-[hsl(var(--brand-blue))] text-white hover:bg-[hsl(var(--brand-blue))]/90">
                       {conversationFeedback.conversation_score}/100
                     </Badge>
                   )}

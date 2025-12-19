@@ -159,7 +159,7 @@ export default function AIChatHome() {
     enabled: !!selectedConversation,
   });
 
-  // Get conversation feedback (if available)
+  // Get conversation feedback and agent info (if available)
   const { data: conversationFeedback } = useQuery({
     queryKey: ['conversation-feedback', selectedConversation],
     queryFn: async () => {
@@ -167,7 +167,7 @@ export default function AIChatHome() {
       
       const { data, error } = await supabase
         .from('justai_conversations')
-        .select('language_feedback, conversation_score')
+        .select('language_feedback, conversation_score, agent_id, justai_agents(image_url, name)')
         .eq('id', selectedConversation)
         .single();
 
@@ -443,14 +443,14 @@ export default function AIChatHome() {
               onClick={() => setShowFeedbackDrawer(true)}
               variant="ghost"
               size="sm"
-              className="rounded-full border border-gray-200 bg-white hover:bg-gray-50 px-4"
+              className="rounded-full border border-gray-200 bg-white hover:bg-gray-50 px-2"
             >
               <MessageCircle className="w-4 h-4 text-blue-500" />
               <span className="text-gray-700 font-medium">
                 Feedback
               </span>
               {conversationFeedback?.conversation_score && (
-                <Badge variant="secondary" className="ml-2">
+                <Badge variant="secondary" className="rounded-full bg-[hsl(var(--brand-blue))] text-white hover:bg-[hsl(var(--brand-blue))]/90">
                   {conversationFeedback.conversation_score}
                 </Badge>
               )}
@@ -502,6 +502,7 @@ export default function AIChatHome() {
                   >
                     {message.role === 'assistant' && (
                       <Avatar className="w-8 h-8 flex-shrink-0">
+                        <AvatarImage src={conversationFeedback?.justai_agents?.image_url} />
                         <AvatarFallback>🤖</AvatarFallback>
                       </Avatar>
                     )}
@@ -510,7 +511,7 @@ export default function AIChatHome() {
                         className={cn(
                           'px-4 py-3 rounded-2xl transition-all duration-300 ease-in-out',
                           message.role === 'user'
-                            ? 'bg-blue-600 text-white'
+                            ? 'bg-[hsl(var(--brand-blue))] text-white'
                             : 'bg-white text-gray-900 shadow-sm'
                         )}
                       >
@@ -715,7 +716,7 @@ export default function AIChatHome() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="rounded-full bg-purple-100 hover:bg-purple-200 text-purple-700"
+                        className="rounded-full bg-[hsl(var(--brand-blue))]/10 hover:bg-[hsl(var(--brand-blue))]/20 text-[hsl(var(--brand-blue))]"
                         onClick={() => {
                           const utterance = new SpeechSynthesisUtterance(selectedWord.word);
                           utterance.lang = 'en-US';
@@ -727,7 +728,7 @@ export default function AIChatHome() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="rounded-full bg-purple-100 hover:bg-purple-200 text-purple-700"
+                        className="rounded-full bg-[hsl(var(--brand-blue))]/10 hover:bg-[hsl(var(--brand-blue))]/20 text-[hsl(var(--brand-blue))]"
                       >
                         <Bookmark className="w-5 h-5" />
                       </Button>
@@ -820,8 +821,8 @@ export default function AIChatHome() {
                       {conversationFeedback?.conversation_score && (
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-sm text-gray-600">Overall Score:</span>
-                          <Badge variant="default" className="text-base">
-                            {conversationFeedback.conversation_score}/100
+                          <Badge variant="default" className="text-base bg-[hsl(var(--brand-blue))] text-white hover:bg-[hsl(var(--brand-blue))]/90">
+                            {conversationFeedback.conversation_score}
                           </Badge>
                         </div>
                       )}
