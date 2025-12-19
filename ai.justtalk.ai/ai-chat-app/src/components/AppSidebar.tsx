@@ -159,7 +159,7 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
     }, 100);
   };
 
-  const handleConversationClick = (conversationId: string, isVoiceSession?: boolean) => {
+  const handleConversationClick = (conversationId: string) => {
     if (onConversationClick) {
       // If callback provided (on home page), use it to select conversation in-page
       onConversationClick(conversationId);
@@ -249,7 +249,7 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
                         {(convs as any[]).map((conv) => (
                           <SidebarMenuItem key={conv.id}>
                             <SidebarMenuButton
-                              onClick={() => handleConversationClick(conv.id, conv.is_voice_session)}
+                              onClick={() => handleConversationClick(conv.id)}
                               isActive={selectedConversation === conv.id}
                               className="h-auto py-2"
                             >
