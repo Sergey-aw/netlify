@@ -27,7 +27,6 @@ const SheetOverlay = React.forwardRef<
       height: 'var(--app-h)',
       width: '100vw',
       touchAction: 'none',
-      maxHeight: '100vh',
       maxHeight: '100dvh',
       position: 'fixed',
       top: 0,
@@ -75,7 +74,6 @@ const SheetContent = React.forwardRef<
       className={cn(sheetVariants({ side }), className)}
       style={{
         height: 'var(--app-h)',
-        maxHeight: '100vh',
         maxHeight: '100dvh',
         position: 'fixed',
         overflow: 'hidden'
