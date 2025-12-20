@@ -102,7 +102,7 @@
   }
 }
 
-/* Page transition animations */
+/* Page transition animations - Optimized for 60fps */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -125,21 +125,21 @@
 
 @keyframes slideUp {
   from {
-    transform: translateY(20px);
+    transform: translate3d(0, 20px, 0);
     opacity: 0;
   }
   to {
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
     opacity: 1;
   }
 }
 
 @keyframes slideInRight {
   from {
-    transform: translateX(100%);
+    transform: translate3d(100%, 0, 0);
   }
   to {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
@@ -156,21 +156,25 @@
   }
 }
 
-/* Smooth page entrance */
+/* Smooth page entrance with GPU acceleration */
 .page-enter {
-  animation: fadeIn 0.3s ease-out;
+  animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: opacity;
 }
 
 .page-fade-in-bg {
-  animation: fadeInBackground 0.5s ease-out;
+  animation: fadeInBackground 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: opacity, backdrop-filter;
 }
 
 .page-slide-up {
-  animation: slideUp 0.4s ease-out;
+  animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity;
 }
 
 .morph-button {
-  animation: morphButton 0.5s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+  animation: morphButton 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  will-change: width, height;
 }
 
 /* Voice chat specific animations */
@@ -184,7 +188,15 @@
 }
 
 .pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
+  animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  will-change: box-shadow;
+}
+
+/* Performance optimizations */
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
 }
 
 

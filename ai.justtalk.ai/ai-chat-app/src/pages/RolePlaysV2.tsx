@@ -372,13 +372,14 @@ export default function RolePlaysV2() {
   };
 
   const renderPersonalityDrawer = () => (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       {showPersonalityDrawer && personalityForDescription && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
+          transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+          style={{ willChange: 'opacity' }}
           className="fixed inset-0 z-50 bg-gray-50"
           onClick={() => setShowPersonalityDrawer(false)}
         >
@@ -386,7 +387,13 @@ export default function RolePlaysV2() {
             layoutId={`personality-${personalityForDescription.name}`}
             className="relative w-full h-full bg-white"
             onClick={(e) => e.stopPropagation()}
-            transition={{ duration: 0.3, ease: "easeOut" }}
+            style={{ willChange: 'transform' }}
+            transition={{ 
+              type: "spring",
+              damping: 30,
+              stiffness: 300,
+              mass: 0.5
+            }}
           >
             <Card className="h-full bg-white border-none shadow-none">
               <CardContent className="relative h-full p-0 flex flex-col">
@@ -395,11 +402,11 @@ export default function RolePlaysV2() {
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ 
-                    delay: 0.15,
-                    type: "spring",
-                    damping: 20,
-                    stiffness: 300
+                    delay: 0.1,
+                    duration: 0.2,
+                    ease: [0.4, 0, 0.2, 1]
                   }}
+                  style={{ willChange: 'transform, opacity' }}
                   onClick={() => setShowPersonalityDrawer(false)}
                   className="absolute top-8 right-8 z-10 w-10 h-10 rounded-full bg-white/90 hover:bg-white flex items-center justify-center transition-colors shadow-lg"
                 >
@@ -410,8 +417,13 @@ export default function RolePlaysV2() {
                 <motion.div 
                   layoutId={`personality-image-${personalityForDescription.name}`}
                   className="w-full overflow-hidden"
-                  style={{ height: '50%' }}
-                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  style={{ height: '50%', willChange: 'transform' }}
+                  transition={{ 
+                    type: "spring",
+                    damping: 30,
+                    stiffness: 300,
+                    mass: 0.5
+                  }}
                 >
                   <img 
                     src={personalityForDescription.avatar} 
@@ -720,7 +732,7 @@ export default function RolePlaysV2() {
         {/* Categories */}
         <div className="max-w-7xl mx-auto px-4 py-6 space-y-4">
           <h3 className="text-lg font-semibold text-gray-900">Choose a Category</h3>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
             {categories.map((category) => {
               return (
                 <Card
@@ -868,11 +880,13 @@ export default function RolePlaysV2() {
                             setShowPersonalityDrawer(true);
                           }}
                           className="cursor-pointer group"
+                          style={{ willChange: 'transform' }}
                           transition={{
                             type: "spring",
-                            damping: 25,
-                            stiffness: 200,
-                            mass: 0.8
+                            damping: 30,
+                            stiffness: 300,
+                            mass: 0.5,
+                            velocity: 2
                           }}
                         >
                           <Card className="relative rounded-[2.5rem] transition-all duration-300 hover:shadow-md hover:shadow-white/20 border-0" 
@@ -895,11 +909,13 @@ export default function RolePlaysV2() {
                               <motion.div 
                                 layoutId={`personality-image-${personality.name}`}
                                 className="w-full aspect-[1.5/1] overflow-hidden rounded-[2rem] mb-4"
+                                style={{ willChange: 'transform' }}
                                 transition={{
                                   type: "spring",
-                                  damping: 25,
-                                  stiffness: 200,
-                                  mass: 0.8
+                                  damping: 30,
+                                  stiffness: 300,
+                                  mass: 0.5,
+                                  velocity: 2
                                 }}
                               >
                                 <img 
