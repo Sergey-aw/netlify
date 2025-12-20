@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
-import { Play, Lock, ChevronRight, Trophy, Clock, PanelLeft, Archive, RotateCcw, Loader2, Sparkles, MessageCircle, Star, TrendingUp, Target, AlertCircle, Bookmark } from 'lucide-react';
+import { Play, Lock, ChevronRight, Trophy, Clock, PanelLeft, Archive, RotateCcw, Loader2, Sparkles, MessageCircle, Star, TrendingUp, Target, AlertCircle, Bookmark, X } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Carousel,
   CarouselContent,
@@ -369,42 +370,73 @@ export default function RolePlaysV2() {
   };
 
   const renderPersonalityDrawer = () => (
-    <Drawer open={showPersonalityDrawer} onOpenChange={setShowPersonalityDrawer}>
-      <DrawerContent className="px-6 pb-6" aria-describedby="personality-full-description">
-        <div className="sr-only" id="personality-full-description">
-          Full personality description
-        </div>
-        {personalityForDescription && (
-          <>
-            <div className="pt-6 pb-4 border-b">
-              <div className="flex items-center gap-4">
-                <Avatar className="w-16 h-16 border-2 border-primary/30">
-                  <AvatarImage src={personalityForDescription.avatar} alt={personalityForDescription.name} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
-                    {personalityForDescription.name.substring(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <h2 className="text-xl font-bold mb-1">{personalityForDescription.name}</h2>
-                  <Badge variant="outline" className="text-xs">
-                    AI Coach
-                  </Badge>
-                </div>
-              </div>
-            </div>
+    <AnimatePresence>
+      {showPersonalityDrawer && personalityForDescription && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-50 bg-gray-50"
+          onClick={() => setShowPersonalityDrawer(false)}
+        >
+          <motion.div
+            layoutId={`personality-${personalityForDescription.name}`}
+            className="relative w-full h-full bg-white"
+            onClick={(e) => e.stopPropagation()}
+            transition={{
+              type: "spring",
+              damping: 30,
+              stiffness: 300
+            }}
+          >
+            <Card className="h-full bg-white border-none shadow-none">
+              <CardContent className="relative h-full p-0 flex flex-col">
+                {/* Close Button */}
+                <motion.button
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                  onClick={() => setShowPersonalityDrawer(false)}
+                  className="absolute top-8 right-8 z-10 w-12 h-12 rounded-full bg-white/90 hover:bg-white flex items-center justify-center transition-colors shadow-lg"
+                >
+                  <X className="w-6 h-6 text-gray-600" />
+                </motion.button>
 
-            <div className="py-6 space-y-4">
-              <div>
-                <h3 className="font-semibold text-sm text-muted-foreground mb-2">About</h3>
-                <p className="text-base leading-relaxed">
-                  {personalityForDescription.description}
-                </p>
-              </div>
-            </div>
-          </>
-        )}
-      </DrawerContent>
-    </Drawer>
+                {/* Image Section - Half height */}
+                <motion.div 
+                  layoutId={`personality-image-${personalityForDescription.name}`}
+                  className="w-full overflow-hidden"
+                  style={{ height: '50%' }}
+                >
+                  <img 
+                    src={personalityForDescription.avatar} 
+                    alt={personalityForDescription.name}
+                    className="w-full h-full object-cover"
+                  />
+                </motion.div>
+
+                {/* Text Content Below Image */}
+                <div className="flex-1 flex flex-col justify-center px-8 py-10">
+                  {/* Name with badge */}
+                  <div className="flex items-center justify-center gap-3 mb-6">
+                    <h3 className="text-4xl font-semibold text-gray-900">{personalityForDescription.name}</h3>
+                    <svg width="36" height="36" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M14 0C14.7956 0 15.5587 0.316071 16.1213 0.87868C16.6839 1.44129 17 2.20435 17 3C17 3.79565 17.3161 4.55871 17.8787 5.12132C18.4413 5.68393 19.2044 6 20 6C20.7956 6 21.5587 6.31607 22.1213 6.87868C22.6839 7.44129 23 8.20435 23 9C23 9.79565 23.3161 10.5587 23.8787 11.1213C24.4413 11.6839 25.2044 12 26 12C26.7956 12 27.5587 12.3161 28.1213 12.8787C28.6839 13.4413 29 14.2044 29 15C29 15.7956 28.6839 16.5587 28.1213 17.1213C27.5587 17.6839 26.7956 18 26 18C25.2044 18 24.4413 18.3161 23.8787 18.8787C23.3161 19.4413 23 20.2044 23 21C23 21.7956 22.6839 22.5587 22.1213 23.1213C21.5587 23.6839 20.7956 24 20 24C19.2044 24 18.4413 24.3161 17.8787 24.8787C17.3161 25.4413 17 26.2044 17 27C17 27.7956 16.6839 28.5587 16.1213 29.1213C15.5587 29.6839 14.7956 30 14 30C13.2044 30 12.4413 29.6839 11.8787 29.1213C11.3161 28.5587 11 27.7956 11 27C11 26.2044 10.6839 25.4413 10.1213 24.8787C9.55871 24.3161 8.79565 24 8 24C7.20435 24 6.44129 23.6839 5.87868 23.1213C5.31607 22.5587 5 21.7956 5 21C5 20.2044 4.68393 19.4413 4.12132 18.8787C3.55871 18.3161 2.79565 18 2 18C1.20435 18 0.441286 17.6839 -0.121321 17.1213C-0.683929 16.5587 -1 15.7956 -1 15C-1 14.2044 -0.683929 13.4413 -0.121321 12.8787C0.441286 12.3161 1.20435 12 2 12C2.79565 12 3.55871 11.6839 4.12132 11.1213C4.68393 10.5587 5 9.79565 5 9C5 8.20435 5.31607 7.44129 5.87868 6.87868C6.44129 6.31607 7.20435 6 8 6C8.79565 6 9.55871 5.68393 10.1213 5.12132C10.6839 4.55871 11 3.79565 11 3C11 2.20435 11.3161 1.44129 11.8787 0.87868C12.4413 0.316071 13.2044 0 14 0Z" transform="translate(-1 -1)" fill="#22C55E"/>
+                      <path d="M19 10L12.5 16.5L9 13" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  {/* Full Description */}
+                  <p className="text-lg text-gray-600 text-center leading-relaxed max-w-2xl mx-auto">
+                    {personalityForDescription.description}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 
   const renderFeedbackDrawer = () => (
@@ -749,11 +781,11 @@ export default function RolePlaysV2() {
 
         {/* Personality Carousel */}
         {availablePersonalities.length > 0 && (
-          <div className="max-w-7xl mx-auto px-4 pt-6 pb-2" data-swipe-ignore>
+          <div className="max-w-7xl mx-auto px-2 pt-2 pb-2" data-swipe-ignore>
             <div className="flex flex-col items-center">
               <Carousel
                 setApi={setCarouselApi}
-                className="w-full max-w-sm"
+                className="w-full max-w-md"
                 opts={{
                   align: 'center',
                   loop: true,
@@ -762,37 +794,58 @@ export default function RolePlaysV2() {
                 <CarouselContent>
                   {availablePersonalities.map((personality) => (
                     <CarouselItem key={personality.name}>
-                      <div className="p-1">
-                        <Card
-                          className="cursor-pointer hover:shadow-lg transition-all border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10"
+                      <div className="p-2">
+                        <motion.div
+                          layoutId={`personality-${personality.name}`}
                           onClick={() => {
                             setPersonalityForDescription(personality);
                             setShowPersonalityDrawer(true);
                           }}
+                          className="cursor-pointer"
                         >
-                          <CardContent className="flex flex-col items-center justify-center p-6 space-y-4">
-                            <div className="relative">
-                              <Avatar className="w-24 h-24 border-4 border-primary/30">
-                                <AvatarImage src={personality.avatar} alt={personality.name} />
-                                <AvatarFallback className="bg-primary/10 text-primary text-2xl font-semibold">
-                                  {personality.name.substring(0, 2).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-4 border-white flex items-center justify-center shadow-lg">
-                                <Sparkles className="w-4 h-4 text-white" />
+                          <Card className="hover:shadow-md transition-shadow bg-white rounded-[3rem]">
+                            <CardContent className="flex flex-col p-4 pb-6">
+                              {/* Large Photo Section - takes most of the card */}
+                              <motion.div 
+                                layoutId={`personality-image-${personality.name}`}
+                                className="w-full aspect-square overflow-hidden rounded-[2rem] mb-6"
+                              >
+                                <img 
+                                  src={personality.avatar} 
+                                  alt={personality.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    // Fallback to avatar if image fails
+                                    e.currentTarget.style.display = 'none';
+                                    e.currentTarget.parentElement!.innerHTML = `
+                                      <div class="w-full h-full bg-gray-200 flex items-center justify-center rounded-3xl">
+                                        <span class="text-gray-600 text-6xl font-medium">
+                                          ${personality.name.substring(0, 2).toUpperCase()}
+                                        </span>
+                                      </div>
+                                    `;
+                                  }}
+                                />
+                              </motion.div>
+                              {/* Text Content with inline badge */}
+                              <div className="w-full">
+                                {/* Name with inline checkmark badge */}
+                                <div className="flex items-center justify-center gap-2 mb-3">
+                                  <h3 className="text-2xl font-semibold text-gray-900">{personality.name}</h3>
+                                  {/* Scalloped badge with checkmark */}
+                                  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M14 0C14.7956 0 15.5587 0.316071 16.1213 0.87868C16.6839 1.44129 17 2.20435 17 3C17 3.79565 17.3161 4.55871 17.8787 5.12132C18.4413 5.68393 19.2044 6 20 6C20.7956 6 21.5587 6.31607 22.1213 6.87868C22.6839 7.44129 23 8.20435 23 9C23 9.79565 23.3161 10.5587 23.8787 11.1213C24.4413 11.6839 25.2044 12 26 12C26.7956 12 27.5587 12.3161 28.1213 12.8787C28.6839 13.4413 29 14.2044 29 15C29 15.7956 28.6839 16.5587 28.1213 17.1213C27.5587 17.6839 26.7956 18 26 18C25.2044 18 24.4413 18.3161 23.8787 18.8787C23.3161 19.4413 23 20.2044 23 21C23 21.7956 22.6839 22.5587 22.1213 23.1213C21.5587 23.6839 20.7956 24 20 24C19.2044 24 18.4413 24.3161 17.8787 24.8787C17.3161 25.4413 17 26.2044 17 27C17 27.7956 16.6839 28.5587 16.1213 29.1213C15.5587 29.6839 14.7956 30 14 30C13.2044 30 12.4413 29.6839 11.8787 29.1213C11.3161 28.5587 11 27.7956 11 27C11 26.2044 10.6839 25.4413 10.1213 24.8787C9.55871 24.3161 8.79565 24 8 24C7.20435 24 6.44129 23.6839 5.87868 23.1213C5.31607 22.5587 5 21.7956 5 21C5 20.2044 4.68393 19.4413 4.12132 18.8787C3.55871 18.3161 2.79565 18 2 18C1.20435 18 0.441286 17.6839 -0.121321 17.1213C-0.683929 16.5587 -1 15.7956 -1 15C-1 14.2044 -0.683929 13.4413 -0.121321 12.8787C0.441286 12.3161 1.20435 12 2 12C2.79565 12 3.55871 11.6839 4.12132 11.1213C4.68393 10.5587 5 9.79565 5 9C5 8.20435 5.31607 7.44129 5.87868 6.87868C6.44129 6.31607 7.20435 6 8 6C8.79565 6 9.55871 5.68393 10.1213 5.12132C10.6839 4.55871 11 3.79565 11 3C11 2.20435 11.3161 1.44129 11.8787 0.87868C12.4413 0.316071 13.2044 0 14 0Z" transform="translate(-1 -1)" fill="#22C55E"/>
+                                    <path d="M19 10L12.5 16.5L9 13" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                </div>
+                                {/* Description */}
+                                <p className="text-base text-gray-500 text-center leading-relaxed line-clamp-2">
+                                  {personality.description}
+                                </p>
                               </div>
-                            </div>
-                            <div className="text-center space-y-2">
-                              <h3 className="text-lg font-bold text-gray-900">{personality.name}</h3>
-                              <p className="text-sm text-gray-600 line-clamp-2">
-                                {personality.description}
-                              </p>
-                              <Badge variant="outline" className="text-xs">
-                                Tap to learn more
-                              </Badge>
-                            </div>
-                          </CardContent>
-                        </Card>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
                       </div>
                     </CarouselItem>
                   ))}

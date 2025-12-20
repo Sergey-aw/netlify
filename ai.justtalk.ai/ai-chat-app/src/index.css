@@ -47,6 +47,14 @@
 }
 
 @layer base {
+  :root {
+    /* Fix for Safari iOS viewport height - set by JS using visualViewport */
+    --app-h: 100vh;
+    /* Safe area insets for notched devices */
+    --safe-area-inset-top: env(safe-area-inset-top, 0px);
+    --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  
   * {
     border-color: hsl(var(--border));
   }
@@ -65,6 +73,32 @@
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+  
+  /* Safari iOS viewport fix using visualViewport height */
+  .h-screen-safe {
+    height: var(--app-h);
+  }
+  
+  .min-h-screen-safe {
+    min-height: var(--app-h);
+  }
+  
+  .fullscreen {
+    height: var(--app-h);
+  }
+}
+
+/* Force overlay and sheet to cover entire viewport on mobile Safari */
+@supports (-webkit-touch-callout: none) {
+  [data-radix-dialog-overlay] {
+    height: var(--app-h) !important;
+    max-height: 100dvh !important;
+  }
+  
+  [data-radix-dialog-content] {
+    height: var(--app-h) !important;
+    max-height: 100dvh !important;
   }
 }
 

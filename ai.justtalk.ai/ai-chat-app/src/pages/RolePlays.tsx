@@ -117,11 +117,11 @@ export default function RolePlays() {
         </div>
 
         {/* Role-play Cards */}
-        <div className="space-y-4">
+        <div className="space-y-2">
           {filteredAgents.map((agent) => (
             <Card
               key={agent.id}
-              className="p-4 cursor-pointer hover:shadow-md hover:border-primary transition-all"
+              className="p-2 cursor-pointer hover:shadow-md hover:border-primary transition-all"
               onClick={() => handleAgentClick(agent.id, agent.agentId, agent.name, agent.id, agent.description)}
             >
               <div className="flex items-start gap-4">
