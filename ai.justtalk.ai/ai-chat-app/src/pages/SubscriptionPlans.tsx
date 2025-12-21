@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
-import { Check, AlertCircle, PanelLeft } from 'lucide-react';
+import { Check, AlertCircle, PanelLeft, Crown } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { motion } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { createCheckoutSession } from '@/lib/justai-api';
@@ -18,6 +20,7 @@ export default function SubscriptionPlans() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [selectedPlanName, setSelectedPlanName] = useState<string | null>(null);
   const [showCanceledMessage, setShowCanceledMessage] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   
@@ -152,173 +155,228 @@ export default function SubscriptionPlans() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div 
+      className="min-h-screen bg-gradient-to-r from-[#efefef] to-[#efefef] relative overflow-hidden"
+      style={{
+        backgroundImage: "url('data:image/svg+xml;utf8,<svg viewBox=\"0 0 402 874\" xmlns=\"http://www.w3.org/2000/svg\" preserveAspectRatio=\"none\"><rect x=\"0\" y=\"0\" height=\"100%\" width=\"100%\" fill=\"url(%23grad)\" opacity=\"0.5\"/><defs><radialGradient id=\"grad\" gradientUnits=\"userSpaceOnUse\" cx=\"0\" cy=\"0\" r=\"10\" gradientTransform=\"matrix(0.15 42.55 -43.111 0.15198 190.5 -160)\"><stop stop-color=\"rgba(0,122,255,0.5)\" offset=\"0\"/><stop stop-color=\"rgba(32,139,255,0.5625)\" offset=\"0.125\"/><stop stop-color=\"rgba(64,155,255,0.625)\" offset=\"0.25\"/><stop stop-color=\"rgba(128,189,255,0.75)\" offset=\"0.5\"/><stop stop-color=\"rgba(191,222,255,0.875)\" offset=\"0.75\"/><stop stop-color=\"rgba(255,255,255,1)\" offset=\"1\"/></radialGradient></defs></svg>')"
+      }}
+    >
       {/* Sidebar */}
       <AppSidebar open={showSidebar} onOpenChange={setShowSidebar} />
 
-      {/* Header */}
-      <header className="bg-background px-4 py-4 border-b">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="-ml-2"
-            onClick={() => setShowSidebar(!showSidebar)}
-          >
-            <PanelLeft className="w-6 h-6 text-gray-600" />
-          </Button>
-          <div className="flex-1 text-center">
-            <h1 className="text-xl font-semibold">Subscription Plans</h1>
-          </div>
-          <Avatar className="w-10 h-10 cursor-pointer" onClick={() => navigate('/profile')}>
-            <AvatarImage src={currentUser?.profile_photo_url} />
-            <AvatarFallback>{currentUser?.display_name?.[0] || 'U'}</AvatarFallback>
-          </Avatar>
-        </div>
-      </header>
-
-      {/* Email Verification Notice */}
-      {isAuthenticated === false && (
-        <div className="px-4 pt-4">
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-500 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-blue-900 dark:text-blue-100">Verify Your Email</p>
-              <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
-                Check your email to verify your account and set up your password. You can still browse plans!
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Canceled Message */}
-      {showCanceledMessage && (
-        <div className="px-4 pt-4">
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-yellow-900 dark:text-yellow-100">Checkout Canceled</p>
-              <p className="text-sm text-yellow-800 dark:text-yellow-200 mt-1">
-                No worries! You can select a plan whenever you're ready.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="px-4 py-6 max-w-4xl mx-auto">
-        {/* Title */}
-        <h1 className="text-3xl font-bold mb-2">Choose your plan</h1>
-        <p className="text-muted-foreground mb-6">Start learning with AI today</p>
-
-        {/* Billing Toggle */}
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <Button
-            variant={billingCycle === 'monthly' ? 'default' : 'outline'}
-            onClick={() => setBillingCycle('monthly')}
-            className="rounded-full px-6"
-          >
-            Monthly
-          </Button>
-          <Button
-            variant={billingCycle === 'annual' ? 'default' : 'outline'}
-            onClick={() => setBillingCycle('annual')}
-            className="rounded-full px-6 relative"
-          >
-            Yearly
-            <span className="absolute -top-2 -right-2 px-2 py-0.5 bg-green-500 text-white text-xs rounded-full">
-              Save 17%
-            </span>
-          </Button>
-        </div>
-
-        {/* Plans */}
-        <div className="space-y-4">
-          {plans?.map((plan) => {
-            const monthlyPrice = billingCycle === 'annual'
-              ? plan.monthly_equivalent_cents / 100
-              : plan.price_cents / 100;
-            const totalPrice = plan.price_cents / 100;
-
-            return (
-              <div
-                key={plan.id}
-                className={cn(
-                  'relative bg-card rounded-3xl p-6 border-2 transition-all',
-                  selectedPlan === plan.id
-                    ? 'border-primary shadow-xl'
-                    : 'border-border',
-                  plan.is_featured && 'ring-2 ring-primary ring-offset-2'
-                )}
-              >
-                {/* Popular Badge */}
-                {plan.is_featured && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-primary text-primary-foreground text-xs font-bold rounded-full">
-                    MOST POPULAR
-                  </div>
-                )}
-
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-xl font-bold mb-1">
-                      {plan.plan_name}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {plan.monthly_message_limit
-                        ? `${plan.monthly_message_limit} messages/month`
-                        : 'Unlimited messages'}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-3xl font-bold">
-                      ${monthlyPrice.toFixed(2)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      /month
-                    </p>
-                    {billingCycle === 'annual' && (
-                      <p className="text-xs text-green-600">
-                        ${totalPrice}/year
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Features */}
-                <ul className="space-y-2 mb-6">
-                  {plan.features.map((feature: string, idx: number) => (
-                    <li
-                      key={idx}
-                      className="flex items-start gap-2 text-sm"
-                    >
-                      <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                {/* Select Button */}
-                <Button
-                  onClick={() => handleSelectPlan(plan.stripe_price_id, plan.id)}
-                  variant={selectedPlan === plan.id || plan.is_featured ? 'default' : 'secondary'}
-                  className="w-full rounded-xl"
-                  disabled={selectedPlan !== null}
-                >
-                  {selectedPlan === plan.id ? 'Processing...' : 'Select Plan'}
-                </Button>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Trust Badges */}
-        <div className="mt-8 text-center space-y-2">
-          <p className="text-sm text-muted-foreground">
-            ✓ Cancel anytime · ✓ No commitments · ✓ Secure payment
+      {/* Main Content Container */}
+      <div className="relative flex flex-col min-h-screen px-6 py-6 pb-8">
+        {/* Header Section */}
+        <div className="flex flex-col items-center text-center pt-[59px] pb-0 px-8 gap-[21px] mb-8">
+          <h1 className="text-[32px] font-bold text-[#39597d] leading-[1.076]">
+            Choose your plan
+          </h1>
+          <p className="text-[16px] font-medium text-[#5983b3]">
+            Start learning today with unique<br />JustTalk AI experience
           </p>
         </div>
+
+        {/* Alert Messages */}
+        {isAuthenticated === false && (
+          <div className="mb-4">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-blue-900 dark:text-blue-100">Verify Your Email</p>
+                <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
+                  Check your email to verify your account and set up your password. You can still browse plans!
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showCanceledMessage && (
+          <div className="mb-4">
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-yellow-900 dark:text-yellow-100">Checkout Canceled</p>
+                <p className="text-sm text-yellow-800 dark:text-yellow-200 mt-1">
+                  No worries! You can select a plan whenever you're ready.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Benefits Section */}
+        <div className="flex flex-col gap-0 mb-8">
+          {selectedPlanName && plans ? (
+            plans.find(p => p.plan_name === selectedPlanName)?.features.slice(0, 3).map((feature, idx) => (
+              <div key={idx} className="flex gap-[10px] items-start px-8 py-3">
+                <div className="w-16 h-[63px] bg-white flex flex-col items-center overflow-hidden rounded-lg shrink-0">
+                  <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.5" />
+                </div>
+                <div className="flex-1 flex flex-col gap-1 min-w-0">
+                  <p className="text-[16px] font-semibold text-black leading-normal whitespace-nowrap">
+                    Feature {idx + 1}
+                  </p>
+                  <p className="text-[16px] font-medium text-[#7b7b7b] leading-normal min-w-full">
+                    {feature}
+                  </p>
+                </div>
+              </div>
+            ))
+          ) : (
+            [1, 2, 3].map((idx) => (
+              <div key={idx} className="flex gap-[10px] items-start px-8 py-3">
+                <div className="w-16 h-[63px] bg-white flex flex-col items-center overflow-hidden rounded-lg shrink-0">
+                  <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.5" />
+                </div>
+                <div className="flex-1 flex flex-col gap-1 min-w-0">
+                  <p className="text-[16px] font-semibold text-black leading-normal whitespace-nowrap">
+                    Select a plan
+                  </p>
+                  <p className="text-[16px] font-medium text-[#7b7b7b] leading-normal min-w-full">
+                    Choose your plan to see features
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Plan Selection Section */}
+        <div className="flex flex-col gap-4 px-0 py-[3px] flex-1">
+          {/* Section Title */}
+          <div className="flex justify-center items-center w-full">
+            <p className="text-[16px] font-semibold text-black">
+              Choose the plan fits your needs
+            </p>
+          </div>
+
+          {/* Tabs Component */}
+          <div className="flex justify-center w-full px-[87px]">
+            <div className="w-full bg-muted rounded-md p-1 relative">
+              {/* Sliding background */}
+              <motion.div
+                className="absolute top-1 bottom-1 bg-background rounded-sm shadow-sm"
+                initial={false}
+                animate={{
+                  left: billingCycle === 'monthly' ? '4px' : '50%',
+                  width: 'calc(50% - 4px)',
+                }}
+                transition={{
+                  type: 'spring',
+                  stiffness: 500,
+                  damping: 30,
+                }}
+              />
+              
+              {/* Tab buttons */}
+              <div className="relative flex">
+                <button
+                  onClick={() => setBillingCycle('monthly')}
+                  className={cn(
+                    "flex-1 px-3 py-1.5 text-sm font-medium rounded-sm transition-colors relative z-10",
+                    billingCycle === 'monthly' ? 'text-foreground' : 'text-muted-foreground'
+                  )}
+                >
+                  Monthly
+                </button>
+                <button
+                  onClick={() => setBillingCycle('annual')}
+                  className={cn(
+                    "flex-1 px-3 py-1.5 text-sm font-medium rounded-sm transition-colors relative z-10",
+                    billingCycle === 'annual' ? 'text-foreground' : 'text-muted-foreground'
+                  )}
+                >
+                  Annual
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Plan Cards - Scrollable Horizontal */}
+          <div className="flex gap-6 overflow-x-auto px-6 py-4 -mx-6 snap-x snap-mandatory scrollbar-hide">
+            {plans?.map((plan) => {
+              const monthlyPrice = billingCycle === 'annual'
+                ? plan.monthly_equivalent_cents / 100
+                : plan.price_cents / 100;
+              const isSelected = selectedPlan === plan.id;
+
+              return (
+                <motion.div
+                  key={plan.id}
+                  onClick={() => {
+                    setSelectedPlan(plan.id);
+                    setSelectedPlanName(plan.plan_name);
+                  }}
+                  className={cn(
+                    'flex-shrink-0 w-[160px] snap-center bg-white rounded-2xl p-4 flex flex-col gap-[14px] shadow-[0px_2px_15px_0px_rgba(0,0,0,0.1)] cursor-pointer relative',
+                    isSelected && 'border-2 border-[#78b9ff] shadow-[0px_0px_8px_0px_rgba(0,122,255,0.5)]'
+                  )}
+                  whileTap={{ scale: 0.92 }}
+                  transition={{
+                    type: 'spring',
+                    stiffness: 400,
+                    damping: 17,
+                  }}
+                >
+                  {isSelected && (
+                    <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[hsl(var(--brand-blue))] flex items-center justify-center">
+                      <Check className="w-3 h-3 text-white" />
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-[14px]">
+                    <Crown className="w-4 h-4 text-slate-800" />
+                    <div className="flex flex-col gap-1">
+                      <p className="text-[12px] font-medium text-black leading-[1.076]">
+                        {plan.plan_name}
+                      </p>
+                      <div className="flex items-baseline gap-0.5">
+                        <span className="text-[16px] font-semibold text-black">
+                          ${monthlyPrice.toFixed(2)}
+                        </span>
+                        <span className="text-[12px] font-medium text-black">/</span>
+                        <span className="text-[12px] font-normal text-black">mo</span>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-[12px] font-medium text-black leading-[1.076]">
+                    Free 7-day trial
+                  </p>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Continue Button */}
+        <div className="mt-auto pt-4">
+          <Button 
+            onClick={() => {
+              if (selectedPlan && plans) {
+                const plan = plans.find(p => p.id === selectedPlan);
+                if (plan) {
+                  handleSelectPlan(plan.stripe_price_id, plan.id);
+                }
+              }
+            }}
+            disabled={!selectedPlan}
+            className="w-full h-12 bg-[#111] hover:bg-[#222] text-white text-[18px] font-medium rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Continue
+          </Button>
+        </div>
       </div>
+
+      {/* Add scrollbar hide utility */}
+      <style>{`
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </div>
   );
 }
