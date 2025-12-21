@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
-import { Check, AlertCircle, PanelLeft, Crown, CreditCard } from 'lucide-react';
+import { Check, AlertCircle, PanelLeft, Crown, ChessQueen, CreditCard, Infinity } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +34,7 @@ export default function SubscriptionPlans() {
     },
     minSwipeDistance: 50,
     maxVerticalDistance: 100,
+    ignoreSelectors: ['.plan-cards-container'],
   });
   
   // Use session hook for better session management
@@ -52,21 +53,62 @@ export default function SubscriptionPlans() {
     }
   }, [searchParams, setSearchParams]);
 
-  // Fetch real subscription plans from Supabase
-  const { data: plans, isLoading } = useQuery({
-    queryKey: ['subscription-plans', billingCycle],
+  // Fetch monthly plans
+  const { data: monthlyPlans, isLoading: isLoadingMonthly } = useQuery({
+    queryKey: ['subscription-plans', 'monthly'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('justai_subscription_plans')
         .select('*')
         .eq('is_active', true)
-        .eq('billing_period', billingCycle)
+        .eq('billing_period', 'monthly')
         .order('display_order');
 
       if (error) throw error;
       return data as SubscriptionPlan[];
     },
   });
+
+  // Fetch annual plans
+  const { data: annualPlans, isLoading: isLoadingAnnual } = useQuery({
+    queryKey: ['subscription-plans', 'annual'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('justai_subscription_plans')
+        .select('*')
+        .eq('is_active', true)
+        .eq('billing_period', 'annual')
+        .order('display_order');
+
+      if (error) throw error;
+      return data as SubscriptionPlan[];
+    },
+  });
+
+  // Select plans based on current billing cycle
+  const plans = billingCycle === 'monthly' ? monthlyPlans : annualPlans;
+  const isLoading = isLoadingMonthly || isLoadingAnnual;
+
+  // Set Premium monthly plan as default selection when plans load
+  useEffect(() => {
+    if (monthlyPlans && !selectedPlan) {
+      const premiumPlan = monthlyPlans.find(plan => plan.plan_name === 'Premium');
+      if (premiumPlan) {
+        setSelectedPlan(premiumPlan.id);
+        setSelectedPlanName(premiumPlan.plan_name);
+      }
+    }
+  }, [monthlyPlans, selectedPlan]);
+
+  // Sync selected plan when billing cycle changes
+  useEffect(() => {
+    if (selectedPlanName && plans) {
+      const matchingPlan = plans.find(plan => plan.plan_name === selectedPlanName);
+      if (matchingPlan) {
+        setSelectedPlan(matchingPlan.id);
+      }
+    }
+  }, [billingCycle, plans, selectedPlanName]);
 
   // Get current user for header
   const { data: currentUser } = useQuery({
@@ -302,7 +344,7 @@ export default function SubscriptionPlans() {
           </div>
 
           {/* Plan Cards - Scrollable Horizontal */}
-          <div className="flex gap-6 overflow-x-auto px-6 py-4 -mx-6 snap-x snap-mandatory scrollbar-hide">
+          <div className="flex gap-6 overflow-x-auto px-6 py-4 -mx-6 snap-x snap-mandatory scrollbar-hide plan-cards-container">
             {plans?.map((plan) => {
               const monthlyPrice = billingCycle === 'annual'
                 ? plan.monthly_equivalent_cents / 100
@@ -333,7 +375,13 @@ export default function SubscriptionPlans() {
                     </div>
                   )}
                   <div className="flex flex-col gap-[14px]">
-                    <Crown className="w-4 h-4 text-slate-800" />
+                    {plan.plan_name === 'Unlimited' ? (
+                      <Infinity className="w-4 h-4 text-slate-800" />
+                    ) : plan.plan_name === 'Premium' ? (
+                      <ChessQueen className="w-4 h-4 text-slate-800" />
+                    ) : (
+                      <Crown className="w-4 h-4 text-slate-800" />
+                    )}
                     <div className="flex flex-col gap-1">
                       <p className={cn(
                         "text-[12px] font-medium leading-[1.076]",
