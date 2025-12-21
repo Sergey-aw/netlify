@@ -269,88 +269,98 @@ export default function PronunciationAssessment() {
             </div>
           </div>
 
-          {/* Recording Controls */}
-          <div className="px-2 space-y-4">
-            {!audioBlob ? (
-              <div className="space-y-4">
-                <Button
-                  onClick={isRecording ? stopRecording : startRecording}
-                  size="lg"
-                  className={`w-full py-7 rounded-2xl text-lg font-semibold shadow-lg ${
-                    isRecording 
-                      ? 'bg-red-600 hover:bg-red-700' 
-                      : 'bg-gray-900 hover:bg-gray-800'
-                  }`}
-                >
-                  {isRecording ? (
-                    <>
-                      <Square className="mr-2 h-5 w-5" />
-                      Stop Recording
-                    </>
-                  ) : (
-                    <>
-                      <Mic className="mr-2 h-5 w-5" />
-                      Start Recording
-                    </>
-                  )}
-                </Button>
-                {isRecording && (
-                  <div className="flex items-center justify-center gap-2 text-red-600">
-                    <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse" />
-                    <span className="font-medium">Recording in progress...</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="bg-white rounded-3xl p-4 shadow-md">
-                  <p className="text-green-800 font-medium flex items-center gap-2 justify-center">
-                    <CheckCircle2 className="h-5 w-5" />
-                    Recording complete!
-                  </p>
-                </div>
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() => setAudioBlob(null)}
-                    variant="outline"
-                    className="flex-1 py-6 rounded-2xl font-semibold"
-                  >
-                    Record Again
-                  </Button>
-                  <Button
-                    onClick={analyzeRecording}
-                    className="flex-1 bg-gray-900 hover:bg-gray-800 py-6 rounded-2xl font-semibold"
-                  >
-                    Analyze
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {error && (
-              <div className="bg-white rounded-3xl p-4 shadow-md">
-                <p className="text-sm text-red-600 text-center">{error}</p>
-              </div>
-            )}
-
-            {/* Tips */}
+          {/* Tips */}
+          <div className="px-2 mb-4">
             <div className="bg-white rounded-3xl p-4 shadow-md">
               <p className="text-sm text-gray-700 text-center">
                 <strong>Tip:</strong> Find a quiet place and speak clearly at a natural pace
               </p>
             </div>
           </div>
+
+          {/* Recording Status */}
+          {isRecording && (
+            <div className="px-2 mb-4">
+              <div className="flex items-center justify-center gap-2 text-red-600">
+                <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse" />
+                <span className="font-medium">Recording in progress...</span>
+              </div>
+            </div>
+          )}
+
+          {audioBlob && (
+            <div className="px-2 mb-4">
+              <div className="bg-white rounded-3xl p-4 shadow-md">
+                <p className="text-green-800 font-medium flex items-center gap-2 justify-center">
+                  <CheckCircle2 className="h-5 w-5" />
+                  Recording complete!
+                </p>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="px-2 mb-4">
+              <div className="bg-white rounded-3xl p-4 shadow-md">
+                <p className="text-sm text-red-600 text-center">{error}</p>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Skip Button */}
-        <div className="pt-6 px-2">
-          <Button
-            onClick={() => navigate('/login')}
-            variant="ghost"
-            className="w-full text-gray-600 hover:text-gray-900"
-          >
-            Skip Assessment
-          </Button>
+        {/* Skip Button Above Main Button */}
+        {!audioBlob && !isRecording && (
+          <div className="pt-6 px-2">
+            <Button
+              onClick={() => navigate('/login')}
+              variant="ghost"
+              className="w-full text-gray-600 hover:text-gray-900"
+            >
+              Skip Assessment
+            </Button>
+          </div>
+        )}
+
+        {/* Bottom Action Button */}
+        <div className="px-2">
+          {!audioBlob ? (
+            <Button
+              onClick={isRecording ? stopRecording : startRecording}
+              className={`w-full py-7 rounded-2xl text-lg font-semibold shadow-lg ${
+                isRecording 
+                  ? 'bg-red-600 hover:bg-red-700' 
+                  : 'bg-gray-900 hover:bg-gray-800 text-white'
+              }`}
+            >
+              {isRecording ? (
+                <>
+                  <Square className="mr-2 h-5 w-5" />
+                  Stop Recording
+                </>
+              ) : (
+                <>
+                  <Mic className="mr-2 h-5 w-5" />
+                  Start Recording
+                </>
+              )}
+            </Button>
+          ) : (
+            <div className="flex gap-3">
+              <Button
+                onClick={() => setAudioBlob(null)}
+                variant="outline"
+                className="flex-1 py-7 rounded-2xl text-lg font-semibold"
+              >
+                Record Again
+              </Button>
+              <Button
+                onClick={analyzeRecording}
+                className="flex-1 bg-gray-900 hover:bg-gray-800 text-white py-7 rounded-2xl text-lg font-semibold shadow-lg"
+              >
+                Analyze
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>
