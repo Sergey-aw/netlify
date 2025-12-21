@@ -5,6 +5,7 @@ import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { Check, AlertCircle, PanelLeft, Crown } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { motion } from 'motion/react';
 import { cn } from '@/lib/utils';
@@ -254,6 +255,13 @@ export default function SubscriptionPlans() {
           {/* Tabs Component */}
           <div className="flex justify-center w-full px-[87px]">
             <div className="w-full bg-muted rounded-md p-1 relative">
+              {/* Discount badge */}
+              <Badge 
+                variant="default" 
+                className="absolute -top-2 -right-4 bg-blue-500 hover:bg-green-500 text-white text-[10px] px-1.5 py-0.5 shadow-sm z-20 rotate-[20deg]"
+              >
+                -50%
+              </Badge>
               {/* Sliding background */}
               <motion.div
                 className="absolute top-1 bottom-1 bg-background rounded-sm shadow-sm"
