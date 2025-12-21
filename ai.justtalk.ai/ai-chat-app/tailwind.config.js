@@ -6,10 +6,11 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-  	extend: {
-  		fontFamily: {
-  			sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-  		},
+	extend: {
+		fontFamily: {
+			sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+			din: ['"DIN Round Pro"', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+		},
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',

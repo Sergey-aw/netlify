@@ -59,7 +59,8 @@ export default function WelcomeProgress() {
   const step = steps[currentStep];
 
   return (
-    <div className="h-screen bg-gradient-to-br from-blue-300/80 via-blue-50/20 to-white flex items-center justify-center p-6">
+     <div className="h-screen bg-[radial-gradient(circle_at_top_left,rgba(147,197,253,0.8)_0%,rgba(239,246,255,0.2)_50%,white_100%)] flex items-center justify-center p-6">
+    
       <div className="w-full h-full max-w-md flex flex-col justify-between py-4">
         {/* Logo */}
         <div className="flex justify-center mb-8">
@@ -71,7 +72,7 @@ export default function WelcomeProgress() {
           {/* Heading - Fixed height container */}
           <div className="text-center px-4" style={{ minHeight: '80px', marginBottom: '16px' }}>
             {/* Title */}
-            <div className="relative font-din overflow-hidden" style={{ height: '112px', marginBottom: '16px' }}>
+            <div className="relative font-din overflow-hidden" style={{ height: '90px', marginBottom: '8px' }}>
               <AnimatePresence mode="wait">
                 <motion.div
                   key={`title-${step.id}`}
@@ -89,7 +90,7 @@ export default function WelcomeProgress() {
             </div>
             
             {/* Subtitle */}
-            <div className="relative overflow-hidden" style={{ height: '64px' }}>
+            <div className="relative overflow-hidden" style={{ height: '80px' }}>
               <AnimatePresence mode="wait">
                 <motion.div
                   key={`subtitle-${step.id}`}
