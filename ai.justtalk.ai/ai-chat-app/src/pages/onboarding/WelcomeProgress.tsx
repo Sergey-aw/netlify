@@ -52,7 +52,7 @@ export default function WelcomeProgress() {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      navigate('/welcome/features');
+      navigate('/onboarding/pronunciation');
     }
   };
 
