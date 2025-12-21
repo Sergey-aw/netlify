@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
-import { Check, AlertCircle, PanelLeft, Crown } from 'lucide-react';
+import { Check, AlertCircle, PanelLeft, Crown, CreditCard } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -166,14 +166,14 @@ export default function SubscriptionPlans() {
       <AppSidebar open={showSidebar} onOpenChange={setShowSidebar} />
 
       {/* Main Content Container */}
-      <div className="relative flex flex-col min-h-screen px-6 py-6 pb-8">
+      <div className="relative flex flex-col min-h-screen px-6 py-0 pb-12">
         {/* Header Section */}
-        <div className="flex flex-col items-center text-center pt-8 pb-0 px-8 gap-[21px] mb-8">
+        <div className="flex flex-col items-center text-center pt-8 pb-0 px-8 gap-[21px] mb-6">
           <h1 className="text-[32px] font-bold text-[#39597d] leading-[1.076]">
             Choose your plan
           </h1>
           <p className="text-[16px] font-medium text-[#5983b3]">
-            Start learning today with unique<br />JustTalk AI experience
+            Start learning today
           </p>
         </div>
 
@@ -207,18 +207,18 @@ export default function SubscriptionPlans() {
         )}
 
         {/* Benefits Section */}
-        <div className="flex flex-col gap-0 mb-8">
+        <div className="flex flex-col gap-0 mb-6">
           {selectedPlanName && plans ? (
             plans.find(p => p.plan_name === selectedPlanName)?.features.slice(0, 3).map((feature, idx) => (
-              <div key={idx} className="flex gap-[10px] items-start px-8 py-3">
+              <div key={idx} className="flex gap-[10px] items-start px-3 py-1">
                 <div className="w-16 h-[63px] bg-white flex flex-col items-center overflow-hidden rounded-lg shrink-0">
                   <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.5" />
                 </div>
                 <div className="flex-1 flex flex-col gap-1 min-w-0">
-                  <p className="text-[16px] font-semibold text-black leading-normal whitespace-nowrap">
+                  <p className="text-base font-semibold text-black leading-normal whitespace-nowrap">
                     Feature {idx + 1}
                   </p>
-                  <p className="text-[16px] font-medium text-[#7b7b7b] leading-normal min-w-full">
+                  <p className="text-sm font-medium text-[#7b7b7b] leading-normal min-w-full">
                     {feature}
                   </p>
                 </div>
@@ -362,7 +362,7 @@ export default function SubscriptionPlans() {
         </div>
 
         {/* Continue Button */}
-        <div className="mt-auto pt-4">
+        <div className="mt-auto pt-2">
           <Button 
             onClick={() => {
               if (selectedPlan && plans) {
@@ -373,9 +373,10 @@ export default function SubscriptionPlans() {
               }
             }}
             disabled={!selectedPlan}
-            className="w-full h-12 bg-[#111] hover:bg-[#222] text-white text-[18px] font-medium rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full h-12 bg-[#111] hover:bg-[#222] text-white text-[18px] font-medium rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            Continue
+            <CreditCard className="w-5 h-5" />
+            Subscribe
           </Button>
         </div>
       </div>
