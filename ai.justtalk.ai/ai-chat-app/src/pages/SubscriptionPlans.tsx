@@ -168,7 +168,7 @@ export default function SubscriptionPlans() {
       {/* Main Content Container */}
       <div className="relative flex flex-col min-h-screen px-6 py-6 pb-8">
         {/* Header Section */}
-        <div className="flex flex-col items-center text-center pt-[59px] pb-0 px-8 gap-[21px] mb-8">
+        <div className="flex flex-col items-center text-center pt-8 pb-0 px-8 gap-[21px] mb-8">
           <h1 className="text-[32px] font-bold text-[#39597d] leading-[1.076]">
             Choose your plan
           </h1>
@@ -253,14 +253,14 @@ export default function SubscriptionPlans() {
           </div>
 
           {/* Tabs Component */}
-          <div className="flex justify-center w-full px-[87px]">
+          <div className="flex justify-center w-full px-[60px]">
             <div className="w-full bg-muted rounded-md p-1 relative">
               {/* Discount badge */}
               <Badge 
                 variant="default" 
-                className="absolute -top-2 -right-4 bg-blue-500 hover:bg-green-500 text-white text-[10px] px-1.5 py-0.5 shadow-sm z-20 rotate-[20deg]"
+                className="absolute -top-2 -right-4 bg-blue-500 hover:rotate-6 text-white text-[10px] px-1.5 py-0.5 shadow-sm z-20 rotate-[20deg]"
               >
-                -50%
+                -75%
               </Badge>
               {/* Sliding background */}
               <motion.div
@@ -317,8 +317,8 @@ export default function SubscriptionPlans() {
                     setSelectedPlanName(plan.plan_name);
                   }}
                   className={cn(
-                    'flex-shrink-0 w-[160px] snap-center bg-white rounded-2xl p-4 flex flex-col gap-[14px] shadow-[0px_2px_15px_0px_rgba(0,0,0,0.1)] cursor-pointer relative',
-                    isSelected && 'border-2 border-[#78b9ff] shadow-[0px_0px_8px_0px_rgba(0,122,255,0.5)]'
+                    'flex-shrink-0 w-[140px] snap-center bg-white rounded-2xl p-4 flex flex-col gap-[14px] shadow-[0px_2px_15px_0px_rgba(0,0,0,0.1)] cursor-pointer relative border-2',
+                    isSelected ? 'border-[#78b9ff] shadow-[0px_0px_8px_0px_rgba(0,122,255,0.5)]' : 'border-transparent'
                   )}
                   whileTap={{ scale: 0.92 }}
                   transition={{
@@ -335,7 +335,12 @@ export default function SubscriptionPlans() {
                   <div className="flex flex-col gap-[14px]">
                     <Crown className="w-4 h-4 text-slate-800" />
                     <div className="flex flex-col gap-1">
-                      <p className="text-[12px] font-medium text-black leading-[1.076]">
+                      <p className={cn(
+                        "text-[12px] font-medium leading-[1.076]",
+                        plan.plan_name === 'Premium' 
+                          ? 'text-blue-500 drop-shadow-[0_0_1px_rgba(0,122,255,0.3)]' 
+                          : 'text-black'
+                      )}>
                         {plan.plan_name}
                       </p>
                       <div className="flex items-baseline gap-0.5">
