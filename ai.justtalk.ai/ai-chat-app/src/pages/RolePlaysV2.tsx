@@ -960,9 +960,9 @@ export default function RolePlaysV2() {
                               {/* Text Content with inline badge */}
                               <div className="w-full pl-4 pr-4">
                                 {/* Name with inline checkmark badge and message count */}
-                                <div className="flex items-center justify-between gap-2 mb-3">
+                                <div className="flex items-start justify-between gap-2 mb-3">
                                   <h3 className="text-lg font-semibold text-gray-900">{personality.name}</h3>
-                                  <div className="flex items-center gap-1.5 text-gray-500">
+                                  <div className="flex items-center gap-1.5 text-gray-500 pt-1">
                                     <MessagesSquare className="w-4 h-4" />
                                     <span className="text-sm font-normal">{getMessageCount(personality.name).toLocaleString()}</span>
                                   </div>
