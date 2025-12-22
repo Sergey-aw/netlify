@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
-import { Play, Lock, ChevronRight, Trophy, Clock, PanelLeft, Archive, RotateCcw, Loader2, MessageCircle, Star, TrendingUp, Target, AlertCircle, Bookmark, X } from 'lucide-react';
+import { Play, Lock, ChevronRight, Trophy, Clock, PanelLeft, Archive, RotateCcw, Loader2, MessageCircle, Star, TrendingUp, Target, AlertCircle, Bookmark, X, MessagesSquare } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -214,6 +214,30 @@ export default function RolePlaysV2() {
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
     return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+  };
+
+  // Generate consistent message count for each personality
+  const getMessageCount = (personalityName: string) => {
+    // Create a hash from the personality name for consistency
+    const hash = personalityName.split('').reduce((acc, char) => {
+      return char.charCodeAt(0) + ((acc << 5) - acc);
+    }, 0);
+    
+    // Base number between 5000-15000 based on personality name (more diverse range)
+    const baseNumber = 5000 + (Math.abs(hash) % 10001);
+    
+    // Calculate time since Dec 22, 2025
+    const startDate = new Date('2025-12-22').getTime();
+    const now = new Date();
+    const currentTime = now.getTime();
+    
+    // Calculate total minutes passed since start date
+    const minutesPassed = Math.floor((currentTime - startDate) / (1000 * 60));
+    
+    // Minute increase between 100-300 per minute
+    const minuteIncrease = 100 + ((Math.abs(hash * 7) % 201));
+    
+    return baseNumber + Math.floor(minutesPassed * minuteIncrease);
   };
 
   const getStatusIcon = (status?: StudentProgress['status']) => {
@@ -934,15 +958,17 @@ export default function RolePlaysV2() {
                                 />
                               </motion.div>
                               {/* Text Content with inline badge */}
-                              <div className="w-full pl-5">
-                                {/* Name with inline checkmark badge */}
-                                <div className="flex items-center gap-2 mb-3">
+                              <div className="w-full pl-4 pr-4">
+                                {/* Name with inline checkmark badge and message count */}
+                                <div className="flex items-center justify-between gap-2 mb-3">
                                   <h3 className="text-lg font-semibold text-gray-900">{personality.name}</h3>
-                    
-                                  
+                                  <div className="flex items-center gap-1.5 text-gray-500">
+                                    <MessagesSquare className="w-4 h-4" />
+                                    <span className="text-sm font-normal">{getMessageCount(personality.name).toLocaleString()}</span>
+                                  </div>
                                 </div>
                                 {/* Description */}
-                                <p className="text-sm text-gray-500 text-left leading-normal line-clamp-2">
+                                <p className="text-sm text-gray-500 text-left leading-normal line-clamp-3">
                                   {personality.description}
                                 </p>
                               </div>
