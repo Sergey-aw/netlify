@@ -34,6 +34,32 @@ import LogoBars from '@/assets/logo_bars.svg';
 import Logo from '@/assets/logo.svg';
 import { cn } from '@/lib/utils';
 
+// Helper function to convert image URL to use _avatar suffix
+const getAvatarUrl = (imageUrl: string | null | undefined): string | undefined => {
+  if (!imageUrl) return undefined;
+  
+  // Split the path and filename
+  const lastDotIndex = imageUrl.lastIndexOf('.');
+  const lastSlashIndex = imageUrl.lastIndexOf('/');
+  
+  if (lastDotIndex > lastSlashIndex && lastDotIndex !== -1) {
+    const basePath = imageUrl.substring(0, lastDotIndex);
+    const extension = imageUrl.substring(lastDotIndex);
+    
+    // Check if it's a dating_ prefixed image (male characters have _avatar versions)
+    const filename = basePath.substring(lastSlashIndex + 1);
+    if (filename.startsWith('dating_')) {
+      return `${basePath}_avatar${extension}`;
+    }
+    
+    // For other images (female characters: Alina, Clara, Imani, Lucia, Naomi)
+    // they don't have _avatar versions, so just return the original
+    return imageUrl;
+  }
+  
+  return imageUrl;
+};
+
 export default function AIChatHome() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -514,7 +540,7 @@ export default function AIChatHome() {
                   >
                     {message.role === 'assistant' && (
                       <Avatar className="w-8 h-8 flex-shrink-0">
-                        <AvatarImage src={(conversationFeedback?.justai_agents as any)?.[0]?.image_url || (conversationFeedback?.justai_agents as any)?.image_url} />
+                        <AvatarImage src={getAvatarUrl((conversationFeedback?.justai_agents as any)?.[0]?.image_url || (conversationFeedback?.justai_agents as any)?.image_url)} />
                         <AvatarFallback>🤖</AvatarFallback>
                       </Avatar>
                     )}

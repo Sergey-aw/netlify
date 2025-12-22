@@ -51,6 +51,9 @@ function App() {
           <Toaster />
           <OnboardingResumeHandler />
           <Routes>
+            {/* Root Route - Handled by OnboardingResumeHandler */}
+            <Route path="/" element={<WelcomeProgress />} />
+            
             {/* Public Routes - Welcome Screens First */}
             <Route path="/welcome" element={<WelcomeProgress />} />
             <Route path="/welcome/features" element={<WelcomeFeatures />} />

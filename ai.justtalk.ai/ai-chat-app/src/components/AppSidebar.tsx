@@ -27,6 +27,32 @@ import {
 import { supabase } from '@/lib/supabase';
 import Logo from '@/assets/logo.svg';
 
+// Helper function to convert image URL to use _avatar suffix
+const getAvatarUrl = (imageUrl: string | null | undefined): string | undefined => {
+  if (!imageUrl) return undefined;
+  
+  // Split the path and filename
+  const lastDotIndex = imageUrl.lastIndexOf('.');
+  const lastSlashIndex = imageUrl.lastIndexOf('/');
+  
+  if (lastDotIndex > lastSlashIndex && lastDotIndex !== -1) {
+    const basePath = imageUrl.substring(0, lastDotIndex);
+    const extension = imageUrl.substring(lastDotIndex);
+    
+    // Check if it's a dating_ prefixed image (male characters have _avatar versions)
+    const filename = basePath.substring(lastSlashIndex + 1);
+    if (filename.startsWith('dating_')) {
+      return `${basePath}_avatar${extension}`;
+    }
+    
+    // For other images (female characters: Alina, Clara, Imani, Lucia, Naomi)
+    // they don't have _avatar versions, so just return the original
+    return imageUrl;
+  }
+  
+  return imageUrl;
+};
+
 interface AppSidebarProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -255,7 +281,7 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
                             >
                               <div className="flex items-center gap-3 w-full">
                                 <Avatar className="w-8 h-8 flex-shrink-0">
-                                  <AvatarImage src={conv.justai_agents?.image_url} />
+                                  <AvatarImage src={getAvatarUrl(conv.justai_agents?.image_url)} />
                                   <AvatarFallback>
                                     <MessageSquare className="w-4 h-4" />
                                   </AvatarFallback>
