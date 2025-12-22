@@ -1030,7 +1030,6 @@ export default function RolePlaysV2() {
                           </Badge>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground mb-3">{agent.description}</p>
                       <div className="flex flex-wrap gap-2">
                         {agent.difficulty_level && (
                           <Badge variant="outline" className="text-xs">
@@ -1128,7 +1127,6 @@ export default function RolePlaysV2() {
             </Button>
             <div className="flex-1">
               <h1 className="text-xl font-semibold">{selectedAgent.name}</h1>
-              <p className="text-sm text-muted-foreground">{selectedAgent.description}</p>
             </div>
           </div>
         </header>
