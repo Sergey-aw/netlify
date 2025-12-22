@@ -119,11 +119,22 @@ export async function getAgentsByCategory(userId: string, personalityFilter?: st
       !a.progress || a.progress.status === 'unlocked' || a.progress.status === 'in_progress'
     ).length;
 
+    // Count total scenarios including all steps
+    const totalAgents = agents.reduce((total, agent) => {
+      // Count the parent/single agent itself
+      let count = 1;
+      // If it's multi-step, add the number of child steps
+      if (agent.is_multi_step && agent.steps) {
+        count += agent.steps.length;
+      }
+      return total + count;
+    }, 0);
+
     return {
       category,
       icon: agents[0]?.icon || '📚',
       agents,
-      totalAgents: agents.length,
+      totalAgents,
       completedAgents,
       unlockedAgents,
     };
