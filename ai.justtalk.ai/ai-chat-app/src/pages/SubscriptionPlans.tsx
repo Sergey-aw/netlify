@@ -225,6 +225,7 @@ export default function SubscriptionPlans() {
               maxWidth: '390px',
             }}
           >
+         
             <div className="relative overflow-hidden rounded-2xl glass-container">
               {/* Glass effect base */}
               <div 
@@ -252,7 +253,7 @@ export default function SubscriptionPlans() {
                   style={{
                     borderRadius: 'inherit',
                     padding: '1px',
-                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))',
+                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.2))',
                     WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
                     WebkitMaskComposite: 'xor',
                     maskComposite: 'exclude',
@@ -267,7 +268,7 @@ export default function SubscriptionPlans() {
                 {/* Content */}
                 <div className="relative z-10 flex-1 min-w-0">
                   <p className="text-sm font-medium leading-normal" style={{ color: '#064589' }}>
-                    Get <span style={{ color: '#007aff' }}>premium</span> for basic price — apply <span style={{ color: '#007aff' }}>JUST-2026</span> coupon code during checkout.
+                    Use code <span style={{ color: '#007aff' }}>JUST-2026</span> to get <span style={{ color: '#007aff' }}>Premium</span> for the price of Basic.
                   </p>
                 </div>
                 
@@ -286,6 +287,35 @@ export default function SubscriptionPlans() {
                   ×
                 </button>
               </div>
+                 {/* Small Green Badge - Centered */}
+           
+
+            </div>
+             <div 
+              className="relative flex items-center justify-center px-2.5 py-1 rounded-lg -mb-2  -inset-y-2"
+              style={{
+                background: 'rgba(13, 255, 0, 0.15)',
+                backdropFilter: 'blur(8px) saturate(140%)',
+                WebkitBackdropFilter: 'blur(8px) saturate(140%)',
+                width: 'fit-content',
+                margin: '0 auto 8px auto',
+              }}
+            >
+              {/* Gradient border effect */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  borderRadius: 'inherit',
+                  padding: '1px',
+                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.2))',
+                  WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                  WebkitMaskComposite: 'xor',
+                  maskComposite: 'exclude',
+                }}
+              />
+              <p className="text-xs font-medium text-[#035f07] whitespace-nowrap relative z-10">
+                New Year special
+              </p>
             </div>
           </motion.div>
         )}
