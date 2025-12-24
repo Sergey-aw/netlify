@@ -8,8 +8,8 @@ export default {
   theme: {
 	extend: {
 		fontFamily: {
-			sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-			din: ['"DIN Round Pro"', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+			sans: ['Inter Tight', 'system-ui', '-apple-system', 'sans-serif'],
+			din: ['"DIN Round Pro"', 'Inter Tight', 'system-ui', '-apple-system', 'sans-serif'],
 		},
   		borderRadius: {
   			lg: 'var(--radius)',

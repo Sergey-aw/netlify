@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -27,6 +26,7 @@ import {
 } from '@/components/ui/drawer';
 import { AppSidebar } from '@/components/AppSidebar';
 import { VoiceButtonTransition } from '@/components/VoiceButtonTransition';
+import { FeatureCardGallery } from '@/components/FeatureCardGallery';
 import { supabase } from '@/lib/supabase';
 import { checkSubscriptionAccess } from '@/lib/justai-api';
 import { getAgentsByCategory } from '@/services/agents.service';
@@ -79,6 +79,7 @@ export default function AIChatHome() {
     },
     minSwipeDistance: 50,
     maxVerticalDistance: 100,
+    ignoreSelectors: ['[data-swipe-ignore="true"]'],
   });
 
   // Handle URL query parameter or location state for auto-selecting conversation
@@ -647,14 +648,14 @@ export default function AIChatHome() {
               <div className="flex justify-center pt-8">
                 <img src={Logo} alt="JustTalk AI" className="h-8" />
               </div>
-              <main className="flex-1 flex flex-col justify-center max-w-2xl mx-auto px-6 w-full">
+              <main className="flex-1 flex flex-col justify-center max-w-2xl mx-auto w-full">
                 {/* Greeting */}
-                <div className="text-center mb-12">
+                <div className="text-center mb-12 px-6">
                   {userLoading ? (
                     <div className="text-gray-400">Loading...</div>
                   ) : (
                     <>
-                      <h1 className="text-4xl font-semibold text-gray-900">
+                      {/* <h1 className="text-xl font-semibold text-gray-900">
                         Good to see you,
                       </h1>
                       <h2 className="text-4xl font-semibold text-gray-400 mb-6">
@@ -662,52 +663,14 @@ export default function AIChatHome() {
                       </h2>
                       <p className="text-gray-500 text-base">
                         JustTalk AI your personal AI Teacher.
-                      </p>
+                      </p> */}
                     </>
                   )}
                 </div>
 
-                {/* Navigation Cards */}
+                {/* Feature Card Gallery */}
                 <div className="mb-6">
-                  <div className="flex flex-wrap gap-3 justify-center">
-                    <Card
-                      className="px-3 py-1 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all bg-white border border-gray-200 shadow-sm"
-                      onClick={() => navigate('/ai-chat/conversation/new')}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-xl">⭐️</span>
-                        <p className="text-base font-normal text-gray-700">JustTalk</p>
-                      </div>
-                    </Card>
-                    <Card
-                      className="px-3 py-1 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all bg-white border border-gray-200 shadow-sm"
-                      onClick={() => navigate('/role-plays')}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-xl">💭</span>
-                        <p className="text-base font-normal text-gray-700">Role-plays</p>
-                      </div>
-                    </Card>
-                    <Card
-                      className="px-3 py-1 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all bg-white border border-gray-200 shadow-sm"
-                      onClick={() => navigate('/dictionary')}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-xl">📖</span>
-                        <p className="text-base font-normal text-gray-700">Dictionary</p>
-                      </div>
-                    </Card>
-                    <Card
-                      className="px-3 py-1 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all bg-white border border-gray-200 shadow-sm"
-                      onClick={() => navigate('/profile')}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-xl">👤</span>
-                        <p className="text-base font-normal text-gray-700">Profile</p>
-                      </div>
-                    </Card>
-                  </div>
-                  
+                  <FeatureCardGallery onNavigate={(route) => navigate(route)} />
                 </div>
               </main>
             </>
