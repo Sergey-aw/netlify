@@ -8,7 +8,7 @@ import Logo from '@/assets/logo.svg';
 import { PersonalityCarousel } from '@/components/PersonalityCarousel';
 import { RolePlayCarousel } from '@/components/RolePlayCarousel';
 
-const CARD_STACK_HEIGHT = 320;
+const CARD_STACK_HEIGHT = 350;
 
 const steps = [
   {
@@ -65,16 +65,16 @@ export default function WelcomeProgress() {
     
       <div className="w-full h-full max-w-md flex flex-col justify-between py-4">
         {/* Logo */}
-        <div className="flex justify-center mb-8">
-          <img src={Logo} alt="JustTalk" className="h-8" />
+        <div className="flex justify-center mb-2">
+          <img src={Logo} alt="JustTalk" className="h-7" />
         </div>
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col justify-center">
           {/* Heading - Fixed height container */}
-          <div className="text-center px-4" style={{ minHeight: '80px', marginBottom: '16px' }}>
+          <div className="text-center px-4" style={{ minHeight: '80px', marginBottom: '14px' }}>
             {/* Title */}
-            <div className="relative font-din overflow-hidden" style={{ height: '90px', marginBottom: '8px' }}>
+            <div className="relative font-din overflow-hidden" style={{ height: '90px', marginBottom: '4px' }}>
               <AnimatePresence mode="wait">
                 <motion.div
                   key={`title-${step.id}`}
@@ -92,7 +92,7 @@ export default function WelcomeProgress() {
             </div>
             
             {/* Subtitle */}
-            <div className="relative overflow-hidden" style={{ height: '80px' }}>
+            <div className="relative overflow-hidden" style={{ height: '60px' }}>
               <AnimatePresence mode="wait">
                 <motion.div
                   key={`subtitle-${step.id}`}
@@ -102,7 +102,7 @@ export default function WelcomeProgress() {
                   transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1], delay: 0.1 }}
                   className="absolute inset-0 flex items-center justify-center"
                 >
-                  <p className="text-lg font-medium text-[#5983B3] leading-tight whitespace-pre-line">
+                  <p className="text-base font-medium text-[#5983B3] leading-tight whitespace-pre-line">
                     {step.subtitle}
                   </p>
                 </motion.div>
