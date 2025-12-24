@@ -6,6 +6,11 @@ import { Card } from '@/components/ui/card';
 import { MessageCircle, Target, TrendingUp } from 'lucide-react';
 import Logo from '@/assets/logo.svg';
 import bgWelcome from '@/assets/bg_welcome.jpg';
+import progressWordsAcquired from '@/assets/progress-words-acquired.png';
+import progressCefrLevel from '@/assets/progress-cefr-level.png';
+import progressMlScore from '@/assets/progress-ml-score.png';
+import progressPronunciation from '@/assets/progress-pronunciation.png';
+import progressSpeakWords from '@/assets/progress-speak-words.png';
 import { PersonalityCarousel } from '@/components/PersonalityCarousel';
 import { RolePlayCarousel } from '@/components/RolePlayCarousel';
 
@@ -44,6 +49,13 @@ const steps = [
       { icon: TrendingUp, title: "Expert tutors", desc: "Get human feedback and guidance" },
       { icon: TrendingUp, title: "Seamless sync", desc: "Same progress across both methods" },
     ]
+  },
+  {
+    id: 4,
+    title: "Turn conversations\ninto progress",
+    subtitle: "See how your speaking improves after every conversation",
+    background: "bg-gradient-to-br from-blue-300/80 via-blue-50 to-blue-100/20",
+    showProgress: true
   }
 ];
 
@@ -139,6 +151,104 @@ export default function WelcomeProgress() {
                     className="absolute inset-0"
                   >
                     <RolePlayCarousel />
+                  </motion.div>
+                ) : step.id === 4 ? (
+                  <motion.div
+                    key="progress-stats"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
+                    className="absolute inset-0 flex items-center justify-center"
+                  >
+                    <div className="relative w-full h-full">
+                      {/* Top Left - Words Acquired */}
+                      <motion.div
+                        initial={{ x: -40, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ delay: 0.1, duration: 0.4 }}
+                        className="absolute rounded-[16px] shadow-[0px_4px_15px_0px_rgba(0,0,0,0.15)]"
+                        style={{ left: '10px', top: '20px', width: '140px', height: '66px' }}
+                      >
+                        <img 
+                          src={progressWordsAcquired} 
+                          alt="Words acquired" 
+                          className="absolute inset-0 w-full h-full object-contain"
+                        />
+                      </motion.div>
+
+                      {/* Top Right - Pronunciation */}
+                      <motion.div
+                        initial={{ x: 40, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ delay: 0.15, duration: 0.4 }}
+                        className="absolute"
+                        style={{ left: '200px', top: '0px', width: '86px', height: '92px' }}
+                      >
+                        <div className="absolute" style={{ inset: '-11.96% -17.44% -20.65% -17.44%' }}>
+                          <img 
+                            src={progressPronunciation} 
+                            alt="Pronunciation" 
+                            width="114" 
+                            height="122"
+                            className="block max-w-none w-full h-full"
+                          />
+                        </div>
+                      </motion.div>
+
+                      {/* Center - Speak & New Words */}
+                      <motion.div
+                        initial={{ y: 20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ delay: 0.2, duration: 0.4 }}
+                        className="absolute rounded-[16px] shadow-[0px_4px_15px_0px_rgba(0,0,0,0.15)]"
+                        style={{ left: '134px', top: '120px' }}
+                      >
+                        <div className="relative" style={{ width: '180px', height: '94px' }}>
+                          <img 
+                            src={progressSpeakWords} 
+                            alt="Speak and New words" 
+                            className="absolute inset-0 w-full h-full object-contain"
+                          />
+                        </div>
+                      </motion.div>
+
+                      {/* Bottom Left - CEFR Level */}
+                      <motion.div
+                        initial={{ x: -40, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ delay: 0.25, duration: 0.4 }}
+                        className="absolute"
+                        style={{ left: '15px', top: '170px', width: '84px', height: '90px' }}
+                      >
+                        <div className="absolute" style={{ inset: '-12.22% -17.86% -21.11% -17.86%' }}>
+                          <img 
+                            src={progressCefrLevel} 
+                            alt="CEFR Level" 
+                            width="114" 
+                            height="120"
+                            className="block max-w-none w-full h-full"
+                          />
+                        </div>
+                      </motion.div>
+
+                      {/* Bottom Right - ML Score */}
+                      <motion.div
+                        initial={{ x: 40, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ delay: 0.3, duration: 0.4 }}
+                        className="absolute"
+                        style={{ left: '146px', top: '220px', width: '155px' }}
+                      >
+                        <img 
+                          src={progressMlScore} 
+                          alt="ML score" 
+                          width="159" 
+                          height="170"
+                          className="block max-w-none w-full h-full object-contain"
+                        />
+                      </motion.div>
+                    </div>
                   </motion.div>
                 ) : (
                   <motion.div
