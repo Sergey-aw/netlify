@@ -355,7 +355,7 @@ export default function WelcomeProgress() {
                     exit={{ opacity: 0, x: -40 }}
                     transition={{ duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
                   >
-                    {step.cards.map((card, index) => (
+                    {step.cards?.map((card, index) => (
                       <motion.div
                         key={`card-${step.id}-${index}`}
                         custom={index}
