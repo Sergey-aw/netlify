@@ -129,7 +129,7 @@ function ScrollingRow({ rolePlays, direction = 'left', offset = 0 }: ScrollingRo
   const duplicatedRolePlays = [...rolePlays, ...rolePlays, ...rolePlays];
 
   return (
-    <div className="relative overflow-visible w-full py-0">
+    <div className="relative overflow-hidden w-full py-0 max-w-full">
       <motion.div
         className="flex gap-4"
         drag="x"
@@ -150,7 +150,7 @@ function ScrollingRow({ rolePlays, direction = 'left', offset = 0 }: ScrollingRo
 
 export function RolePlayCarousel() {
   return (
-    <div className="flex flex-col gap-4 w-full">
+    <div className="flex flex-col gap-4 w-full overflow-hidden max-w-full">
       <ScrollingRow rolePlays={row1RolePlays} direction="left" offset={0} />
       <ScrollingRow rolePlays={row2RolePlays} direction="left" offset={-60} />
       <ScrollingRow rolePlays={row3RolePlays} direction="left" offset={-120} />

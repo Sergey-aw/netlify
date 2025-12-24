@@ -108,7 +108,7 @@ function ScrollingRow({ personas, direction = 'left', offset = 0 }: ScrollingRow
   const duplicatedPersonas = [...personas, ...personas, ...personas];
 
   return (
-    <div className="relative overflow-visible w-full py-0">
+    <div className="relative overflow-hidden w-full py-0 max-w-full">
       <motion.div
         className="flex gap-4"
         drag="x"
@@ -129,7 +129,7 @@ function ScrollingRow({ personas, direction = 'left', offset = 0 }: ScrollingRow
 
 export function PersonalityCarousel() {
   return (
-    <div className="flex flex-col gap-4 w-full">
+    <div className="flex flex-col gap-4 w-full overflow-hidden max-w-full">
       <ScrollingRow personas={row1Personas} direction="left" offset={0} />
       <ScrollingRow personas={row2Personas} direction="left" offset={-80} />
     </div>

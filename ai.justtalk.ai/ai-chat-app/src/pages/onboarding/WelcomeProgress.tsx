@@ -111,7 +111,7 @@ export default function WelcomeProgress() {
           </div>
 
           {/* Feature Cards */}
-          <div className="px-2">
+          <div className={step.id === 2 || step.id === 3 ? '-mx-6' : 'px-2'}>
             <div className="relative" style={{ height: `${CARD_STACK_HEIGHT}px` }}>
               <AnimatePresence mode="wait">
                 {step.id === 2 ? (
@@ -168,10 +168,10 @@ export default function WelcomeProgress() {
                             </div>
                             {/* Text */}
                             <div className="flex-1">
-                              <h3 className="text-base font-semibold text-gray-900 mb-1">
+                              <h3 className="text-sm font-semibold text-gray-900 mb-0">
                                 {card.title}
                               </h3>
-                              <p className="text-base text-gray-500">
+                              <p className="text-sm text-gray-500">
                                 {card.desc}
                               </p>
                             </div>
