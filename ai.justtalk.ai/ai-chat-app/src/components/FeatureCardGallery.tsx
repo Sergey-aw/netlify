@@ -88,7 +88,7 @@ export function FeatureCardGallery({ onNavigate }: FeatureCardGalleryProps) {
             return (
               <CarouselItem key={card.id} className="pl-2 basis-[85%]">
                 <motion.div
-                  className="relative w-full h-[446px] rounded-2xl overflow-hidden cursor-pointer"
+                  className="relative w-full h-[330px] rounded-2xl overflow-hidden cursor-pointer"
                   onClick={() => onNavigate(card.route)}
                   whileTap={{ scale: 0.98 }}
                   animate={{
@@ -147,8 +147,8 @@ export function FeatureCardGallery({ onNavigate }: FeatureCardGalleryProps) {
             onClick={() => carouselApi?.scrollTo(index)}
             className={`h-2 rounded-full transition-all ${
               index === currentIndex
-                ? 'w-8 bg-white'
-                : 'w-2 bg-white/40'
+                ? 'w-8 bg-slate-400'
+                : 'w-2 bg-slate-400/20'
             }`}
             aria-label={`Go to slide ${index + 1}`}
           />
