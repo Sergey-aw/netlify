@@ -13,6 +13,7 @@ import { useSession } from '@/hooks/useSession';
 import { updateOnboardingStep } from '@/lib/onboarding-state';
 import type { SubscriptionPlan } from '@/lib/justai-types';
 import { AppSidebar } from '@/components/AppSidebar';
+import bgWelcome from '@/assets/bg_welcome.jpg';
 
 export default function SubscriptionPlans() {
   const navigate = useNavigate();
@@ -179,10 +180,8 @@ export default function SubscriptionPlans() {
 
   return (
     <div 
-      className="min-h-screen bg-gradient-to-r from-[#efefef] to-[#efefef] relative overflow-hidden"
-      style={{
-        backgroundImage: "url('data:image/svg+xml;utf8,<svg viewBox=\"0 0 402 874\" xmlns=\"http://www.w3.org/2000/svg\" preserveAspectRatio=\"none\"><rect x=\"0\" y=\"0\" height=\"100%\" width=\"100%\" fill=\"url(%23grad)\" opacity=\"0.5\"/><defs><radialGradient id=\"grad\" gradientUnits=\"userSpaceOnUse\" cx=\"0\" cy=\"0\" r=\"10\" gradientTransform=\"matrix(0.15 42.55 -43.111 0.15198 190.5 -160)\"><stop stop-color=\"rgba(0,122,255,0.5)\" offset=\"0\"/><stop stop-color=\"rgba(32,139,255,0.5625)\" offset=\"0.125\"/><stop stop-color=\"rgba(64,155,255,0.625)\" offset=\"0.25\"/><stop stop-color=\"rgba(128,189,255,0.75)\" offset=\"0.5\"/><stop stop-color=\"rgba(191,222,255,0.875)\" offset=\"0.75\"/><stop stop-color=\"rgba(255,255,255,1)\" offset=\"1\"/></radialGradient></defs></svg>')"
-      }}
+      className="min-h-screen relative overflow-hidden bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: `url(${bgWelcome})` }}
     >
       {/* Sidebar */}
       <AppSidebar open={showSidebar} onOpenChange={setShowSidebar} />
@@ -194,9 +193,9 @@ export default function SubscriptionPlans() {
           <h1 className="text-[32px] font-bold text-[#39597d] leading-[1.076]">
             Choose your plan
           </h1>
-          <p className="text-[16px] font-medium text-[#5983b3]">
+          {/* <p className="text-[16px] font-medium text-[#5983b3]">
             Start learning today
-          </p>
+          </p> */}
         </div>
 
         {/* Alert Messages */}
@@ -229,24 +228,60 @@ export default function SubscriptionPlans() {
         )}
 
         {/* Benefits Section */}
-        <div className="flex flex-col gap-0 mb-6">
-          {selectedPlanName && plans ? (
-            plans.find(p => p.plan_name === selectedPlanName)?.features.slice(0, 3).map((feature, idx) => (
-              <div key={idx} className="flex gap-[10px] items-start px-3 py-1">
-                <div className="w-16 h-[63px] bg-white flex flex-col items-center overflow-hidden rounded-lg shrink-0">
-                  <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.5" />
-                </div>
-                <div className="flex-1 flex flex-col gap-1 min-w-0">
-                  <p className="text-base font-semibold text-black leading-normal whitespace-nowrap">
-                    Feature {idx + 1}
+        <div className="flex flex-col gap-0 mb-6 h-[280px]">
+          {selectedPlanName && plans ? (() => {
+            const selectedPlan = plans.find(p => p.plan_name === selectedPlanName);
+            const features = selectedPlan?.features;
+            const isStructured = features && typeof features === 'object' && !Array.isArray(features) && 'items' in features;
+            
+            return isStructured ? (
+              <div className="px-3 py-1 space-y-4">
+                {/* {features.title && (
+                  <h4 className="font-bold text-black text-base">
+                    {features.title}
+                  </h4>
+                )}
+                {features.subtitle && (
+                  <p className="text-sm text-[#7b7b7b] font-semibold">
+                    {features.subtitle}
                   </p>
-                  <p className="text-sm font-medium text-[#7b7b7b] leading-normal min-w-full">
-                    {feature}
-                  </p>
+                )} */}
+                <div className="space-y-3">
+                  {features.items.slice(0, 3).map((item, idx) => (
+                    <div key={idx} className="flex gap-[10px] items-start">
+                      <div className="w-16 h-[63px] bg-white flex flex-col items-center overflow-hidden rounded-lg shrink-0">
+                        <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.5" />
+                      </div>
+                      <div className="flex-1 flex flex-col gap-1 min-w-0">
+                        <p className="text-base font-medium text-black leading-normal">
+                          {item.name}
+                        </p>
+                        <p className="text-sm font-medium text-[#7b7b7b] leading-normal">
+                          {item.description}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))
-          ) : (
+            ) : (
+              (features as string[])?.slice(0, 3).map((feature, idx) => (
+                <div key={idx} className="flex gap-[10px] items-start px-3 py-1">
+                  <div className="w-16 h-[63px] bg-white flex flex-col items-center overflow-hidden rounded-lg shrink-0">
+                    <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.5" />
+                  </div>
+                  <div className="flex-1 flex flex-col gap-1 min-w-0">
+                    <p className="text-base font-semibold text-black leading-normal whitespace-nowrap">
+                      Feature {idx + 1}
+                    </p>
+                    <p className="text-sm font-medium text-[#7b7b7b] leading-normal min-w-full">
+                      {feature}
+                    </p>
+                  </div>
+                </div>
+              ))
+            );
+          })() : (
             [1, 2, 3].map((idx) => (
               <div key={idx} className="flex gap-[10px] items-start px-8 py-3">
                 <div className="w-16 h-[63px] bg-white flex flex-col items-center overflow-hidden rounded-lg shrink-0">
@@ -268,11 +303,11 @@ export default function SubscriptionPlans() {
         {/* Plan Selection Section */}
         <div className="flex flex-col gap-4 px-0 py-[3px] flex-1">
           {/* Section Title */}
-          <div className="flex justify-center items-center w-full">
+          {/* <div className="flex justify-center items-center w-full">
             <p className="text-[16px] font-semibold text-black">
               Choose the plan fits your needs
             </p>
-          </div>
+          </div> */}
 
           {/* Tabs Component */}
           <div className="flex justify-center w-full px-[60px]">
@@ -323,8 +358,8 @@ export default function SubscriptionPlans() {
             </div>
           </div>
 
-          {/* Plan Cards - Scrollable Horizontal */}
-          <div className="flex gap-6 overflow-x-auto px-6 py-4 -mx-6 snap-x snap-mandatory scrollbar-hide plan-cards-container">
+          {/* Plan Cards - Centered */}
+          <div className="flex gap-6 justify-center px-6 py-4 plan-cards-container">
             {plans?.map((plan) => {
               const monthlyPrice = billingCycle === 'annual'
                 ? plan.monthly_equivalent_cents / 100
@@ -364,7 +399,7 @@ export default function SubscriptionPlans() {
                     )}
                     <div className="flex flex-col gap-1">
                       <p className={cn(
-                        "text-[12px] font-medium leading-[1.076]",
+                        "text-[14px] font-normal leading-[1.076]",
                         plan.plan_name === 'Premium' 
                           ? 'text-blue-500 drop-shadow-[0_0_1px_rgba(0,122,255,0.3)]' 
                           : 'text-black'
@@ -372,7 +407,7 @@ export default function SubscriptionPlans() {
                         {plan.plan_name}
                       </p>
                       <div className="flex items-baseline gap-0.5">
-                        <span className="text-[16px] font-semibold text-black">
+                        <span className="text-[18px] font-semibold text-black">
                           ${monthlyPrice.toFixed(2)}
                         </span>
                         <span className="text-[12px] font-medium text-black">/</span>
@@ -380,9 +415,9 @@ export default function SubscriptionPlans() {
                       </div>
                     </div>
                   </div>
-                  <p className="text-[12px] font-medium text-black leading-[1.076]">
+                  {/* <p className="text-[12px] font-medium text-black leading-[1.076]">
                     Free 7-day trial
-                  </p>
+                  </p> */}
                 </motion.div>
               );
             })}

@@ -98,7 +98,7 @@ export default function PronunciationAssessment() {
         <div className="w-full h-full max-w-md flex flex-col justify-between py-4">
           {/* Logo */}
           <div className="flex justify-center mb-8">
-            <img src={Logo} alt="JustTalk" className="h-8" />
+            <img src={Logo} alt="JustTalk" className="h-7" />
           </div>
 
           {/* Main Content */}
@@ -239,7 +239,7 @@ export default function PronunciationAssessment() {
       <div className="w-full h-full max-w-md flex flex-col justify-between py-4">
         {/* Logo */}
         <div className="flex justify-center mb-8">
-          <img src={Logo} alt="JustTalk" className="h-8" />
+          <img src={Logo} alt="JustTalk" className="h-7" />
         </div>
 
         {/* Main Content */}
@@ -270,13 +270,13 @@ export default function PronunciationAssessment() {
           </div>
 
           {/* Tips */}
-          <div className="px-2 mb-4">
+          {/* <div className="px-2 mb-4">
             <div className="bg-white rounded-3xl p-4 shadow-md">
               <p className="text-sm text-gray-700 text-center">
                 <strong>Tip:</strong> Find a quiet place and speak clearly at a natural pace
               </p>
             </div>
-          </div>
+          </div> */}
 
           {/* Recording Status */}
           {isRecording && (

@@ -1,5 +1,16 @@
 // JustAI Supabase client types and utilities
 
+export interface FeatureItem {
+  name: string;
+  description: string;
+}
+
+export interface PlanFeatures {
+  title?: string;
+  subtitle?: string;
+  items: FeatureItem[];
+}
+
 export interface SubscriptionPlan {
   id: string;
   plan_name: string;
@@ -13,7 +24,7 @@ export interface SubscriptionPlan {
   discount_percentage: number;
   stripe_price_id: string;
   stripe_product_id: string;
-  features: string[];
+  features: PlanFeatures | string[]; // Support both old and new format
   is_active: boolean;
   is_featured: boolean;
   display_order: number;

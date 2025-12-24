@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MessageCircle, Target, TrendingUp } from 'lucide-react';
 import Logo from '@/assets/logo.svg';
+import bgWelcome from '@/assets/bg_welcome.jpg';
 import { PersonalityCarousel } from '@/components/PersonalityCarousel';
 import { RolePlayCarousel } from '@/components/RolePlayCarousel';
 
@@ -61,7 +62,10 @@ export default function WelcomeProgress() {
   const step = steps[currentStep];
 
   return (
-     <div className="h-screen bg-[radial-gradient(circle_at_top_left,rgba(147,197,253,0.8)_0%,rgba(239,246,255,0.2)_50%,white_100%)] flex items-center justify-center p-6">
+     <div 
+      className="h-screen flex items-center justify-center p-6 bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: `url(${bgWelcome})` }}
+    >
     
       <div className="w-full h-full max-w-md flex flex-col justify-between py-4">
         {/* Logo */}
