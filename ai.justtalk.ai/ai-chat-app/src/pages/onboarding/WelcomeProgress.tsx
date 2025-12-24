@@ -112,7 +112,7 @@ export default function WelcomeProgress() {
 
           {/* Feature Cards */}
           <div className={step.id === 2 || step.id === 3 ? '-mx-6' : 'px-2'}>
-            <div className="relative" style={{ height: `${CARD_STACK_HEIGHT}px` }}>
+            <div className="relative " style={{ height: `${CARD_STACK_HEIGHT}px` }}>
               <AnimatePresence mode="wait">
                 {step.id === 2 ? (
                   <motion.div
@@ -139,7 +139,7 @@ export default function WelcomeProgress() {
                 ) : (
                   <motion.div
                     key={`card-set-${step.id}`}
-                    className="absolute inset-0 space-y-6"
+                    className="absolute inset-0 space-y-4 flex flex-col justify-center"
                     initial={{ opacity: 0, x: 40 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -40 }}
