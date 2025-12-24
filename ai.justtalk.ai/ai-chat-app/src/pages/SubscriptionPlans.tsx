@@ -5,7 +5,7 @@ import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { Check, AlertCircle, Crown, ChessQueen, CreditCard, Infinity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { createCheckoutSession } from '@/lib/justai-api';
@@ -228,76 +228,111 @@ export default function SubscriptionPlans() {
         )}
 
         {/* Benefits Section */}
-        <div className="flex flex-col gap-0 mb-6 h-[280px]">
-          {selectedPlanName && plans ? (() => {
-            const selectedPlan = plans.find(p => p.plan_name === selectedPlanName);
-            const features = selectedPlan?.features;
-            const isStructured = features && typeof features === 'object' && !Array.isArray(features) && 'items' in features;
-            
-            return isStructured ? (
-              <div className="px-3 py-1 space-y-4">
-                {/* {features.title && (
-                  <h4 className="font-bold text-black text-base">
-                    {features.title}
-                  </h4>
-                )}
-                {features.subtitle && (
-                  <p className="text-sm text-[#7b7b7b] font-semibold">
-                    {features.subtitle}
-                  </p>
-                )} */}
-                <div className="space-y-3">
-                  {features.items.slice(0, 3).map((item, idx) => (
-                    <div key={idx} className="flex gap-[10px] items-start">
+        <div className="flex flex-col gap-0 mb-6 h-[280px] relative overflow-hidden">
+          <AnimatePresence mode="wait">
+            {selectedPlanName && plans ? (() => {
+              const selectedPlan = plans.find(p => p.plan_name === selectedPlanName);
+              const features = selectedPlan?.features;
+              const isStructured = features && typeof features === 'object' && !Array.isArray(features) && 'items' in features;
+              
+              return isStructured ? (
+                <motion.div
+                  key={`features-${selectedPlanName}-${billingCycle}`}
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                  transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
+                  className="absolute inset-0 px-3 py-1"
+                >
+                  <div className="space-y-3">
+                    {features.items.slice(0, 3).map((item, idx) => (
+                      <motion.div
+                        key={idx}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: idx * 0.1, ease: [0.34, 1.56, 0.64, 1] }}
+                        className="flex gap-[10px] items-start"
+                      >
+                        <div className="w-16 h-[63px] bg-white flex flex-col items-center overflow-hidden rounded-lg shrink-0">
+                          <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.5" />
+                        </div>
+                        <div className="flex-1 flex flex-col gap-1 min-w-0">
+                          <p className="text-base font-medium text-black leading-normal">
+                            {item.name}
+                          </p>
+                          <p className="text-sm font-medium text-[#7b7b7b] leading-normal">
+                            {item.description}
+                          </p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={`features-${selectedPlanName}-${billingCycle}`}
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                  transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
+                  className="absolute inset-0 px-3 py-1 space-y-3"
+                >
+                  {(features as string[])?.slice(0, 3).map((feature, idx) => (
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3, delay: idx * 0.1, ease: [0.34, 1.56, 0.64, 1] }}
+                      className="flex gap-[10px] items-start"
+                    >
                       <div className="w-16 h-[63px] bg-white flex flex-col items-center overflow-hidden rounded-lg shrink-0">
                         <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.5" />
                       </div>
                       <div className="flex-1 flex flex-col gap-1 min-w-0">
-                        <p className="text-base font-medium text-black leading-normal">
-                          {item.name}
+                        <p className="text-base font-semibold text-black leading-normal whitespace-nowrap">
+                          Feature {idx + 1}
                         </p>
-                        <p className="text-sm font-medium text-[#7b7b7b] leading-normal">
-                          {item.description}
+                        <p className="text-sm font-medium text-[#7b7b7b] leading-normal min-w-full">
+                          {feature}
                         </p>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
-                </div>
-              </div>
-            ) : (
-              (features as string[])?.slice(0, 3).map((feature, idx) => (
-                <div key={idx} className="flex gap-[10px] items-start px-3 py-1">
-                  <div className="w-16 h-[63px] bg-white flex flex-col items-center overflow-hidden rounded-lg shrink-0">
-                    <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.5" />
-                  </div>
-                  <div className="flex-1 flex flex-col gap-1 min-w-0">
-                    <p className="text-base font-semibold text-black leading-normal whitespace-nowrap">
-                      Feature {idx + 1}
-                    </p>
-                    <p className="text-sm font-medium text-[#7b7b7b] leading-normal min-w-full">
-                      {feature}
-                    </p>
-                  </div>
-                </div>
-              ))
-            );
-          })() : (
-            [1, 2, 3].map((idx) => (
-              <div key={idx} className="flex gap-[10px] items-start px-8 py-3">
-                <div className="w-16 h-[63px] bg-white flex flex-col items-center overflow-hidden rounded-lg shrink-0">
-                  <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.5" />
-                </div>
-                <div className="flex-1 flex flex-col gap-1 min-w-0">
-                  <p className="text-[16px] font-semibold text-black leading-normal whitespace-nowrap">
-                    Select a plan
-                  </p>
-                  <p className="text-[16px] font-medium text-[#7b7b7b] leading-normal min-w-full">
-                    Choose your plan to see features
-                  </p>
-                </div>
-              </div>
-            ))
-          )}
+                </motion.div>
+              );
+            })() : (
+              <motion.div
+                key="no-selection"
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
+                className="absolute inset-0 px-8 py-3 space-y-3"
+              >
+                {[1, 2, 3].map((idx) => (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, delay: idx * 0.1, ease: [0.34, 1.56, 0.64, 1] }}
+                    className="flex gap-[10px] items-start"
+                  >
+                    <div className="w-16 h-[63px] bg-white flex flex-col items-center overflow-hidden rounded-lg shrink-0">
+                      <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.5" />
+                    </div>
+                    <div className="flex-1 flex flex-col gap-1 min-w-0">
+                      <p className="text-[16px] font-semibold text-black leading-normal whitespace-nowrap">
+                        Select a plan
+                      </p>
+                      <p className="text-[16px] font-medium text-[#7b7b7b] leading-normal min-w-full">
+                        Choose your plan to see features
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Plan Selection Section */}
@@ -374,7 +409,7 @@ export default function SubscriptionPlans() {
                     setSelectedPlanName(plan.plan_name);
                   }}
                   className={cn(
-                    'flex-shrink-0 w-[140px] snap-center bg-white rounded-2xl p-4 flex flex-col gap-[14px] shadow-[0px_2px_15px_0px_rgba(0,0,0,0.1)] cursor-pointer relative border-2',
+                    'flex-shrink-0 w-1/2 snap-center bg-white rounded-2xl p-4 flex flex-col gap-[14px] shadow-[0px_2px_15px_0px_rgba(0,0,0,0.1)] cursor-pointer relative border-2',
                     isSelected ? 'border-[#78b9ff] shadow-[0px_0px_8px_0px_rgba(0,122,255,0.5)]' : 'border-transparent'
                   )}
                   whileTap={{ scale: 0.92 }}
