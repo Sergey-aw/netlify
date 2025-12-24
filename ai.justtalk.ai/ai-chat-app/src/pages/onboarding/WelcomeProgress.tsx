@@ -5,25 +5,26 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MessageCircle, Target, TrendingUp } from 'lucide-react';
 import Logo from '@/assets/logo.svg';
+import { PersonalityCarousel } from '@/components/PersonalityCarousel';
 
 const CARD_STACK_HEIGHT = 320;
 
 const steps = [
   {
     id: 1,
-    title: "Start speaking\nconfidently",
-    subtitle: "Just talk 10 minutes a day and you will\ngain your confidence within 2 weeks",
+    title: "Get better at speaking\nby speaking",
+    subtitle: "Natural voice conversations that help you improve as you talk",
     background: "bg-gradient-to-br from-blue-300/80 via-blue-50 to-blue-100/20",
     cards: [
-      { icon: MessageCircle, title: "Practice daily conversations", desc: "Build fluency through everyday" },
-      { icon: MessageCircle, title: "Get instant feedback", desc: "Improve pronunciation and grammar" },
-      { icon: MessageCircle, title: "Track your progress", desc: "See your improvement over time" },
+      { icon: MessageCircle, title: "Natural voice conversations", desc: "Speak freely, without scripts or exercises" },
+      { icon: MessageCircle, title: "Helpful feedback after you speak", desc: "Learn from your own words—after the conversation" },
+      { icon: MessageCircle, title: "Vocabulary that grows with you", desc: "Track the words you actually use" },
     ]
   },
   {
     id: 2,
-    title: "Achieve your\ngoals faster",
-    subtitle: "Personalized learning path designed\njust for you",
+    title: "Talk with different personalities",
+    subtitle: "Some are supportive. Some challenge you. All help you practice real conversations",
     background: "bg-gradient-to-bl from-purple-300/80 via-purple-50 to-pink-100/20",
     cards: [
       { icon: Target, title: "Set clear objectives", desc: "Define what you want to achieve" },
@@ -33,8 +34,8 @@ const steps = [
   },
   {
     id: 3,
-    title: "Learn with\nAI & experts",
-    subtitle: "Combine AI practice with live tutoring\nfor the best results",
+    title: "Practice real situations",
+    subtitle: "Practice real conversations — from casual chats to high-pressure moments",
     background: "bg-gradient-to-tr from-indigo-300/80 via-cyan-50 to-teal-100/20",
     cards: [
       { icon: TrendingUp, title: "AI-powered practice", desc: "Available 24/7" },
@@ -82,7 +83,7 @@ export default function WelcomeProgress() {
                   transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
                   className="absolute inset-0 flex items-center justify-center"
                 >
-                  <h1 className="text-4xl font-semibold text-[#39597D] leading-tight whitespace-pre-line">
+                  <h1 className="text-3xl font-semibold text-[#39597D] leading-tight whitespace-pre-line">
                     {step.title}
                   </h1>
                 </motion.div>
@@ -112,49 +113,62 @@ export default function WelcomeProgress() {
           <div className="px-2">
             <div className="relative" style={{ height: `${CARD_STACK_HEIGHT}px` }}>
               <AnimatePresence mode="wait">
-                <motion.div
-                  key={`card-set-${step.id}`}
-                  className="absolute inset-0 space-y-6"
-                  initial={{ opacity: 0, x: 40 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -40 }}
-                  transition={{ duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
-                >
-                  {step.cards.map((card, index) => (
-                    <motion.div
-                      key={`card-${step.id}-${index}`}
-                      custom={index}
-                      initial={{ x: 60, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      exit={{ x: -60, opacity: 0 }}
-                      transition={{
-                        type: "spring",
-                        damping: 25,
-                        stiffness: 300,
-                        mass: 1,
-                        delay: index * 0.1 + 0.1
-                      }}
-                    >
-                      <Card className="bg-white border-0 rounded-3xl p-3 shadow-md">
-                        <div className="flex items-start gap-4">
-                          {/* Icon */}
-                          <div className="w-14 h-14 rounded-2xl bg-gradient-to-b from-pink-200 via-pink-100 to-orange-100 flex items-center justify-center flex-shrink-0">
-                            <card.icon className="w-7 h-7 text-pink-400" strokeWidth={2} />
+                {step.id === 2 ? (
+                  <motion.div
+                    key="personality-carousel"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
+                    className="absolute inset-0"
+                  >
+                    <PersonalityCarousel />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key={`card-set-${step.id}`}
+                    className="absolute inset-0 space-y-6"
+                    initial={{ opacity: 0, x: 40 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -40 }}
+                    transition={{ duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
+                  >
+                    {step.cards.map((card, index) => (
+                      <motion.div
+                        key={`card-${step.id}-${index}`}
+                        custom={index}
+                        initial={{ x: 60, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        exit={{ x: -60, opacity: 0 }}
+                        transition={{
+                          type: "spring",
+                          damping: 25,
+                          stiffness: 300,
+                          mass: 1,
+                          delay: index * 0.1 + 0.1
+                        }}
+                      >
+                        <Card className="bg-white border-0 rounded-3xl p-3 shadow-md">
+                          <div className="flex items-start gap-4">
+                            {/* Icon */}
+                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-b from-pink-200 via-pink-100 to-orange-100 flex items-center justify-center flex-shrink-0">
+                              <card.icon className="w-7 h-7 text-pink-400" strokeWidth={2} />
+                            </div>
+                            {/* Text */}
+                            <div className="flex-1">
+                              <h3 className="text-base font-semibold text-gray-900 mb-1">
+                                {card.title}
+                              </h3>
+                              <p className="text-base text-gray-500">
+                                {card.desc}
+                              </p>
+                            </div>
                           </div>
-                          {/* Text */}
-                          <div className="flex-1">
-                            <h3 className="text-base font-semibold text-gray-900 mb-1">
-                              {card.title}
-                            </h3>
-                            <p className="text-base text-gray-500">
-                              {card.desc}
-                            </p>
-                          </div>
-                        </div>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </motion.div>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                )}
               </AnimatePresence>
             </div>
           </div>
