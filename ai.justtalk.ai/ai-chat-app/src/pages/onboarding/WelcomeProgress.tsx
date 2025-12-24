@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { MessageCircle, Target, TrendingUp } from 'lucide-react';
 import Logo from '@/assets/logo.svg';
 import { PersonalityCarousel } from '@/components/PersonalityCarousel';
+import { RolePlayCarousel } from '@/components/RolePlayCarousel';
 
 const CARD_STACK_HEIGHT = 320;
 
@@ -123,6 +124,17 @@ export default function WelcomeProgress() {
                     className="absolute inset-0"
                   >
                     <PersonalityCarousel />
+                  </motion.div>
+                ) : step.id === 3 ? (
+                  <motion.div
+                    key="roleplay-carousel"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
+                    className="absolute inset-0"
+                  >
+                    <RolePlayCarousel />
                   </motion.div>
                 ) : (
                   <motion.div
