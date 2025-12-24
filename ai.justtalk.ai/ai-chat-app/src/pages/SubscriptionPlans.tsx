@@ -23,6 +23,8 @@ export default function SubscriptionPlans() {
   const [selectedPlanName, setSelectedPlanName] = useState<string | null>(null);
   const [showCanceledMessage, setShowCanceledMessage] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [showBanner, setShowBanner] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
   
   // Add swipe gesture to open sidebar
   useSwipeGesture({
@@ -51,6 +53,21 @@ export default function SubscriptionPlans() {
       return () => clearTimeout(timer);
     }
   }, [searchParams, setSearchParams]);
+
+  // Show banner after 3 seconds delay
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowBanner(true);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Show banner again when Premium plan is selected (but don't reset dismissed state)
+  useEffect(() => {
+    if (selectedPlanName === 'Premium' && bannerDismissed) {
+      setShowBanner(true);
+    }
+  }, [selectedPlanName, bannerDismissed]);
 
   // Fetch monthly plans
   const { data: monthlyPlans, isLoading: isLoadingMonthly } = useQuery({
@@ -186,10 +203,98 @@ export default function SubscriptionPlans() {
       {/* Sidebar */}
       <AppSidebar open={showSidebar} onOpenChange={setShowSidebar} />
 
+      {/* Glassmorphism Banner - New Year Special */}
+      <AnimatePresence>
+        {showBanner && (
+          <motion.div
+            initial={{ y: -250, x: '-50%', opacity: 1, scale: 0.9 }}
+            animate={{ y: 0, x: '-50%', opacity: 1, scale: 1 }}
+            exit={{ y: -250, x: '-50%', opacity: 0, scale: 0.9 }}
+            transition={{
+              type: 'spring',
+              stiffness: 120,
+              damping: 15,
+              mass: 0.8,
+            }}
+            style={{
+              position: 'fixed',
+              top: '16px',
+              left: '50%',
+              zIndex: 50,
+              width: 'calc(100% - 32px)',
+              maxWidth: '390px',
+            }}
+          >
+            <div className="relative overflow-hidden rounded-2xl glass-container">
+              {/* Glass effect base */}
+              <div 
+                className="relative px-4 py-2 flex items-center gap-2.5"
+                style={{
+                  background: 'rgba(129, 190, 255, 0.2)',
+                  backdropFilter: 'blur(12px) saturate(140%)',
+                  WebkitBackdropFilter: 'blur(12px) saturate(140%)',
+                  boxShadow: '0 8px 30px rgba(0, 0, 0, 0.18)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                }}
+              >
+                {/* Glossy highlight layer */}
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.06) 40%, rgba(255, 255, 255, 0.02))',
+                    mixBlendMode: 'overlay',
+                  }}
+                />
+                
+                {/* Gradient border effect */}
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    borderRadius: 'inherit',
+                    padding: '1px',
+                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))',
+                    WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                    WebkitMaskComposite: 'xor',
+                    maskComposite: 'exclude',
+                  }}
+                />
+                
+                {/* Emoji */}
+                <div className="relative z-10 flex items-center justify-center p-1 rounded-lg shrink-0">
+                  <span className="text-2xl leading-none">🥳</span>
+                </div>
+                
+                {/* Content */}
+                <div className="relative z-10 flex-1 min-w-0">
+                  <p className="text-sm font-medium leading-normal" style={{ color: '#064589' }}>
+                    Get <span style={{ color: '#007aff' }}>premium</span> for basic price — apply <span style={{ color: '#007aff' }}>JUST-2026</span> coupon code during checkout.
+                  </p>
+                </div>
+                
+                <button
+                  onClick={() => {
+                    setShowBanner(false);
+                    setBannerDismissed(true);
+                  }}
+                  className="relative z-10 w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors shrink-0"
+                  style={{
+                    color: '#064589',
+                    fontSize: '20px',
+                    fontWeight: 500,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Main Content Container */}
       <div className="relative flex flex-col min-h-screen px-6 py-0 pb-12">
         {/* Header Section */}
-        <div className="flex flex-col items-center text-center pt-8 pb-0 px-8 gap-[21px] mb-6">
+        <div className="flex flex-col items-center text-center pt-8 pb-0 px-8 gap-[21px] mb-8">
           <h1 className="text-[32px] font-bold text-[#39597d] leading-[1.076]">
             Choose your plan
           </h1>
@@ -229,110 +334,69 @@ export default function SubscriptionPlans() {
 
         {/* Benefits Section */}
         <div className="flex flex-col gap-0 mb-6 h-[280px] relative overflow-hidden">
-          <AnimatePresence mode="wait">
-            {selectedPlanName && plans ? (() => {
-              const selectedPlan = plans.find(p => p.plan_name === selectedPlanName);
-              const features = selectedPlan?.features;
-              const isStructured = features && typeof features === 'object' && !Array.isArray(features) && 'items' in features;
-              
-              return isStructured ? (
-                <motion.div
-                  key={`features-${selectedPlanName}-${billingCycle}`}
-                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                  transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
-                  className="absolute inset-0 px-3 py-1"
-                >
-                  <div className="space-y-3">
-                    {features.items.slice(0, 3).map((item, idx) => (
-                      <motion.div
-                        key={idx}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.3, delay: idx * 0.1, ease: [0.34, 1.56, 0.64, 1] }}
-                        className="flex gap-[10px] items-start"
-                      >
-                        <div className="w-16 h-[63px] bg-white flex flex-col items-center overflow-hidden rounded-lg shrink-0">
-                          <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.5" />
-                        </div>
-                        <div className="flex-1 flex flex-col gap-1 min-w-0">
-                          <p className="text-base font-medium text-black leading-normal">
-                            {item.name}
-                          </p>
-                          <p className="text-sm font-medium text-[#7b7b7b] leading-normal">
-                            {item.description}
-                          </p>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key={`features-${selectedPlanName}-${billingCycle}`}
-                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                  transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
-                  className="absolute inset-0 px-3 py-1 space-y-3"
-                >
-                  {(features as string[])?.slice(0, 3).map((feature, idx) => (
-                    <motion.div
-                      key={idx}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: idx * 0.1, ease: [0.34, 1.56, 0.64, 1] }}
-                      className="flex gap-[10px] items-start"
-                    >
+          {selectedPlanName && plans ? (() => {
+            const selectedPlan = plans.find(p => p.plan_name === selectedPlanName);
+            const features = selectedPlan?.features;
+            const isStructured = features && typeof features === 'object' && !Array.isArray(features) && 'items' in features;
+            
+            return isStructured ? (
+              <div className="px-3 py-1">
+                <div className="space-y-3">
+                  {features.items.slice(0, 3).map((item, idx) => (
+                    <div key={idx} className="flex gap-[10px] items-start">
                       <div className="w-16 h-[63px] bg-white flex flex-col items-center overflow-hidden rounded-lg shrink-0">
                         <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.5" />
                       </div>
                       <div className="flex-1 flex flex-col gap-1 min-w-0">
-                        <p className="text-base font-semibold text-black leading-normal whitespace-nowrap">
-                          Feature {idx + 1}
+                        <p className="text-base font-medium text-black leading-normal">
+                          {item.name}
                         </p>
-                        <p className="text-sm font-medium text-[#7b7b7b] leading-normal min-w-full">
-                          {feature}
+                        <p className="text-sm font-medium text-[#7b7b7b] leading-normal">
+                          {item.description}
                         </p>
                       </div>
-                    </motion.div>
+                    </div>
                   ))}
-                </motion.div>
-              );
-            })() : (
-              <motion.div
-                key="no-selection"
-                initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
-                className="absolute inset-0 px-8 py-3 space-y-3"
-              >
-                {[1, 2, 3].map((idx) => (
-                  <motion.div
-                    key={idx}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.3, delay: idx * 0.1, ease: [0.34, 1.56, 0.64, 1] }}
-                    className="flex gap-[10px] items-start"
-                  >
+                </div>
+              </div>
+            ) : (
+              <div className="px-3 py-1 space-y-3">
+                {(features as string[])?.slice(0, 3).map((feature, idx) => (
+                  <div key={idx} className="flex gap-[10px] items-start">
                     <div className="w-16 h-[63px] bg-white flex flex-col items-center overflow-hidden rounded-lg shrink-0">
                       <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.5" />
                     </div>
                     <div className="flex-1 flex flex-col gap-1 min-w-0">
-                      <p className="text-[16px] font-semibold text-black leading-normal whitespace-nowrap">
-                        Select a plan
+                      <p className="text-base font-semibold text-black leading-normal whitespace-nowrap">
+                        Feature {idx + 1}
                       </p>
-                      <p className="text-[16px] font-medium text-[#7b7b7b] leading-normal min-w-full">
-                        Choose your plan to see features
+                      <p className="text-sm font-medium text-[#7b7b7b] leading-normal min-w-full">
+                        {feature}
                       </p>
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
+              </div>
+            );
+          })() : (
+            <div className="px-8 py-3 space-y-3">
+              {[1, 2, 3].map((idx) => (
+                <div key={idx} className="flex gap-[10px] items-start">
+                  <div className="w-16 h-[63px] bg-white flex flex-col items-center overflow-hidden rounded-lg shrink-0">
+                    <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.5" />
+                  </div>
+                  <div className="flex-1 flex flex-col gap-1 min-w-0">
+                    <p className="text-[16px] font-semibold text-black leading-normal whitespace-nowrap">
+                      Select a plan
+                    </p>
+                    <p className="text-[16px] font-medium text-[#7b7b7b] leading-normal min-w-full">
+                      Choose your plan to see features
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Plan Selection Section */}
@@ -487,6 +551,15 @@ export default function SubscriptionPlans() {
         .scrollbar-hide {
           -ms-overflow-style: none;
           scrollbar-width: none;
+        }
+        
+        /* Glassmorphism banner styles removed - using Framer Motion animations */
+        
+        /* Fallback if backdrop-filter is not supported */
+        @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+          .glass-banner > div > div {
+            background: rgba(255, 255, 255, 0.25) !important;
+          }
         }
       `}</style>
     </div>
