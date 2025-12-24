@@ -62,6 +62,12 @@ const steps = [
 export default function WelcomeProgress() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
+  const [glowingCard, setGlowingCard] = useState<string | null>(null);
+
+  const handleCardClick = (cardId: string) => {
+    setGlowingCard(cardId);
+    setTimeout(() => setGlowingCard(null), 1000);
+  };
 
   const handleContinue = () => {
     if (currentStep < steps.length - 1) {
@@ -165,10 +171,29 @@ export default function WelcomeProgress() {
                       {/* Top Left - Words Acquired */}
                       <motion.div
                         initial={{ x: -40, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ delay: 0.1, duration: 0.4 }}
-                        className="absolute rounded-[16px] shadow-[0px_4px_15px_0px_rgba(0,0,0,0.15)]"
-                        style={{ left: '10px', top: '20px', width: '140px', height: '66px' }}
+                        animate={{ 
+                          x: 0, 
+                          opacity: 1,
+                          y: [0, -8, 0]
+                        }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleCardClick('words')}
+                        transition={{ 
+                          x: { type: "spring", damping: 20, stiffness: 300, mass: 0.8, delay: 0.1 },
+                          opacity: { type: "spring", damping: 20, stiffness: 300, mass: 0.8, delay: 0.1 },
+                          y: { duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.7 }
+                        }}
+                        className="absolute rounded-[16px] cursor-pointer"
+                        style={{ 
+                          left: '10px', 
+                          top: '20px', 
+                          width: '140px', 
+                          height: '66px',
+                          boxShadow: glowingCard === 'words' 
+                            ? '0px 0px 20px 4px hsl(var(--brand-blue))' 
+                            : '0px 4px 15px 0px rgba(0,0,0,0.15)',
+                          transition: 'box-shadow 0.3s ease'
+                        }}
                       >
                         <img 
                           src={progressWordsAcquired} 
@@ -180,10 +205,29 @@ export default function WelcomeProgress() {
                       {/* Top Right - Pronunciation */}
                       <motion.div
                         initial={{ x: 40, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ delay: 0.15, duration: 0.4 }}
-                        className="absolute"
-                        style={{ left: '200px', top: '0px', width: '86px', height: '92px' }}
+                        animate={{ 
+                          x: 0, 
+                          opacity: 1,
+                          y: [0, 10, 0]
+                        }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleCardClick('pronunciation')}
+                        transition={{ 
+                          x: { type: "spring", damping: 20, stiffness: 300, mass: 0.8, delay: 0.15 },
+                          opacity: { type: "spring", damping: 20, stiffness: 300, mass: 0.8, delay: 0.15 },
+                          y: { duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.75 }
+                        }}
+                        className="absolute cursor-pointer"
+                        style={{ 
+                          left: '200px', 
+                          top: '0px', 
+                          width: '86px', 
+                          height: '92px',
+                          filter: glowingCard === 'pronunciation'
+                            ? 'drop-shadow(0px 0px 15px hsl(var(--brand-blue)))'
+                            : 'none',
+                          transition: 'filter 0.3s ease'
+                        }}
                       >
                         <div className="absolute" style={{ inset: '-11.96% -17.44% -20.65% -17.44%' }}>
                           <img 
@@ -199,10 +243,25 @@ export default function WelcomeProgress() {
                       {/* Center - Speak & New Words */}
                       <motion.div
                         initial={{ y: 20, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        transition={{ delay: 0.2, duration: 0.4 }}
-                        className="absolute rounded-[16px] shadow-[0px_4px_15px_0px_rgba(0,0,0,0.15)]"
-                        style={{ left: '134px', top: '120px' }}
+                        animate={{ 
+                          y: [0, -6, 0], 
+                          opacity: 1
+                        }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleCardClick('speak')}
+                        transition={{ 
+                          y: { duration: 2.8, repeat: Infinity, ease: "easeInOut", delay: 0.8 },
+                          opacity: { type: "spring", damping: 20, stiffness: 300, mass: 0.8, delay: 0.2 }
+                        }}
+                        className="absolute rounded-[16px] cursor-pointer"
+                        style={{ 
+                          left: '134px', 
+                          top: '120px',
+                          boxShadow: glowingCard === 'speak'
+                            ? '0px 0px 20px 4px hsl(var(--brand-blue))'
+                            : '0px 4px 15px 0px rgba(0,0,0,0.15)',
+                          transition: 'box-shadow 0.3s ease'
+                        }}
                       >
                         <div className="relative" style={{ width: '180px', height: '94px' }}>
                           <img 
@@ -216,10 +275,29 @@ export default function WelcomeProgress() {
                       {/* Bottom Left - CEFR Level */}
                       <motion.div
                         initial={{ x: -40, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ delay: 0.25, duration: 0.4 }}
-                        className="absolute"
-                        style={{ left: '15px', top: '170px', width: '84px', height: '90px' }}
+                        animate={{ 
+                          x: 0, 
+                          opacity: 1,
+                          y: [0, 7, 0]
+                        }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleCardClick('cefr')}
+                        transition={{ 
+                          x: { type: "spring", damping: 20, stiffness: 300, mass: 0.8, delay: 0.25 },
+                          opacity: { type: "spring", damping: 20, stiffness: 300, mass: 0.8, delay: 0.25 },
+                          y: { duration: 3.2, repeat: Infinity, ease: "easeInOut", delay: 0.85 }
+                        }}
+                        className="absolute cursor-pointer"
+                        style={{ 
+                          left: '15px', 
+                          top: '170px', 
+                          width: '84px', 
+                          height: '90px',
+                          filter: glowingCard === 'cefr'
+                            ? 'drop-shadow(0px 0px 15px hsl(var(--brand-blue)))'
+                            : 'none',
+                          transition: 'filter 0.3s ease'
+                        }}
                       >
                         <div className="absolute" style={{ inset: '-12.22% -17.86% -21.11% -17.86%' }}>
                           <img 
@@ -235,10 +313,28 @@ export default function WelcomeProgress() {
                       {/* Bottom Right - ML Score */}
                       <motion.div
                         initial={{ x: 40, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ delay: 0.3, duration: 0.4 }}
-                        className="absolute"
-                        style={{ left: '146px', top: '220px', width: '155px' }}
+                        animate={{ 
+                          x: 0, 
+                          opacity: 1,
+                          y: [0, -10, 0]
+                        }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleCardClick('ml')}
+                        transition={{ 
+                          x: { type: "spring", damping: 20, stiffness: 300, mass: 0.8, delay: 0.3 },
+                          opacity: { type: "spring", damping: 20, stiffness: 300, mass: 0.8, delay: 0.3 },
+                          y: { duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.9 }
+                        }}
+                        className="absolute cursor-pointer"
+                        style={{ 
+                          left: '146px', 
+                          top: '220px', 
+                          width: '155px',
+                          filter: glowingCard === 'ml'
+                            ? 'drop-shadow(0px 0px 15px hsl(var(--brand-blue)))'
+                            : 'none',
+                          transition: 'filter 0.3s ease'
+                        }}
                       >
                         <img 
                           src={progressMlScore} 
