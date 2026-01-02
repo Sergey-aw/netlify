@@ -713,7 +713,7 @@ export default function SubscriptionPlans() {
                             );
                           })
                         ) : (
-                          featuresList.map((feature: string, idx: number) => {
+                          (featuresList as string[]).map((feature: string, idx: number) => {
                             // Map feature names to appropriate icons
                             const getFeatureIcon = (name: string) => {
                               const nameLower = name.toLowerCase();
