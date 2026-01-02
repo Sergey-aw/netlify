@@ -181,7 +181,12 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
     onOpenChange(false);
     // Use setTimeout to ensure the sheet closes before navigation
     setTimeout(() => {
-      navigate(path);
+      // For home navigation, explicitly signal to clear selection
+      if (path === '/ai-chat') {
+        navigate(path, { replace: true, state: { clearSelection: true } });
+      } else {
+        navigate(path, { replace: true });
+      }
     }, 100);
   };
 

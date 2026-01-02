@@ -84,6 +84,14 @@ export default function AIChatHome() {
 
   // Handle URL query parameter or location state for auto-selecting conversation
   useEffect(() => {
+    // Check if we should clear selection (from Home navigation)
+    if (location.state?.clearSelection) {
+      setSelectedConversation(null);
+      // Clear the state
+      window.history.replaceState({}, '', '/ai-chat');
+      return;
+    }
+    
     // Check location state first (from sidebar navigation)
     const stateConversationId = location.state?.selectedConversation;
     if (stateConversationId) {
@@ -106,8 +114,11 @@ export default function AIChatHome() {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       // Clean up URL without refreshing
       window.history.replaceState({}, '', '/ai-chat');
+    } else if (!conversationId && !stateConversationId) {
+      // Clear selection when navigating to clean home
+      setSelectedConversation(null);
     }
-  }, [queryClient, location.state]);
+  }, [queryClient, location.state, location.search]);
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const [visibleTranslations, setVisibleTranslations] = useState<Set<string>>(new Set());
   const [loadingTranslation, setLoadingTranslation] = useState<Record<string, boolean>>({});
