@@ -22,7 +22,7 @@ const cards = [
     title: 'Free Talk',
     description: '⁠Speak about anything you want. Pause, restart, make mistakes — I’ll help you keep going and sound more natural.',
     cta: 'Start conversation →',
-    route: '/ai-chat/conversation/new',
+    route: '/ai-chat/voice/new',
     coverImage: Cover1,
   },
   {
