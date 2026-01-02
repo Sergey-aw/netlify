@@ -24,11 +24,25 @@ import { FeedbackDrawer, type FeedbackData } from '@/components/FeedbackDrawer';
 import { getAgentByElevenLabsId } from '@/config/elevenlabs-agents';
 import { VoiceBars } from '@/components/VoiceBars';
 import { CenteredAgentIntro } from '@/components/CenteredAgentIntro';
+import bgWelcome from '@/assets/bg_welcome.jpg';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer';
+import { Badge } from '@/components/ui/badge';
 
 interface TranscriptSegment {
   speaker: 'student' | 'ai';
   text: string;
   timestamp: number;
+}
+
+// Helper function to remove voice tags like <Narrator>...</Narrator> from ElevenLabs transcripts
+function stripVoiceTags(text: string): string {
+  // Remove XML-style voice tags used by ElevenLabs multi-voice feature
+  return text.replace(/<[^>]+>/g, '');
 }
 
 export default function AIChatVoice() {
@@ -59,6 +73,17 @@ export default function AIChatVoice() {
   const [loadingTranslation, setLoadingTranslation] = useState<Record<string, boolean>>({});
   const [playingAudio, setPlayingAudio] = useState<Record<string, boolean>>({});
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
+  const [showWordDrawer, setShowWordDrawer] = useState(false);
+  const [selectedWord, setSelectedWord] = useState<{
+    word: string;
+    lemma: string;
+    pos: string;
+    definitions: Array<{ definition: string; example: string; score: number }>;
+    synonyms: Record<string, number>;
+    translations: Record<string, number>;
+  } | null>(null);
+  const [loadingWord, setLoadingWord] = useState(false);
+  const [wordDefinitions, setWordDefinitions] = useState<Record<string, any>>({});
 
   // Get agent info from navigation state
   const selectedAgentId = location.state?.agentId; // ElevenLabs agent ID (undefined = use default)
@@ -242,7 +267,7 @@ export default function AIChatVoice() {
       if (message.source === 'user' && message.message) {
         const segment: TranscriptSegment = {
           speaker: 'student',
-          text: message.message,
+          text: stripVoiceTags(message.message),
           timestamp: Date.now(),
         };
         setTranscript((prev) => [...prev, segment]);
@@ -283,14 +308,14 @@ export default function AIChatVoice() {
             .insert({
               conversation_id: conversationId,
               role: 'user',
-              content: message.message,
+              content: stripVoiceTags(message.message),
               is_voice_message: true,
             });
         }
       } else if (message.source === 'ai' && message.message) {
         const segment: TranscriptSegment = {
           speaker: 'ai',
-          text: message.message,
+          text: stripVoiceTags(message.message),
           timestamp: Date.now(),
         };
         setTranscript((prev) => [...prev, segment]);
@@ -300,7 +325,7 @@ export default function AIChatVoice() {
           await supabase.from('justai_messages').insert({
             conversation_id: conversationId,
             role: 'assistant',
-            content: message.message,
+            content: stripVoiceTags(message.message),
             is_voice_message: true,
           });
         }
@@ -622,6 +647,72 @@ export default function AIChatVoice() {
     }
   };
 
+  const handleWordClick = async (word: string, messageContent: string) => {
+    const cleanWord = word.replace(/[.,!?;:]/g, '').trim();
+    if (!cleanWord || loadingWord) return;
+
+    // Create a cache key based on word and target language
+    const cacheKey = `${cleanWord.toLowerCase()}_${userProfile?.native_language?.toLowerCase() || 'ru'}`;
+
+    // Check if word definition exists in cache
+    if (wordDefinitions[cacheKey]) {
+      setSelectedWord(wordDefinitions[cacheKey]);
+      setShowWordDrawer(true);
+      return;
+    }
+
+    setLoadingWord(true);
+    setShowWordDrawer(true);
+
+    try {
+      const session = await supabase.auth.getSession();
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/word-analyze`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.data.session?.access_token}`,
+          },
+          body: JSON.stringify({
+            text: messageContent,
+            target_word: cleanWord,
+            language: 'en',
+            target_language: userProfile?.native_language?.toLowerCase() || 'ru',
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to analyze word');
+      }
+
+      const data = await response.json();
+      const wordData = {
+        word: data.word[0]?.word || cleanWord,
+        lemma: data.word[0]?.lemma || cleanWord,
+        pos: data.word[0]?.pos || 'UNKNOWN',
+        definitions: data.definitions || [],
+        synonyms: data.synonyms_wordnet || {},
+        translations: data.translations || {},
+      };
+
+      setSelectedWord(wordData);
+
+      // Cache the word definition
+      setWordDefinitions((prev) => {
+        const newDefinitions = { ...prev, [cacheKey]: wordData };
+        localStorage.setItem('ai-chat-word-definitions', JSON.stringify(newDefinitions));
+        return newDefinitions;
+      });
+    } catch (error) {
+      console.error('Word analysis error:', error);
+      setShowWordDrawer(false);
+    } finally {
+      setLoadingWord(false);
+    }
+  };
+
   // Save session data and trigger processing
   const saveAndProcessSession = async () => {
     if (sessionSaved.current) {
@@ -899,7 +990,10 @@ export default function AIChatVoice() {
   };
 
   return (
-    <div className="h-screen bg-background flex flex-col page-enter">
+    <div 
+      className="h-screen bg-cover bg-center bg-no-repeat flex flex-col page-enter"
+      style={{ backgroundImage: `url(${bgWelcome})` }}
+    >
       <AnimatePresence mode="wait">
         {isConnecting ? (
           /* Centered Agent Introduction Screen */
@@ -918,19 +1012,26 @@ export default function AIChatVoice() {
             transition={{ duration: 0.3 }}
             className="flex-1 flex flex-col h-full"
           >
-            {/* Header with Agent Info and Voice Bars - Light Blue Background */}
+            {/* Header with Agent Info and Voice Bars - Transparent Background */}
             <motion.header
               initial={{ y: -100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.6, ease: 'easeOut', delay: 0.2 }}
-              className="px-4 py-4 flex items-center justify-between bg-[#E3F2FD]"
+              className="px-4 py-4 flex items-center justify-between"
             >
               {/* Left Side: Back + Avatar + Name */}
               <div className="flex items-center gap-3 flex-1">
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => navigate(-1)}
+                  onClick={() => {
+                    // If a session has been started (has conversation ID), end it properly
+                    if (conversationId || sessionStartTime.current) {
+                      endSession();
+                    } else {
+                      navigate(-1);
+                    }
+                  }}
                   className="rounded-full -ml-2 h-10 w-10"
                 >
                   <ArrowLeft className="w-6 h-6" />
@@ -1023,7 +1124,23 @@ export default function AIChatVoice() {
                               : 'bg-white text-gray-900 shadow-sm'
                           )}
                         >
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{segment.text}</p>
+                          {segment.speaker === 'ai' ? (
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                              {segment.text.split(' ').map((word, index) => (
+                                <span key={index}>
+                                  <span
+                                    onClick={() => handleWordClick(word, segment.text)}
+                                    className="cursor-pointer hover:bg-blue-100 hover:text-blue-700 rounded transition-colors"
+                                  >
+                                    {word}
+                                  </span>
+                                  {index < segment.text.split(' ').length - 1 ? ' ' : ''}
+                                </span>
+                              ))}
+                            </p>
+                          ) : (
+                            <p className="text-sm whitespace-pre-wrap">{segment.text}</p>
+                          )}
                           <div 
                             className={cn(
                               "grid transition-all duration-300 ease-in-out",
@@ -1154,6 +1271,96 @@ export default function AIChatVoice() {
         )}
       </AnimatePresence>
       
+      {/* Word Analysis Drawer */}
+      <Drawer open={showWordDrawer} onOpenChange={setShowWordDrawer}>
+        <DrawerContent className="max-h-[85vh]">
+          <DrawerHeader>
+            <DrawerTitle className="text-2xl font-bold">
+              {loadingWord ? (
+                <Skeleton className="h-8 w-32" />
+              ) : (
+                selectedWord?.word
+              )}
+            </DrawerTitle>
+          </DrawerHeader>
+          <div className="px-4 pb-8 overflow-y-auto">
+            {loadingWord ? (
+              <div className="space-y-4">
+                <Skeleton className="h-6 w-24" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-6 w-32" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            ) : selectedWord ? (
+              <div className="space-y-6">
+                {/* Word Info */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant="secondary" className="text-xs">
+                      {selectedWord.pos}
+                    </Badge>
+                    {selectedWord.lemma !== selectedWord.word && (
+                      <span className="text-sm text-gray-500">→ {selectedWord.lemma}</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Translations */}
+                {Object.keys(selectedWord.translations).length > 0 && (
+                  <div>
+                    <h3 className="font-semibold mb-2 text-gray-700">Translations</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(selectedWord.translations)
+                        .sort(([, a], [, b]) => (b as number) - (a as number))
+                        .slice(0, 5)
+                        .map(([trans]) => (
+                          <Badge key={trans} variant="outline">
+                            {trans}
+                          </Badge>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Definitions */}
+                {selectedWord.definitions.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold mb-2 text-gray-700">Definitions</h3>
+                    <div className="space-y-3">
+                      {selectedWord.definitions.slice(0, 3).map((def, idx) => (
+                        <div key={idx} className="pl-3 border-l-2 border-blue-200">
+                          <p className="text-sm text-gray-700 mb-1">{def.definition}</p>
+                          {def.example && (
+                            <p className="text-xs text-gray-500 italic">"{def.example}"</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Synonyms */}
+                {Object.keys(selectedWord.synonyms).length > 0 && (
+                  <div>
+                    <h3 className="font-semibold mb-2 text-gray-700">Synonyms</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(selectedWord.synonyms)
+                        .sort(([, a], [, b]) => (b as number) - (a as number))
+                        .slice(0, 10)
+                        .map(([syn]) => (
+                          <Badge key={syn} variant="secondary" className="text-xs">
+                            {syn}
+                          </Badge>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </div>
+        </DrawerContent>
+      </Drawer>
+
       {/* Feedback Drawer */}
       <FeedbackDrawer
         open={showFeedbackDrawer}
