@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
-import { Check, AlertCircle, Crown, ChessQueen, CreditCard, Infinity } from 'lucide-react';
+import { useFeatureFlag, usePostHogTracking } from '@/hooks/usePostHog';
+import { Check, AlertCircle, Crown, ChessQueen, CreditCard, Infinity, Mic, MessageSquare, BookOpen, BarChart, Sparkles, Zap, Volume2, TrendingUp, Target, Brain, Users, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'motion/react';
@@ -40,6 +41,18 @@ export default function SubscriptionPlans() {
   
   // Use session hook for better session management
   const { session, user, isAuthenticated, isAnonymous } = useSession();
+  
+  // PostHog feature flag for A/B test
+  const isVerticalLayout = useFeatureFlag('subscription-plans-vertical-layout', false);
+  const { trackEvent, identifyUser } = usePostHogTracking();
+
+  // Debug: Log feature flag value
+  useEffect(() => {
+    console.log('[A/B Test] Feature flag loaded:', {
+      isVerticalLayout,
+      variant: isVerticalLayout ? 'vertical' : 'horizontal',
+    });
+  }, [isVerticalLayout]);
 
   // Handle URL parameters
   useEffect(() => {
@@ -61,6 +74,22 @@ export default function SubscriptionPlans() {
     }, 3000);
     return () => clearTimeout(timer);
   }, []);
+
+  // Track page view and identify user
+  useEffect(() => {
+    if (user?.id) {
+      identifyUser(user.id, {
+        email: user.email,
+        isAnonymous,
+      });
+    }
+    
+    trackEvent('subscription_plan_viewed', {
+      variant: isVerticalLayout ? 'vertical' : 'horizontal',
+      isAuthenticated,
+      isAnonymous,
+    });
+  }, [user?.id, isVerticalLayout, isAuthenticated, isAnonymous]);
 
   // Show banner again when Premium plan is selected (but don't reset dismissed state)
   useEffect(() => {
@@ -362,7 +391,8 @@ export default function SubscriptionPlans() {
           </div>
         )}
 
-        {/* Benefits Section */}
+        {/* Benefits Section - Only shown in horizontal layout */}
+        {!isVerticalLayout && (
         <div className="flex flex-col gap-0 mb-6 h-[280px] relative overflow-hidden">
           {selectedPlanName && plans ? (() => {
             const selectedPlan = plans.find(p => p.plan_name === selectedPlanName);
@@ -428,6 +458,7 @@ export default function SubscriptionPlans() {
             </div>
           )}
         </div>
+        )}
 
         {/* Plan Selection Section */}
         <div className="flex flex-col gap-4 px-0 py-[3px] flex-1">
@@ -446,7 +477,7 @@ export default function SubscriptionPlans() {
                 variant="default" 
                 className="absolute -top-2 -right-4 bg-blue-500 hover:rotate-6 text-white text-[10px] px-1.5 py-0.5 shadow-sm z-20 rotate-[20deg]"
               >
-                -75%
+                -34%
               </Badge>
               {/* Sliding background */}
               <motion.div
@@ -466,7 +497,14 @@ export default function SubscriptionPlans() {
               {/* Tab buttons */}
               <div className="relative flex">
                 <button
-                  onClick={() => setBillingCycle('monthly')}
+                  onClick={() => {
+                    setBillingCycle('monthly');
+                    trackEvent('subscription_billing_cycle_changed', {
+                      variant: isVerticalLayout ? 'vertical' : 'horizontal',
+                      billing_cycle: 'monthly',
+                      selected_plan: selectedPlanName,
+                    });
+                  }}
                   className={cn(
                     "flex-1 px-3 py-1.5 text-sm font-medium rounded-sm transition-colors relative z-10",
                     billingCycle === 'monthly' ? 'text-foreground' : 'text-muted-foreground'
@@ -475,7 +513,14 @@ export default function SubscriptionPlans() {
                   Monthly
                 </button>
                 <button
-                  onClick={() => setBillingCycle('annual')}
+                  onClick={() => {
+                    setBillingCycle('annual');
+                    trackEvent('subscription_billing_cycle_changed', {
+                      variant: isVerticalLayout ? 'vertical' : 'horizontal',
+                      billing_cycle: 'annual',
+                      selected_plan: selectedPlanName,
+                    });
+                  }}
                   className={cn(
                     "flex-1 px-3 py-1.5 text-sm font-medium rounded-sm transition-colors relative z-10",
                     billingCycle === 'annual' ? 'text-foreground' : 'text-muted-foreground'
@@ -488,12 +533,20 @@ export default function SubscriptionPlans() {
           </div>
 
           {/* Plan Cards - Centered */}
-          <div className="flex gap-6 justify-center px-6 py-4 plan-cards-container">
+          <div className={cn(
+            "flex justify-center px-6 py-4 plan-cards-container",
+            isVerticalLayout ? "flex-col gap-4 items-stretch" : "flex-row gap-6"
+          )}>
             {plans?.map((plan) => {
               const monthlyPrice = billingCycle === 'annual'
                 ? plan.monthly_equivalent_cents / 100
                 : plan.price_cents / 100;
               const isSelected = selectedPlan === plan.id;
+              
+              // Get features list
+              const features = plan.features;
+              const isStructured = features && typeof features === 'object' && !Array.isArray(features) && 'items' in features;
+              const featuresList = isStructured ? features.items : (Array.isArray(features) ? features : []);
 
               return (
                 <motion.div
@@ -501,76 +554,243 @@ export default function SubscriptionPlans() {
                   onClick={() => {
                     setSelectedPlan(plan.id);
                     setSelectedPlanName(plan.plan_name);
+                    trackEvent('subscription_plan_selected', {
+                      variant: isVerticalLayout ? 'vertical' : 'horizontal',
+                      plan_name: plan.plan_name,
+                      billing_cycle: billingCycle,
+                      price: monthlyPrice,
+                    });
                   }}
                   className={cn(
-                    'flex-shrink-0 w-1/2 snap-center bg-white rounded-2xl p-4 flex flex-col gap-[14px] shadow-[0px_2px_15px_0px_rgba(0,0,0,0.1)] cursor-pointer relative border-2',
+                    'flex-shrink-0 snap-center bg-white rounded-2xl flex flex-col shadow-[0px_2px_15px_0px_rgba(0,0,0,0.1)] cursor-pointer relative border-2',
+                    isVerticalLayout ? 'w-full p-6 gap-4' : 'w-1/2 p-4 gap-[14px]',
                     isSelected ? 'border-[#78b9ff] shadow-[0px_0px_8px_0px_rgba(0,122,255,0.5)]' : 'border-transparent'
                   )}
-                  whileTap={{ scale: 0.92 }}
+                  whileTap={{ scale: 0.98 }}
                   transition={{
                     type: 'spring',
                     stiffness: 400,
                     damping: 17,
                   }}
                 >
-                  {isSelected && (
+                  {isSelected && !isVerticalLayout && (
                     <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[hsl(var(--brand-blue))] flex items-center justify-center">
                       <Check className="w-3 h-3 text-white" />
                     </div>
                   )}
-                  <div className="flex flex-col gap-[14px]">
-                    {plan.plan_name === 'Unlimited' ? (
-                      <Infinity className="w-4 h-4 text-slate-800" />
-                    ) : plan.plan_name === 'Premium' ? (
-                      <ChessQueen className="w-4 h-4 text-slate-800" />
-                    ) : (
-                      <Crown className="w-4 h-4 text-slate-800" />
-                    )}
-                    <div className="flex flex-col gap-1">
-                      <p className={cn(
-                        "text-[14px] font-normal leading-[1.076]",
-                        plan.plan_name === 'Premium' 
-                          ? 'text-blue-500 drop-shadow-[0_0_1px_rgba(0,122,255,0.3)]' 
-                          : 'text-black'
-                      )}>
-                        {plan.plan_name}
-                      </p>
-                      <div className="flex items-baseline gap-0.5">
-                        <span className="text-[18px] font-semibold text-black">
-                          ${monthlyPrice.toFixed(2)}
-                        </span>
-                        <span className="text-[12px] font-medium text-black">/</span>
-                        <span className="text-[12px] font-normal text-black">mo</span>
+                  
+                  {/* Compact horizontal card (Version A) */}
+                  {!isVerticalLayout && (
+                    <>
+                      <div className="flex flex-col gap-[14px]">
+                        {plan.plan_name === 'Unlimited' ? (
+                          <Infinity className="w-4 h-4 text-slate-800" />
+                        ) : plan.plan_name === 'Premium' ? (
+                          <ChessQueen className="w-4 h-4 text-slate-800" />
+                        ) : (
+                          <Crown className="w-4 h-4 text-slate-800" />
+                        )}
+                        <div className="flex flex-col gap-1">
+                          <p className={cn(
+                            "text-[14px] font-normal leading-[1.076]",
+                            plan.plan_name === 'Premium' 
+                              ? 'text-blue-500 drop-shadow-[0_0_1px_rgba(0,122,255,0.3)]' 
+                              : 'text-black'
+                          )}>
+                            {plan.plan_name}
+                          </p>
+                          <div className="flex items-baseline gap-0.5">
+                            <span className="text-[18px] font-semibold text-black">
+                              ${monthlyPrice.toFixed(2)}
+                            </span>
+                            <span className="text-[12px] font-medium text-black">/</span>
+                            <span className="text-[12px] font-normal text-black">mo</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                  {/* <p className="text-[12px] font-medium text-black leading-[1.076]">
-                    Free 7-day trial
-                  </p> */}
+                    </>
+                  )}
+                  
+                  {/* Full detailed vertical card (Version B) */}
+                  {isVerticalLayout && (
+                    <>
+                      {/* Plan name at top */}
+                      <div className="flex items-center gap-2">
+                        {plan.plan_name === 'Unlimited' ? (
+                          <Infinity className="w-5 h-5 text-gray-700" />
+                        ) : plan.plan_name === 'Premium' ? (
+                          <ChessQueen className="w-5 h-5 text-gray-700" />
+                        ) : (
+                          <Crown className="w-5 h-5 text-gray-700" />
+                        )}
+                        <p className={cn(
+                          "text-[18px] font-semibold",
+                          plan.plan_name === 'Premium' 
+                            ? 'text-blue-500' 
+                            : 'text-black'
+                        )}>
+                          {plan.plan_name}
+                        </p>
+                      </div>
+                      
+                      {/* Price and plan name at top */}
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-[20px] font-semibold text-black leading-none">
+                            ${billingCycle === 'annual' 
+                              ? (plan.price_cents / 100).toFixed(2)
+                              : monthlyPrice.toFixed(2)}
+                          </span>
+                          <span className="text-[14px] text-gray-600">
+                            / {billingCycle === 'annual' ? 'year' : 'month'}
+                          </span>
+                        </div>
+                        <p className="text-[14px] text-gray-700 font-normal">
+                          {plan.plan_name} monthly usage
+                        </p>
+                      </div>
+                      
+                      {/* Get started button inside card */}
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent card click
+                          trackEvent('subscription_checkout_started', {
+                            variant: 'vertical',
+                            plan_name: plan.plan_name,
+                            billing_cycle: billingCycle,
+                            price: monthlyPrice,
+                          });
+                          handleSelectPlan(plan.stripe_price_id, plan.id);
+                        }}
+                        className="w-full bg-[#111] hover:bg-[#222] text-white text-[15px] font-normal rounded-xl"
+                      >
+                        Get started
+                      </Button>
+                      
+                      {/* Features list */}
+                      <div className="flex flex-col gap-3 pt-2">
+                        {isStructured ? (
+                          featuresList.map((item: any, idx: number) => {
+                            // Map feature names to appropriate icons
+                            const getFeatureIcon = (name: string) => {
+                              const nameLower = name.toLowerCase();
+                              if (nameLower.includes('voice') || nameLower.includes('speak') || nameLower.includes('ai voice')) {
+                                return <Mic className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else if (nameLower.includes('feedback') || nameLower.includes('personalized')) {
+                                return <MessageSquare className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else if (nameLower.includes('vocabulary') || nameLower.includes('word')) {
+                                return <BookOpen className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else if (nameLower.includes('tracking') || nameLower.includes('progress') || nameLower.includes('analytics')) {
+                                return <BarChart className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else if (nameLower.includes('unlimited') || nameLower.includes('credits')) {
+                                return <Infinity className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else if (nameLower.includes('ai') || nameLower.includes('smart') || nameLower.includes('intelligent')) {
+                                return <Sparkles className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else if (nameLower.includes('pronunciation') || nameLower.includes('accent')) {
+                                return <Volume2 className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else if (nameLower.includes('conversation') || nameLower.includes('chat')) {
+                                return <Users className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else if (nameLower.includes('fluency') || nameLower.includes('goal') || nameLower.includes('target')) {
+                                return <Target className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else if (nameLower.includes('learning') || nameLower.includes('coach') || nameLower.includes('adaptive')) {
+                                return <Brain className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else if (nameLower.includes('language') || nameLower.includes('translation')) {
+                                return <Globe className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else if (nameLower.includes('improve') || nameLower.includes('boost')) {
+                                return <TrendingUp className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else {
+                                return <Zap className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              }
+                            };
+                            
+                            return (
+                              <div key={idx} className="flex items-start gap-3">
+                                {getFeatureIcon(item.name)}
+                                <span className="text-[14px] text-gray-800 leading-normal">
+                                  {item.name}
+                                </span>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          featuresList.map((feature: string, idx: number) => {
+                            // Map feature names to appropriate icons
+                            const getFeatureIcon = (name: string) => {
+                              const nameLower = name.toLowerCase();
+                              if (nameLower.includes('voice') || nameLower.includes('speak') || nameLower.includes('ai voice')) {
+                                return <Mic className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else if (nameLower.includes('feedback') || nameLower.includes('personalized')) {
+                                return <MessageSquare className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else if (nameLower.includes('vocabulary') || nameLower.includes('word')) {
+                                return <BookOpen className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else if (nameLower.includes('tracking') || nameLower.includes('progress') || nameLower.includes('analytics')) {
+                                return <BarChart className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else if (nameLower.includes('unlimited') || nameLower.includes('credits')) {
+                                return <Infinity className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else if (nameLower.includes('ai') || nameLower.includes('smart') || nameLower.includes('intelligent')) {
+                                return <Sparkles className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else if (nameLower.includes('pronunciation') || nameLower.includes('accent')) {
+                                return <Volume2 className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else if (nameLower.includes('conversation') || nameLower.includes('chat')) {
+                                return <Users className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else if (nameLower.includes('fluency') || nameLower.includes('goal') || nameLower.includes('target')) {
+                                return <Target className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else if (nameLower.includes('learning') || nameLower.includes('coach') || nameLower.includes('adaptive')) {
+                                return <Brain className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else if (nameLower.includes('language') || nameLower.includes('translation')) {
+                                return <Globe className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else if (nameLower.includes('improve') || nameLower.includes('boost')) {
+                                return <TrendingUp className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              } else {
+                                return <Zap className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                              }
+                            };
+                            
+                            return (
+                              <div key={idx} className="flex items-start gap-3">
+                                {getFeatureIcon(feature)}
+                                <span className="text-[14px] text-gray-800 leading-normal">
+                                  {feature}
+                                </span>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </>
+                  )}
                 </motion.div>
               );
             })}
           </div>
         </div>
 
-        {/* Continue Button */}
-        <div className="mt-auto pt-2">
-          <Button 
-            onClick={() => {
-              if (selectedPlan && plans) {
-                const plan = plans.find(p => p.id === selectedPlan);
-                if (plan) {
-                  handleSelectPlan(plan.stripe_price_id, plan.id);
+        {/* Continue Button - Only shown in horizontal layout */}
+        {!isVerticalLayout && (
+          <div className="mt-auto pt-2">
+            <Button 
+              onClick={() => {
+                if (selectedPlan && plans) {
+                  const plan = plans.find(p => p.id === selectedPlan);
+                  if (plan) {
+                    trackEvent('subscription_checkout_started', {
+                      variant: isVerticalLayout ? 'vertical' : 'horizontal',
+                      plan_name: plan.plan_name,
+                      billing_cycle: billingCycle,
+                      price: billingCycle === 'annual' ? plan.monthly_equivalent_cents / 100 : plan.price_cents / 100,
+                    });
+                    handleSelectPlan(plan.stripe_price_id, plan.id);
+                  }
                 }
-              }
-            }}
-            disabled={!selectedPlan}
-            className="w-full h-12 bg-[#111] hover:bg-[#222] text-white text-[18px] font-medium rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            <CreditCard className="w-5 h-5" />
-            Subscribe
-          </Button>
-        </div>
+              }}
+              disabled={!selectedPlan}
+              className="w-full h-12 bg-[#111] hover:bg-[#222] text-white text-[18px] font-medium rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <CreditCard className="w-5 h-5" />
+              Subscribe
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Add scrollbar hide utility */}
