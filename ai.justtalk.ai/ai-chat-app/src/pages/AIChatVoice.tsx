@@ -1,23 +1,29 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
-  MoreVertical,
-  Square,
   X,
   Mic,
   MicOff,
   AudioWaveform,
+  Volume2,
+  CircleStop,
+  Languages,
 } from 'lucide-react';
 import { useConversation } from '@elevenlabs/react';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { getElevenLabsSignedUrl } from '@/lib/justai-api';
 import { supabase } from '@/lib/supabase';
 import { useSession } from '@/hooks/useSession';
 import { FeedbackDrawer, type FeedbackData } from '@/components/FeedbackDrawer';
 import { getAgentByElevenLabsId } from '@/config/elevenlabs-agents';
+import { VoiceBars } from '@/components/VoiceBars';
+import { CenteredAgentIntro } from '@/components/CenteredAgentIntro';
 
 interface TranscriptSegment {
   speaker: 'student' | 'ai';
@@ -33,12 +39,13 @@ export default function AIChatVoice() {
   const [isAISpeaking, setIsAISpeaking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [sessionDuration, setSessionDuration] = useState(0);
-  const [showButton, setShowButton] = useState(false);
   const [transcript, setTranscript] = useState<TranscriptSegment[]>([]);
-  const [waveformHeights, setWaveformHeights] = useState<number[]>(
-    Array.from({ length: 30 }, () => 0.2)
-  );
-  const [isConnecting, setIsConnecting] = useState(false);
+  const [audioLevels, setAudioLevels] = useState<number[]>(Array(8).fill(0.2));
+  const [isConnecting, setIsConnecting] = useState(true);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyzerRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [elevenLabsConvId, setElevenLabsConvId] = useState<string | null>(null);
   const sessionStartTime = useRef<Date | null>(null);
@@ -47,6 +54,11 @@ export default function AIChatVoice() {
   const [feedbackData, setFeedbackData] = useState<FeedbackData | null>(null);
   const [isFetchingFeedback, setIsFetchingFeedback] = useState(false);
   const [showContinuePrompt, setShowContinuePrompt] = useState(false);
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+  const [visibleTranslations, setVisibleTranslations] = useState<Set<string>>(new Set());
+  const [loadingTranslation, setLoadingTranslation] = useState<Record<string, boolean>>({});
+  const [playingAudio, setPlayingAudio] = useState<Record<string, boolean>>({});
+  const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
 
   // Get agent info from navigation state
   const selectedAgentId = location.state?.agentId; // ElevenLabs agent ID (undefined = use default)
@@ -75,7 +87,7 @@ export default function AIChatVoice() {
       
       const { data, error } = await supabase
         .from('profiles')
-        .select('justai_preferred_voice')
+        .select('justai_preferred_voice, display_name, profile_photo_url, native_language')
         .eq('id', user.id)
         .single();
       
@@ -85,11 +97,120 @@ export default function AIChatVoice() {
     enabled: !!user?.id,
   });
 
+  // Get agent data for avatar
+  const { data: agentData } = useQuery({
+    queryKey: ['agent-data', agentDatabaseId],
+    queryFn: async () => {
+      if (!agentDatabaseId) return null;
+      
+      const { data, error } = await supabase
+        .from('justai_agents')
+        .select('image_url, name, description')
+        .eq('id', agentDatabaseId)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!agentDatabaseId,
+  });
+
+  // Helper function to convert image URL to use _avatar suffix
+  const getAvatarUrl = (imageUrl: string | null | undefined): string | undefined => {
+    if (!imageUrl) return undefined;
+    
+    const lastDotIndex = imageUrl.lastIndexOf('.');
+    const lastSlashIndex = imageUrl.lastIndexOf('/');
+    
+    if (lastDotIndex > lastSlashIndex && lastDotIndex !== -1) {
+      const basePath = imageUrl.substring(0, lastDotIndex);
+      const extension = imageUrl.substring(lastDotIndex);
+      
+      const filename = basePath.substring(lastSlashIndex + 1);
+      if (filename.startsWith('dating_')) {
+        return `${basePath}_avatar${extension}`;
+      }
+      
+      return imageUrl;
+    }
+    
+    return imageUrl;
+  };
+
+  // Initialize audio analyzer for live voice bars
+  const initAudioAnalyzer = () => {
+    try {
+      if (!audioContextRef.current) {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        audioContextRef.current = new AudioContext();
+        analyzerRef.current = audioContextRef.current.createAnalyser();
+        analyzerRef.current.fftSize = 32;
+        analyzerRef.current.smoothingTimeConstant = 0.8;
+        
+        // Get microphone stream
+        navigator.mediaDevices.getUserMedia({ audio: true })
+          .then((stream) => {
+            micStreamRef.current = stream;
+            const source = audioContextRef.current!.createMediaStreamSource(stream);
+            source.connect(analyzerRef.current!);
+            updateAudioLevels();
+          })
+          .catch((err) => {
+            console.warn('Microphone access denied, using fallback animation:', err);
+          });
+      }
+    } catch (error) {
+      console.error('Failed to initialize audio analyzer:', error);
+    }
+  };
+
+  // Update audio levels from analyzer
+  const updateAudioLevels = () => {
+    if (!analyzerRef.current) return;
+    
+    const dataArray = new Uint8Array(analyzerRef.current.frequencyBinCount);
+    
+    const analyze = () => {
+      if (!analyzerRef.current) return;
+      
+      analyzerRef.current.getByteFrequencyData(dataArray);
+      
+      // Convert to normalized values (0-1) and take first 8 bins
+      const levels = Array.from(dataArray.slice(0, 8)).map(value => {
+        const normalized = value / 255;
+        return Math.max(0.2, normalized); // Minimum height of 20%
+      });
+      
+      setAudioLevels(levels);
+      animationFrameRef.current = requestAnimationFrame(analyze);
+    };
+    
+    analyze();
+  };
+
+  // Cleanup audio analyzer on unmount
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
   // ElevenLabs conversation hook
   const conversation = useConversation({
     onConnect: () => {
       console.log('🟢 Connected to ElevenLabs');
       setIsConnecting(false);
+      
+      // Initialize audio analyzer
+      initAudioAnalyzer();
       
       // Inspect the entire conversation object to find where ElevenLabs stores the conversation ID
       console.log('🔍 Full conversation object:', conversation);
@@ -382,32 +503,6 @@ export default function AIChatVoice() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userProfile]);
 
-  // Show button with animation after transition
-  useEffect(() => {
-    const fromTransition = location.state?.fromTransition;
-    if (fromTransition) {
-      // Wait for the morphing animation to complete
-      setTimeout(() => setShowButton(true), 500);
-    } else {
-      setShowButton(true);
-    }
-  }, [location]);
-
-  // Animate waveform bars
-  useEffect(() => {
-    let animationInterval: ReturnType<typeof setInterval>;
-    if (isRecording || isAISpeaking) {
-      animationInterval = setInterval(() => {
-        setWaveformHeights(
-          Array.from({ length: 30 }, () => Math.random() * 0.8 + 0.2)
-        );
-      }, 100);
-    } else {
-      setWaveformHeights(Array.from({ length: 30 }, () => 0.2));
-    }
-    return () => clearInterval(animationInterval);
-  }, [isRecording, isAISpeaking]);
-
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
     if (isRecording || isAISpeaking) {
@@ -424,17 +519,106 @@ export default function AIChatVoice() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const toggleRecording = async () => {
-    if (conversation.status !== 'connected') {
+
+
+  const handleTranslate = async (messageId: string, content: string) => {
+    if (visibleTranslations.has(messageId)) {
+      setVisibleTranslations((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(messageId);
+        return newSet;
+      });
       return;
     }
 
-    if (isRecording) {
-      // Stop recording - ElevenLabs will automatically process
-      conversation.setVolume({ volume: isMuted ? 0 : 1 });
-    } else {
-      // Start recording - handled by ElevenLabs
-      conversation.setVolume({ volume: isMuted ? 0 : 1 });
+    if (translations[messageId]) {
+      setVisibleTranslations((prev) => new Set(prev).add(messageId));
+      return;
+    }
+
+    setLoadingTranslation((prev) => ({ ...prev, [messageId]: true }));
+    
+    try {
+      const nativeLanguage = userProfile?.native_language || 'Russian';
+      const session = await supabase.auth.getSession();
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/translate-text`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.data.session?.access_token}`,
+          },
+          body: JSON.stringify({
+            text: content,
+            targetLanguage: nativeLanguage,
+          }),
+        }
+      );
+
+      if (!response.ok) throw new Error('Translation failed');
+
+      const data = await response.json();
+      setTranslations((prev) => ({ ...prev, [messageId]: data.translation || 'Translation failed' }));
+      setVisibleTranslations((prev) => new Set(prev).add(messageId));
+    } catch (error) {
+      console.error('Translation error:', error);
+    } finally {
+      setLoadingTranslation((prev) => ({ ...prev, [messageId]: false }));
+    }
+  };
+
+  const handlePlayAudio = async (messageId: string, content: string) => {
+    if (playingAudio[messageId] && audioRefs.current[messageId]) {
+      audioRefs.current[messageId].pause();
+      audioRefs.current[messageId].currentTime = 0;
+      delete audioRefs.current[messageId];
+      setPlayingAudio((prev) => ({ ...prev, [messageId]: false }));
+      return;
+    }
+
+    setPlayingAudio((prev) => ({ ...prev, [messageId]: true }));
+
+    try {
+      const session = await supabase.auth.getSession();
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-text-to-speech`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.data.session?.access_token}`,
+          },
+          body: JSON.stringify({ text: content }),
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to generate audio');
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      
+      audioRefs.current[messageId] = audio;
+      
+      audio.onended = () => {
+        setPlayingAudio((prev) => ({ ...prev, [messageId]: false }));
+        delete audioRefs.current[messageId];
+        URL.revokeObjectURL(audioUrl);
+      };
+
+      audio.onerror = () => {
+        setPlayingAudio((prev) => ({ ...prev, [messageId]: false }));
+        delete audioRefs.current[messageId];
+        URL.revokeObjectURL(audioUrl);
+      };
+
+      await audio.play();
+    } catch (error) {
+      console.error('Audio playback error:', error);
+      setPlayingAudio((prev) => ({ ...prev, [messageId]: false }));
+      delete audioRefs.current[messageId];
     }
   };
 
@@ -716,161 +900,259 @@ export default function AIChatVoice() {
 
   return (
     <div className="h-screen bg-background flex flex-col page-enter">
-      {/* Header */}
-      <header className="px-4 py-3 flex items-center justify-between border-b">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate(-1)}
-          className="rounded-full"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-sm font-medium">
-            {formatDuration(sessionDuration)}
-          </span>
-        </div>
-        <Button variant="ghost" size="icon" className="rounded-full">
-          <MoreVertical className="w-5 h-5" />
-        </Button>
-      </header>
-
-      {/* AI Avatar / Waveform Visualization */}
-      <div className="flex-1 flex items-center justify-center px-4">
-        <div className="text-center">
-          {/* AI Avatar */}
-          <div
-            className={cn(
-              'w-32 h-32 mx-auto mb-6 rounded-full bg-primary flex items-center justify-center shadow-2xl transition-all duration-300',
-              isAISpeaking && 'scale-110 pulse-glow'
-            )}
+      <AnimatePresence mode="wait">
+        {isConnecting ? (
+          /* Centered Agent Introduction Screen */
+          <CenteredAgentIntro
+            agentName={selectedAgentName}
+            agentDescription={agentData?.description || selectedScenario}
+            agentImageUrl={getAvatarUrl(agentData?.image_url)}
+          />
+        ) : (
+          /* Connected State - Full Chat Interface matching Figma */
+          <motion.div
+            key="connected"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 flex flex-col h-full"
           >
-            <div className="text-6xl">{isAISpeaking ? '🗣️' : '👋'}</div>
-          </div>
-
-          {/* Status Text */}
-          <h2 className="text-xl font-semibold mb-2">
-            {isConnecting
-              ? 'Connecting...'
-              : isRecording
-              ? "I'm listening..."
-              : isAISpeaking
-              ? `${selectedAgentName} is speaking...`
-              : `Chat with ${selectedAgentName}`}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {isConnecting
-              ? 'Setting up voice connection...'
-              : isRecording
-              ? "Go ahead, I'm listening"
-              : isAISpeaking
-              ? 'Just a moment...'
-              : 'Tap the button to start talking'}
-          </p>
-
-          {/* Real-time Waveform - Animated */}
-          {(isRecording || isAISpeaking) && (
-            <div className="mt-8 flex items-center justify-center gap-1 h-20">
-              {waveformHeights.map((height, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    'w-1 rounded-full transition-all duration-100 ease-in-out',
-                    isAISpeaking ? 'bg-blue-500' : 'bg-green-500'
-                  )}
-                  style={{
-                    height: `${height * 100}%`,
-                    opacity: isRecording ? 1 : 0.8,
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Transcript Display (Scrollable) */}
-      <div className="max-h-48 overflow-y-auto px-4 mb-4 space-y-3">
-        {transcript.slice(-5).map((segment, idx) => (
-          <div
-            key={idx}
-            className={cn(
-              'flex gap-2',
-              segment.speaker === 'student' ? 'justify-end' : 'justify-start'
-            )}
-          >
-            <div
-              className={cn(
-                'max-w-[80%] px-4 py-2 rounded-2xl',
-                segment.speaker === 'student'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted'
-              )}
+            {/* Header with Agent Info and Voice Bars - Light Blue Background */}
+            <motion.header
+              initial={{ y: -100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.6, ease: 'easeOut', delay: 0.2 }}
+              className="px-4 py-4 flex items-center justify-between bg-[#E3F2FD]"
             >
-              <p className="text-sm">{segment.text}</p>
+              {/* Left Side: Back + Avatar + Name */}
+              <div className="flex items-center gap-3 flex-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate(-1)}
+                  className="rounded-full -ml-2 h-10 w-10"
+                >
+                  <ArrowLeft className="w-6 h-6" />
+                </Button>
+                
+                {/* Agent Avatar */}
+                <Avatar className="w-14 h-14 border-2 border-white shadow-md">
+                  <AvatarImage src={getAvatarUrl(agentData?.image_url)} />
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white text-xl">
+                    👤
+                  </AvatarFallback>
+                </Avatar>
+                
+                {/* Agent Name + Subtitle */}
+                <div className="flex flex-col">
+                  <span className="font-semibold text-md leading-tight">{selectedAgentName}</span>
+                  {/* <span className="text-sm text-gray-600">{selectedScenario.replace('_', ' ')}</span> */}
+                </div>
+              </div>
+
+              {/* Right Side: Voice Bars + Timer */}
+              <div className="flex items-center gap-3">
+                {/* Live Voice Bars */}
+                {(isRecording || isAISpeaking) && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                  >
+                    <VoiceBars
+                      levels={audioLevels}
+                      isActive={isRecording || isAISpeaking}
+                      color={isRecording ? 'green' : 'blue'}
+                      size="md"
+                    />
+                  </motion.div>
+                )}
+                
+                {/* Timer with fixed height */}
+                <div className="bg-white rounded-full px-4 py-2 min-w-[70px] flex items-center justify-center">
+                  <span className="text-sm font-medium tabular-nums">
+                    {formatDuration(sessionDuration)}
+                  </span>
+                </div>
+              </div>
+            </motion.header>
+
+            {/* Main Content Area with Rounded Container - matching AIChatHome */}
+            <div className="flex-1 bg-gray-100 rounded-[40px] m-2 flex flex-col overflow-hidden">
+              {/* Chat Messages Area (Scrollable) */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.5 }}
+                className="flex-1 overflow-y-auto px-6 py-6 space-y-4"
+              >
+                {transcript.length === 0 ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center text-muted-foreground">
+                      <AudioWaveform className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                      <p className="text-sm">Start speaking to begin the conversation</p>
+                    </div>
+                  </div>
+                ) : (
+                  transcript.map((segment, idx) => {
+                    const messageId = `${segment.timestamp}-${idx}`;
+                    return (
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className={cn(
+                        'flex gap-3',
+                        segment.speaker === 'student' ? 'justify-end' : 'justify-start'
+                      )}
+                    >
+                      {segment.speaker === 'ai' && (
+                        <Avatar className="w-8 h-8 flex-shrink-0">
+                          <AvatarImage src={getAvatarUrl(agentData?.image_url)} />
+                          <AvatarFallback>🤖</AvatarFallback>
+                        </Avatar>
+                      )}
+                      <div className="flex flex-col gap-2 pt-0">
+                        <div
+                          className={cn(
+                            'px-4 py-3 rounded-2xl transition-all duration-300 ease-in-out',
+                            segment.speaker === 'student'
+                              ? 'bg-[hsl(var(--brand-blue))] text-white'
+                              : 'bg-white text-gray-900 shadow-sm'
+                          )}
+                        >
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{segment.text}</p>
+                          <div 
+                            className={cn(
+                              "grid transition-all duration-300 ease-in-out",
+                              (visibleTranslations.has(messageId) || loadingTranslation[messageId]) 
+                                ? "grid-rows-[1fr] opacity-100" 
+                                : "grid-rows-[0fr] opacity-0"
+                            )}
+                          >
+                            <div className="overflow-hidden">
+                              <div className="mt-2 pt-2 border-t border-gray-200">
+                                {loadingTranslation[messageId] ? (
+                                  <div className="space-y-2">
+                                    <Skeleton className="h-3 w-full" />
+                                    <Skeleton className="h-3 w-3/4" />
+                                  </div>
+                                ) : visibleTranslations.has(messageId) && translations[messageId] ? (
+                                  <p className="text-sm text-gray-600">{translations[messageId]}</p>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                          <p
+                            className={cn(
+                              'text-xs mt-1',
+                              segment.speaker === 'student' ? 'text-blue-100' : 'text-gray-400'
+                            )}
+                          >
+                            {new Date(segment.timestamp).toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                            })}
+                          </p>
+                        </div>
+                        
+                        {/* Action buttons for AI messages */}
+                        {segment.speaker === 'ai' && (
+                            <div className="flex gap-2 ml-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-gray-500 hover:text-gray-700"
+                              onClick={() => handlePlayAudio(messageId, segment.text)}
+                            >
+                              {playingAudio[messageId] ? (
+                                <CircleStop className="w-4 h-4" />
+                              ) : (
+                                <Volume2 className="w-4 h-4" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-0 text-gray-500 hover:text-gray-700"
+                              onClick={() => handleTranslate(messageId, segment.text)}
+                              disabled={loadingTranslation[messageId]}
+                            >
+                              <Languages className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      {segment.speaker === 'student' && (
+                        <Avatar className="w-8 h-8 flex-shrink-0">
+                          <AvatarImage src={userProfile?.profile_photo_url} />
+                          <AvatarFallback>{userProfile?.display_name?.[0] || 'U'}</AvatarFallback>
+                        </Avatar>
+                      )}
+                    </motion.div>
+                  );
+                })
+                )}
+              </motion.div>
             </div>
-          </div>
-        ))}
-      </div>
 
-      {/* Bottom Controls */}
-      <div className="px-4 pb-8">
-        <div className="flex flex-col items-center justify-center gap-4">
-          {/* Main Voice Button - Large Circular */}
-          <Button
-            variant={isRecording ? "destructive" : "default"}
-            size="icon"
-            className={cn(
-              'w-28 h-28 rounded-full shadow-2xl transition-all duration-500',
-              isRecording && 'scale-110',
-              showButton ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
-            )}
-            onClick={toggleRecording}
-            disabled={isConnecting || conversation.status !== 'connected'}
-          >
-            {isRecording ? (
-              <Square className="w-10 h-10" />
-            ) : (
-              <AudioWaveform className="w-12 h-12" />
-            )}
-          </Button>
+            {/* Bottom Bar - OUTSIDE the rounded container */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.6 }}
+              className="px-5 pb-6"
+            >
+              <div className="flex items-center gap-3">
+                {/* Microphone Button (Mute/Unmute) - Just icon */}
+                <button
+                  className="flex-shrink-0 text-gray-700 hover:text-gray-900 transition-colors disabled:opacity-50"
+                  onClick={() => {
+                    const newMutedState = !isMuted;
+                    setIsMuted(newMutedState);
+                    
+                    // Mute/unmute the microphone input to prevent/allow sending voice to agent
+                    if (micStreamRef.current) {
+                      micStreamRef.current.getAudioTracks().forEach(track => {
+                        // Use the track's muted property to mute audio device
+                        if ('enabled' in track) {
+                          track.enabled = !newMutedState;
+                        }
+                      });
+                    }
+                  }}
+                  disabled={conversation.status !== 'connected'}
+                >
+                  {isMuted ? (
+                    <MicOff className="w-7 h-7" />
+                  ) : (
+                    <Mic className="w-7 h-7" />
+                  )}
+                </button>
 
-          {/* Text below button */}
-          <p className={cn(
-            'text-center text-sm text-muted-foreground transition-all duration-500 delay-100',
-            showButton ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-          )}>
-            {isRecording ? 'Release to send' : 'Hold to speak'}
-          </p>
-        </div>
+                {/* Help me answer Button - rounded pill */}
+                <Button
+                  variant="outline"
+                  className="flex-1 h-12 rounded-full bg-white border-gray-300 text-gray-600 text-base"
+                  disabled
+                >
+                  Help me answer
+                </Button>
 
-        {/* Secondary controls - moved to top corners or hidden */}
-        <div className="absolute bottom-8 left-4 right-4 flex justify-between opacity-50 hover:opacity-100 transition-opacity">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-full"
-            onClick={() => {
-              const newMutedState = !isMuted;
-              setIsMuted(newMutedState);
-              conversation.setVolume({ volume: newMutedState ? 0 : 1 });
-            }}
-          >
-            {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-full"
-            onClick={endSession}
-          >
-            <X className="w-5 h-5" />
-          </Button>
-        </div>
-      </div>
+                {/* Close/Cancel Button - Just icon */}
+                <button
+                  className="flex-shrink-0 text-gray-700 hover:text-gray-900 transition-colors"
+                  onClick={endSession}
+                >
+                  <X className="w-7 h-7" />
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* Feedback Drawer */}
       <FeedbackDrawer
