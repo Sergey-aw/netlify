@@ -258,7 +258,7 @@ export default function SubscriptionPlans() {
             <div className="relative overflow-hidden rounded-2xl glass-container">
               {/* Glass effect base */}
               <div 
-                className="relative px-4 py-2 flex items-center gap-2.5"
+                className="relative px-4 py-2 flex items-center gap-2.4"
                 style={{
                   background: 'rgba(129, 190, 255, 0.2)',
                   backdropFilter: 'blur(12px) saturate(140%)',
@@ -321,7 +321,7 @@ export default function SubscriptionPlans() {
 
             </div>
              <div 
-              className="relative flex items-center justify-center px-2.5 py-1 rounded-lg -mb-2  -inset-y-2"
+              className="relative flex items-center justify-center px-2.4 py-1 rounded-lg -mb-2  -inset-y-2"
               style={{
                 background: 'rgba(13, 255, 0, 0.15)',
                 backdropFilter: 'blur(8px) saturate(140%)',
@@ -366,7 +366,7 @@ export default function SubscriptionPlans() {
         {isAuthenticated === false && (
           <div className="mb-4">
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-500 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-500 flex-shrink-0 mt-0.4" />
               <div>
                 <p className="font-medium text-blue-900 dark:text-blue-100">Verify Your Email</p>
                 <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
@@ -380,7 +380,7 @@ export default function SubscriptionPlans() {
         {showCanceledMessage && (
           <div className="mb-4">
             <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.4" />
               <div>
                 <p className="font-medium text-yellow-900 dark:text-yellow-100">Checkout Canceled</p>
                 <p className="text-sm text-yellow-800 dark:text-yellow-200 mt-1">
@@ -404,8 +404,8 @@ export default function SubscriptionPlans() {
                 <div className="space-y-3">
                   {features.items.slice(0, 3).map((item, idx) => (
                     <div key={idx} className="flex gap-[10px] items-start">
-                      <div className="w-16 h-[63px] bg-white flex flex-col items-center overflow-hidden rounded-lg shrink-0">
-                        <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.5" />
+                      <div className="w-16 h-16 flex flex-col items-center overflow-hidden rounded-lg shrink-0">
+                        <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.4" />
                       </div>
                       <div className="flex-1 flex flex-col gap-1 min-w-0">
                         <p className="text-base font-medium text-black leading-normal">
@@ -424,7 +424,7 @@ export default function SubscriptionPlans() {
                 {(features as string[])?.slice(0, 3).map((feature, idx) => (
                   <div key={idx} className="flex gap-[10px] items-start">
                     <div className="w-16 h-[63px] bg-white flex flex-col items-center overflow-hidden rounded-lg shrink-0">
-                      <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.5" />
+                      <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.4" />
                     </div>
                     <div className="flex-1 flex flex-col gap-1 min-w-0">
                       <p className="text-base font-semibold text-black leading-normal whitespace-nowrap">
@@ -443,7 +443,7 @@ export default function SubscriptionPlans() {
               {[1, 2, 3].map((idx) => (
                 <div key={idx} className="flex gap-[10px] items-start">
                   <div className="w-16 h-[63px] bg-white flex flex-col items-center overflow-hidden rounded-lg shrink-0">
-                    <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.5" />
+                    <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.4" />
                   </div>
                   <div className="flex-1 flex flex-col gap-1 min-w-0">
                     <p className="text-[16px] font-semibold text-black leading-normal whitespace-nowrap">
@@ -471,11 +471,11 @@ export default function SubscriptionPlans() {
 
           {/* Tabs Component */}
           <div className="flex justify-center w-full px-[60px]">
-            <div className="w-full bg-muted rounded-md p-1 relative">
+            <div className="w-full bg-muted rounded-md p-2 relative">
               {/* Discount badge */}
               <Badge 
                 variant="default" 
-                className="absolute -top-2 -right-4 bg-blue-500 hover:rotate-6 text-white text-[10px] px-1.5 py-0.5 shadow-sm z-20 rotate-[20deg]"
+                className="absolute -top-2 -right-4 bg-blue-500 hover:rotate-6 text-white text-[10px] px-1 py-0.4 shadow-sm z-20 rotate-[20deg]"
               >
                 -34%
               </Badge>
@@ -506,7 +506,7 @@ export default function SubscriptionPlans() {
                     });
                   }}
                   className={cn(
-                    "flex-1 px-3 py-1.5 text-sm font-medium rounded-sm transition-colors relative z-10",
+                    "flex-1 px-3 py-1.4 text-sm font-medium rounded-sm transition-colors relative z-10",
                     billingCycle === 'monthly' ? 'text-foreground' : 'text-muted-foreground'
                   )}
                 >
@@ -522,7 +522,7 @@ export default function SubscriptionPlans() {
                     });
                   }}
                   className={cn(
-                    "flex-1 px-3 py-1.5 text-sm font-medium rounded-sm transition-colors relative z-10",
+                    "flex-1 px-3 py-1.4 text-sm font-medium rounded-sm transition-colors relative z-10",
                     billingCycle === 'annual' ? 'text-foreground' : 'text-muted-foreground'
                   )}
                 >
@@ -564,7 +564,7 @@ export default function SubscriptionPlans() {
                   className={cn(
                     'flex-shrink-0 snap-center bg-white rounded-2xl flex flex-col shadow-[0px_2px_15px_0px_rgba(0,0,0,0.1)] cursor-pointer relative border-2',
                     isVerticalLayout ? 'w-full p-6 gap-4' : 'w-1/2 p-4 gap-[14px]',
-                    isSelected ? 'border-[#78b9ff] shadow-[0px_0px_8px_0px_rgba(0,122,255,0.5)]' : 'border-transparent'
+                    isSelected ? 'border-[#78b9ff] shadow-[0px_0px_8px_0px_rgba(0,122,255,0.4)]' : 'border-transparent'
                   )}
                   whileTap={{ scale: 0.98 }}
                   transition={{
@@ -574,7 +574,7 @@ export default function SubscriptionPlans() {
                   }}
                 >
                   {isSelected && !isVerticalLayout && (
-                    <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[hsl(var(--brand-blue))] flex items-center justify-center">
+                    <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-[hsl(var(--brand-blue))] flex items-center justify-center">
                       <Check className="w-3 h-3 text-white" />
                     </div>
                   )}
@@ -599,13 +599,18 @@ export default function SubscriptionPlans() {
                           )}>
                             {plan.plan_name}
                           </p>
-                          <div className="flex items-baseline gap-0.5">
+                          <div className="flex items-baseline gap-0.4">
                             <span className="text-[18px] font-semibold text-black">
                               ${monthlyPrice.toFixed(2)}
                             </span>
                             <span className="text-[12px] font-medium text-black">/</span>
-                            <span className="text-[12px] font-normal text-black">mo</span>
+                            <span className="text-[12px] font-normal text-black">
+                              mo
+                            </span>
                           </div>
+                          <span className='text-[12px] font-normal text-gray-500'>
+                            {billingCycle === 'annual' ? 'billed yearly' : 'billed monthly'}
+                          </span>
                         </div>
                       </div>
                     </>
@@ -617,11 +622,11 @@ export default function SubscriptionPlans() {
                       {/* Plan name at top */}
                       <div className="flex items-center gap-2">
                         {plan.plan_name === 'Unlimited' ? (
-                          <Infinity className="w-5 h-5 text-gray-700" />
+                          <Infinity className="w-4 h-4 text-gray-700" />
                         ) : plan.plan_name === 'Premium' ? (
-                          <ChessQueen className="w-5 h-5 text-gray-700" />
+                          <ChessQueen className="w-4 h-4 text-gray-700" />
                         ) : (
-                          <Crown className="w-5 h-5 text-gray-700" />
+                          <Crown className="w-4 h-4 text-gray-700" />
                         )}
                         <p className={cn(
                           "text-[18px] font-semibold",
@@ -645,9 +650,9 @@ export default function SubscriptionPlans() {
                             / {billingCycle === 'annual' ? 'year' : 'month'}
                           </span>
                         </div>
-                        <p className="text-[14px] text-gray-700 font-normal">
+                        {/* <p className="text-[14px] text-gray-700 font-normal">
                           {plan.plan_name} monthly usage
-                        </p>
+                        </p> */}
                       </div>
                       
                       {/* Get started button inside card */}
@@ -675,38 +680,38 @@ export default function SubscriptionPlans() {
                             const getFeatureIcon = (name: string) => {
                               const nameLower = name.toLowerCase();
                               if (nameLower.includes('voice') || nameLower.includes('speak') || nameLower.includes('ai voice')) {
-                                return <Mic className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <Mic className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else if (nameLower.includes('feedback') || nameLower.includes('personalized')) {
-                                return <MessageSquare className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <MessageSquare className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else if (nameLower.includes('vocabulary') || nameLower.includes('word')) {
-                                return <BookOpen className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <BookOpen className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else if (nameLower.includes('tracking') || nameLower.includes('progress') || nameLower.includes('analytics')) {
-                                return <BarChart className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <BarChart className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else if (nameLower.includes('unlimited') || nameLower.includes('credits')) {
-                                return <Infinity className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <Infinity className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else if (nameLower.includes('ai') || nameLower.includes('smart') || nameLower.includes('intelligent')) {
-                                return <Sparkles className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <Sparkles className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else if (nameLower.includes('pronunciation') || nameLower.includes('accent')) {
-                                return <Volume2 className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <Volume2 className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else if (nameLower.includes('conversation') || nameLower.includes('chat')) {
-                                return <Users className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <Users className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else if (nameLower.includes('fluency') || nameLower.includes('goal') || nameLower.includes('target')) {
-                                return <Target className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <Target className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else if (nameLower.includes('learning') || nameLower.includes('coach') || nameLower.includes('adaptive')) {
-                                return <Brain className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <Brain className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else if (nameLower.includes('language') || nameLower.includes('translation')) {
-                                return <Globe className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <Globe className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else if (nameLower.includes('improve') || nameLower.includes('boost')) {
-                                return <TrendingUp className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <TrendingUp className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else {
-                                return <Zap className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <Zap className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               }
                             };
                             
                             return (
-                              <div key={idx} className="flex items-start gap-3">
+                              <div key={idx} className="flex items-start gap-2">
                                 {getFeatureIcon(item.name)}
-                                <span className="text-[14px] text-gray-800 leading-normal">
+                                <span className="text-[14px] text-gray-800 leading-tight">
                                   {item.name}
                                 </span>
                               </div>
@@ -718,31 +723,31 @@ export default function SubscriptionPlans() {
                             const getFeatureIcon = (name: string) => {
                               const nameLower = name.toLowerCase();
                               if (nameLower.includes('voice') || nameLower.includes('speak') || nameLower.includes('ai voice')) {
-                                return <Mic className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <Mic className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else if (nameLower.includes('feedback') || nameLower.includes('personalized')) {
-                                return <MessageSquare className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <MessageSquare className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else if (nameLower.includes('vocabulary') || nameLower.includes('word')) {
-                                return <BookOpen className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <BookOpen className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else if (nameLower.includes('tracking') || nameLower.includes('progress') || nameLower.includes('analytics')) {
-                                return <BarChart className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <BarChart className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else if (nameLower.includes('unlimited') || nameLower.includes('credits')) {
-                                return <Infinity className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <Infinity className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else if (nameLower.includes('ai') || nameLower.includes('smart') || nameLower.includes('intelligent')) {
-                                return <Sparkles className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <Sparkles className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else if (nameLower.includes('pronunciation') || nameLower.includes('accent')) {
-                                return <Volume2 className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <Volume2 className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else if (nameLower.includes('conversation') || nameLower.includes('chat')) {
-                                return <Users className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <Users className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else if (nameLower.includes('fluency') || nameLower.includes('goal') || nameLower.includes('target')) {
-                                return <Target className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <Target className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else if (nameLower.includes('learning') || nameLower.includes('coach') || nameLower.includes('adaptive')) {
-                                return <Brain className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <Brain className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else if (nameLower.includes('language') || nameLower.includes('translation')) {
-                                return <Globe className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <Globe className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else if (nameLower.includes('improve') || nameLower.includes('boost')) {
-                                return <TrendingUp className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <TrendingUp className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               } else {
-                                return <Zap className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />;
+                                return <Zap className="w-4 h-4 text-gray-700 flex-shrink-0 mt-0.4" />;
                               }
                             };
                             
@@ -786,7 +791,7 @@ export default function SubscriptionPlans() {
               disabled={!selectedPlan}
               className="w-full h-12 bg-[#111] hover:bg-[#222] text-white text-[18px] font-medium rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              <CreditCard className="w-5 h-5" />
+              <CreditCard className="w-4 h-4" />
               Subscribe
             </Button>
           </div>
