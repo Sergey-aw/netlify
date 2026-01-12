@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import {
   PanelLeft,
-  Sparkles,
+  // Sparkles,
   ChevronLeft,
   Volume2,
   CircleStop,
@@ -30,7 +30,7 @@ import { FeatureCardGallery } from '@/components/FeatureCardGallery';
 import { supabase } from '@/lib/supabase';
 import { checkSubscriptionAccess } from '@/lib/justai-api';
 import { getAgentsByCategory } from '@/services/agents.service';
-import LogoBars from '@/assets/logo_bars.svg';
+// import LogoBars from '@/assets/logo_bars.svg';
 import Logo from '@/assets/logo.svg';
 import { cn } from '@/lib/utils';
 
@@ -65,7 +65,7 @@ export default function AIChatHome() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [transitionStart, setTransitionStart] = useState<{ x: number; y: number } | undefined>();
+  const [transitionStart] = useState<{ x: number; y: number } | undefined>();
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [showFeedbackDrawer, setShowFeedbackDrawer] = useState(false);
@@ -134,7 +134,7 @@ export default function AIChatHome() {
   } | null>(null);
   const [loadingWord, setLoadingWord] = useState(false);
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
-  const voiceButtonRef = useRef<HTMLButtonElement>(null);
+  // const voiceButtonRef = useRef<HTMLButtonElement>(null);
 
   // Load cached translations from localStorage
   useEffect(() => {
@@ -239,25 +239,6 @@ export default function AIChatHome() {
       navigate('/subscription/plans');
     }
   }, [hasAccess, navigate]);
-
-  const handleVoiceClick = () => {
-    console.log('🎤 Free speech button clicked - using default agent from Supabase secrets');
-    
-    if (voiceButtonRef.current) {
-      const rect = voiceButtonRef.current.getBoundingClientRect();
-      setTransitionStart({
-        x: rect.left,
-        y: rect.top,
-      });
-      setIsTransitioning(true);
-      
-      // Navigate after a short delay to let the animation start
-      // NOTE: No agentId passed - will use default ELEVENLABS_AGENT_ID from Supabase secrets
-      setTimeout(() => {
-        navigate('/ai-chat/voice/new', { state: { fromTransition: true } });
-      }, 50);
-    }
-  };
 
   const handleConversationClick = (conversationId: string) => {
     setSelectedConversation(conversationId);
