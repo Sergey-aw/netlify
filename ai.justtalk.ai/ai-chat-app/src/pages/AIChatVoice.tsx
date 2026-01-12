@@ -97,12 +97,15 @@ export default function AIChatVoice() {
     : null;
   const recommendedDuration = agentConfig?.recommendedDuration || 300; // Default 5 minutes
 
-  console.log('🤖 Selected Agent:', {
-    agentId: selectedAgentId || 'DEFAULT (from Supabase secrets)',
-    agentName: selectedAgentName,
-    scenario: selectedScenario,
-    agentDatabaseId: agentDatabaseId || 'None (no progress tracking)',
-  });
+  // Log agent selection only once when component mounts or agent changes
+  useEffect(() => {
+    console.log('🤖 Selected Agent:', {
+      agentId: selectedAgentId || 'DEFAULT (from Supabase secrets)',
+      agentName: selectedAgentName,
+      scenario: selectedScenario,
+      agentDatabaseId: agentDatabaseId || 'None (no progress tracking)',
+    });
+  }, [selectedAgentId, selectedAgentName, selectedScenario, agentDatabaseId]);
 
   // Get user's preferred voice
   const { data: userProfile } = useQuery({
@@ -437,7 +440,15 @@ export default function AIChatVoice() {
                 .single();
               
               if (previousConversation?.session_memory) {
-                previousStepVariables = previousConversation.session_memory;
+                // Pass full string content to ElevenLabs without truncation
+                const rawMemory = previousConversation.session_memory;
+                previousStepVariables = {
+                  conversation_summary: rawMemory.conversation_summary || '',
+                  emotional_notes: rawMemory.emotional_notes || '',
+                  open_threads: Array.isArray(rawMemory.open_threads) 
+                    ? rawMemory.open_threads.join('\n')
+                    : (rawMemory.open_threads || ''),
+                };
                 console.log('Found dynamic variables from previous step:', previousStepVariables);
               }
             }
@@ -450,10 +461,13 @@ export default function AIChatVoice() {
           voiceId: userProfile.justai_preferred_voice,
           voiceName: selectedAgentName,
           agentId: selectedAgentId, // Pass the selected agent ID
-          dynamicVariables: previousStepVariables, // Pass context from previous step
+          // Note: dynamicVariables are passed to startSession() below, not here
         });
         
         console.log('🔍 Signed URL received:', signedUrl);
+        if (previousStepVariables) {
+          console.log('📝 Will pass dynamic variables to session:', previousStepVariables);
+        }
         console.log('🎤 Using voice ID:', userProfile.justai_preferred_voice || 'default agent voice');
         console.log('🤖 Using agent ID:', selectedAgentId || 'default agent');
         
@@ -476,9 +490,14 @@ export default function AIChatVoice() {
         }
         
         // Start conversation with ElevenLabs
-        // Only override voice for free speech (no selectedAgentId), not for roleplays
+        // Pass dynamic variables from previous step for context continuity
         const sessionInfo = await conversation.startSession({
           signedUrl,
+          ...(previousStepVariables && {
+            config: {
+              dynamicVariables: previousStepVariables,
+            },
+          }),
           ...((!selectedAgentId && userProfile?.justai_preferred_voice) && {
             overrides: {
               tts: {

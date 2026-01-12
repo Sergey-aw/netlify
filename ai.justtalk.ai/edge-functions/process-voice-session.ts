@@ -373,11 +373,31 @@ serve(async (req) => {
         } else {
           console.log('Student progress updated successfully')
           
-          // Check if this completes a step based on ElevenLabs analysis
-          // Step is completed when unlock_next_scenario is true (quality-based completion)
-          if (dynamicVariables.unlock_next_scenario === true) {
-            console.log('Step completion criteria met: unlock_next_scenario=true')
+          // Check if this completes a step based on both sources:
+          // 1. ElevenLabs analysis (immediate)
+          // 2. Database conversation record (may be set by analyze-conversation-feedback later)
+          let shouldComplete = dynamicVariables.unlock_next_scenario === true
+          
+          // Also check the database in case feedback was already generated
+          if (!shouldComplete) {
+            const { data: conversationCheck } = await supabase
+              .from('justai_conversations')
+              .select('unlock_next_scenario, session_memory')
+              .eq('id', conversation.id)
+              .single()
             
+            if (conversationCheck?.unlock_next_scenario === true) {
+              shouldComplete = true
+              console.log('Step completion criteria met from database unlock_next_scenario')
+            } else if (conversationCheck?.session_memory?.unlock_next_scenario === true) {
+              shouldComplete = true
+              console.log('Step completion criteria met from session_memory.unlock_next_scenario')
+            }
+          } else {
+            console.log('Step completion criteria met from ElevenLabs unlock_next_scenario')
+          }
+          
+          if (shouldComplete) {
             // Mark step as completed
             const { error: completeError } = await supabase
               .from('justai_student_progress')
