@@ -488,7 +488,7 @@ export default function AIChatHome() {
           >
             {showSidebar ? <ChevronLeft className="w-6 h-6 text-gray-600" /> : <PanelLeft className="w-6 h-6 text-gray-600" />}
           </Button>
-          {selectedConversation && conversationFeedback?.language_feedback ? (
+          {selectedConversation && conversationFeedback?.language_feedback && (
             <Button
               onClick={() => setShowFeedbackDrawer(true)}
               variant="ghost"
@@ -504,18 +504,6 @@ export default function AIChatHome() {
                   {conversationFeedback.conversation_score}
                 </Badge>
               )}
-            </Button>
-          ) : (
-            <Button
-              onClick={() => navigate('/ai-chat/voice/new')}
-              variant="ghost"
-              size="sm"
-              className="rounded-full border border-gray-200 bg-white hover:bg-gray-50 px-4"
-            >
-              <Sparkles className="w-4 h-4 text-blue-500" />
-              <span className="text-gray-700 font-medium">
-                New chat
-              </span>
             </Button>
           )}
           <Avatar className="w-10 h-10 cursor-pointer" onClick={() => navigate('/profile')}>
@@ -685,21 +673,6 @@ export default function AIChatHome() {
                 </div>
               </main>
             </>
-          )}
-
-          {/* Bottom Voice Button - Centered (only show when no conversation selected) */}
-          {!selectedConversation && (
-            <div className="px-5 pb-6">
-              <div className="flex justify-center">
-                <button
-                  onClick={handleVoiceClick}
-                  ref={voiceButtonRef}
-                  className="w-16 h-16 flex items-center justify-center bg-[hsl(var(--brand-blue))] text-white rounded-full hover:bg-[hsl(var(--brand-blue))]/90 transition-all hover:scale-105 active:scale-95 shadow-lg"
-                >
-                  <img src={LogoBars} alt="Voice" className="w-8 h-8 brightness-0 invert" />
-                </button>
-              </div>
-            </div>
           )}
         </div>
       </div>

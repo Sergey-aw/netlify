@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import {
   History,
   Star,
@@ -7,8 +8,10 @@ import {
   BookOpen,
   User,
   Home,
+  Loader2,
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import {
   Sheet,
   SheetContent,
@@ -62,6 +65,9 @@ interface AppSidebarProps {
 
 export function AppSidebar({ open, onOpenChange, selectedConversation, onConversationClick }: AppSidebarProps) {
   const navigate = useNavigate();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Get current user
   const { data: user } = useQuery({
@@ -81,27 +87,36 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
     },
   });
 
-  // Get previous conversations
-  const { data: conversations } = useQuery({
+  // Get previous conversations with infinite loading
+  const {
+    data: conversationsData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: conversationsLoading,
+  } = useInfiniteQuery({
     queryKey: ['conversations', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
+    queryFn: async ({ pageParam = 0 }) => {
+      if (!user?.id) return { conversations: [], hasMore: false };
+      
+      const PAGE_SIZE = 25;
+      const offset = pageParam * PAGE_SIZE;
       
       // First, get conversations
-      const { data: convData, error: convError } = await supabase
+      const { data: convData, error: convError, count } = await supabase
         .from('justai_conversations')
-        .select('id, title, scenario, created_at, last_message_at, is_voice_session, agent_id')
+        .select('id, title, scenario, created_at, last_message_at, is_voice_session, agent_id, conversation_score', { count: 'exact' })
         .eq('student_id', user.id)
         .order('last_message_at', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false })
-        .limit(20);
+        .range(offset, offset + PAGE_SIZE - 1);
 
       if (convError) {
         console.error('Error fetching conversations:', convError);
         throw convError;
       }
 
-      if (!convData || convData.length === 0) return [];
+      if (!convData || convData.length === 0) return { conversations: [], hasMore: false };
 
       // Get unique agent IDs
       const agentIds = [...new Set(convData.map(c => c.agent_id).filter(Boolean))];
@@ -115,7 +130,6 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
           .in('id', agentIds);
 
         if (!agentsError && agentsData) {
-          console.log('Agents data fetched:', agentsData);
           agentsMap = agentsData.reduce((map, agent) => {
             map[agent.id] = agent;
             return map;
@@ -131,11 +145,42 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
         justai_agents: conv.agent_id ? agentsMap[conv.agent_id] : null
       }));
       
-      console.log('Final conversations with agents:', result);
-      return result;
+      const hasMore = count ? offset + PAGE_SIZE < count : false;
+      
+      return { conversations: result, hasMore };
     },
+    getNextPageParam: (lastPage, pages) => {
+      return lastPage.hasMore ? pages.length : undefined;
+    },
+    initialPageParam: 0,
     enabled: !!user?.id,
   });
+
+  // Flatten all pages into a single array
+  const conversations = conversationsData?.pages.flatMap(page => page.conversations) ?? [];
+
+  // Setup intersection observer for infinite scroll
+  useEffect(() => {
+    if (!loadMoreRef.current) return;
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observerRef.current.observe(loadMoreRef.current);
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -268,8 +313,12 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
           {/* Conversations Section */}
           <SidebarGroup className="flex-1 min-h-0 flex flex-col">
             <SidebarGroupLabel className="px-2 flex-shrink-0">Conversations</SidebarGroupLabel>
-            <SidebarGroupContent className="overflow-y-auto flex-1 min-h-0">
-              {conversations && conversations.length > 0 ? (
+            <SidebarGroupContent className="overflow-y-auto flex-1 min-h-0" ref={scrollRef}>
+              {conversationsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : conversations && conversations.length > 0 ? (
                 <div className="space-y-4">
                   {Object.entries(groupedConversations).map(([dateGroup, convs]) => (
                     <div key={dateGroup}>
@@ -292,9 +341,16 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
                                   </AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1 min-w-0">
-                                  <h3 className="font-medium text-sm truncate">
-                                    {formatTitle(conv.title)}
-                                  </h3>
+                                  <div className="flex items-center gap-2">
+                                    <h3 className="font-medium text-sm truncate">
+                                      {formatTitle(conv.title)}
+                                    </h3>
+                                    {conv.conversation_score && (
+                                      <Badge variant="secondary" className="rounded-full bg-[hsl(var(--brand-blue))] text-white hover:bg-[hsl(var(--brand-blue))]/90 text-xs px-1.5 py-0 h-5">
+                                        {conv.conversation_score}
+                                      </Badge>
+                                    )}
+                                  </div>
                                   <p className="text-xs opacity-70">
                                     {formatTime(conv.last_message_at || conv.created_at)}
                                   </p>
@@ -306,6 +362,13 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
                       </SidebarMenu>
                     </div>
                   ))}
+                  
+                  {/* Loading indicator for pagination */}
+                  <div ref={loadMoreRef} className="py-4 flex items-center justify-center">
+                    {isFetchingNextPage && (
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-8 px-4 text-muted-foreground">
