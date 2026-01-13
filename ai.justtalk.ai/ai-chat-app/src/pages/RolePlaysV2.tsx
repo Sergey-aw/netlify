@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
-import { Play, Lock, ChevronRight, Trophy, Clock, PanelLeft, Archive, RotateCcw, Loader2, MessageCircle, Star, TrendingUp, Target, AlertCircle, Bookmark, X, MessagesSquare } from 'lucide-react';
+import { Play, Lock, ChevronRight, Trophy, Clock, PanelLeft, Archive, RotateCcw, Loader2, MessageCircle, Star, TrendingUp, Target, AlertCircle, Bookmark, X, MessagesSquare, Coffee, Heart, Mic, Users, Plane, BookOpen } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -253,6 +253,32 @@ export default function RolePlaysV2() {
       case 'locked':
       default:
         return <Lock className="w-4 h-4 text-gray-400" />;
+    }
+  };
+
+  const getCategoryIcon = (categoryName?: string) => {
+    if (!categoryName) return <Target className="w-6 h-6 text-gray-400" />;
+    const key = categoryName.toLowerCase();
+    switch (key) {
+      case 'business':
+        return <TrendingUp className="w-6 h-6 text-blue-400" />;
+      case 'daily life':
+      case 'daily':
+        return <Coffee className="w-6 h-6 text-amber-400" />;
+      case 'dating':
+        return <Heart className="w-6 h-6 text-pink-400" />;
+      case 'education':
+        return <BookOpen className="w-6 h-6 text-purple-400" />;
+      case 'interview':
+        return <Mic className="w-6 h-6 text-slate-400" />;
+      case 'practice':
+        return <MessageCircle className="w-6 h-6 text-cyan-400" />;
+      case 'social':
+        return <Users className="w-6 h-6 text-rose-400" />;
+      case 'travel':
+        return <Plane className="w-6 h-6 text-sky-400" />;
+      default:
+        return <Target className="w-6 h-6 text-gray-400" />;
     }
   };
 
@@ -634,7 +660,10 @@ export default function RolePlaysV2() {
                     <div className="flex items-start gap-3">
                       <Trophy className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
                       <div className="flex-1">
-                        <h3 className="text-base font-semibold text-green-900 mb-2">🎉 Next Step Unlocked!</h3>
+                        <h3 className="text-base font-semibold text-green-900 mb-2">
+                          <Trophy className="inline w-5 h-5 mr-2 text-green-600" />
+                          Next Step Unlocked!
+                        </h3>
                         <p className="text-sm text-green-800 leading-relaxed">
                           Great job! You've successfully completed this conversation and unlocked the next step in your learning journey.
                         </p>
@@ -759,14 +788,14 @@ export default function RolePlaysV2() {
               return (
                 <Card
                   key={category.category}
-                  className="p-6 cursor-pointer hover:shadow-lg transition-shadow border-2 hover:border-primary"
+                  className="p-6 cursor-pointer hover:shadow-lg transition-shadow border-1 hover:border-primary"
                   onClick={() => setSelectedCategory(category.category)}
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <div className="text-4xl">{category.icon}</div>
+                    <div className="text-4xl">{getCategoryIcon(category.category)}</div>
                     <ChevronRight className="w-5 h-5 text-gray-400" />
                   </div>
-                  <h4 className="font-semibold text-lg mb-2">{category.category}</h4>
+                  <h4 className="font-medium text-lg mb-2">{category.category}</h4>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">
                       {category.totalAgents} scenario{category.totalAgents !== 1 ? 's' : ''}
@@ -871,8 +900,8 @@ export default function RolePlaysV2() {
               <ChevronRight className="w-5 h-5 rotate-180" />
             </Button>
             <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">{selectedCategoryData.icon}</span>
+                <div className="flex items-center gap-2">
+                <span className="text-2xl">{getCategoryIcon(selectedCategoryData.category)}</span>
                 <h1 className="text-xl font-semibold">{selectedCategoryData.category}</h1>
               </div>
             </div>
