@@ -2,11 +2,14 @@
 // Deploy this to your main Supabase repo at: supabase/functions/process-voice-session/index.ts
 // 
 // Purpose: Post-process voice chat session after it ends
-// - Fetch transcript and analysis from ElevenLabs
+// - Fetch transcript from ElevenLabs
 // - Save messages to justai_messages
 // - Update voice session with character count and costs
 // - Create vocabulary evidence for student's words
 // - Mark session as processed
+// 
+// Note: Memory extraction (conversation_summary, emotional_notes, etc.) is handled by
+// analyze-conversation-feedback edge function using OpenAI, not ElevenLabs.
 // 
 // Required Secrets (set in Supabase Dashboard):
 // - ELEVENLABS_API_KEY
@@ -105,16 +108,18 @@ serve(async (req) => {
     const elevenLabsData = await elevenLabsResponse.json()
     console.log('ElevenLabs conversation data:', JSON.stringify(elevenLabsData, null, 2))
 
-    // Extract dynamic variables from analysis for next conversation
-    const analysis = elevenLabsData.analysis || {}
+    // Note: Memory extraction (conversation_summary, emotional_notes, open_threads, unlock_next_scenario)
+    // is handled by the analyze-conversation-feedback edge function using OpenAI.
+    // ElevenLabs does NOT provide an 'analysis' field in their API response.
+    // The session_memory will be populated when the user requests feedback from the UI.
     const dynamicVariables = {
-      conversation_summary: analysis.conversation_summary || null,
-      emotional_notes: analysis.emotional_notes || null,
-      open_threads: analysis.open_threads || null,
-      unlock_next_scenario: analysis.unlock_next_scenario || false,
+      conversation_summary: null,
+      emotional_notes: null,
+      open_threads: null,
+      unlock_next_scenario: false,
       extracted_at: new Date().toISOString(),
     }
-    console.log('Extracted dynamic variables:', dynamicVariables)
+    console.log('Dynamic variables placeholder (will be populated by analyze-conversation-feedback):', dynamicVariables)
 
     // Extract metadata for costs and usage
     const metadata = elevenLabsData.metadata || {}
@@ -332,22 +337,11 @@ serve(async (req) => {
 
     console.log('Voice session processing complete')
 
-    // Save dynamic variables to conversation for context continuity
-    if (Object.values(dynamicVariables).some(v => v !== null && v !== false)) {
-      const { error: conversationUpdateError } = await supabase
-        .from('justai_conversations')
-        .update({
-          session_memory: dynamicVariables,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', voiceSession.conversation_id)
-
-      if (conversationUpdateError) {
-        console.error('Error saving dynamic variables:', conversationUpdateError)
-      } else {
-        console.log('Dynamic variables saved to conversation session_memory')
-      }
-    }
+    // Note: Dynamic variables (session_memory) are intentionally empty here.
+    // Memory extraction happens later when the user requests feedback via the UI,
+    // which calls the analyze-conversation-feedback function that uses OpenAI to analyze the transcript.
+    // Skipping save of empty session_memory to avoid overwriting data from analyze-conversation-feedback.
+    console.log('Session memory will be populated by analyze-conversation-feedback when user requests feedback')
 
     // Update student progress if this was a roleplay with an agent
     const conversation = voiceSession.justai_conversations

@@ -181,10 +181,14 @@ const [showContinuePrompt, setShowContinuePrompt] = useState(false);
 8. **Comparative Analysis**: Compare with previous sessions
 
 ### Data Sources to Explore
-1. **ElevenLabs Analysis API**: If they add more detailed analytics
-2. **Grammar Check APIs**: Integrate third-party grammar checking
-3. **Speech Recognition Confidence**: Use transcription confidence scores
-4. **Sentiment Analysis**: Analyze conversation tone and engagement
+1. **Grammar Check APIs**: Integrate third-party grammar checking
+2. **Speech Recognition Confidence**: Use transcription confidence scores
+3. **Sentiment Analysis**: Enhanced conversation tone analysis via OpenAI
+
+### Current Implementation Note
+- **Memory Extraction**: Uses OpenAI GPT-4o-mini with structured outputs to extract conversation_summary, emotional_notes, open_threads, and unlock_next_scenario
+- **Language Feedback**: Uses OpenAI to provide scores, diagnosis, improvement suggestions, and examples
+- **ElevenLabs**: Provides only the transcript and metadata (duration, credits, costs). Does NOT provide analysis or memory extraction.
 
 ## Testing
 

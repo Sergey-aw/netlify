@@ -22,7 +22,9 @@ When user clicks "End Session":
 ### 2. Background Processing (Edge Function)
 **File:** `edge-functions/process-voice-session.ts`
 
-Fetches ElevenLabs conversation data and processes:
+Fetches ElevenLabs conversation transcript and processes:
+
+**Note:** Memory extraction (conversation_summary, emotional_notes, open_threads, unlock_next_scenario) is **NOT** done by ElevenLabs. This is handled separately by the `analyze-conversation-feedback` function using OpenAI when the user requests feedback from the UI.
 
 #### A. Transcript Extraction
 - Calls ElevenLabs API: `GET /v1/convai/conversations/{id}`
@@ -86,9 +88,9 @@ Fetches ElevenLabs conversation data and processes:
   - `elevenlabs_llm_credits`: LLM credits (charging.llm_charge)
   - `elevenlabs_character_count`: character count (for reference)
   - `elevenlabs_cost_cents`: estimated cost
-  - `student_speaking_time_seconds`: from analysis
-  - `ai_speaking_time_seconds`: from analysis
-  - `total_duration_seconds`: actual duration from ElevenLabs
+  - `student_speaking_time_seconds`: calculated from transcript timestamps
+  - `ai_speaking_time_seconds`: calculated from transcript timestamps
+  - `total_duration_seconds`: actual duration from ElevenLabs metadata
 
 #### F. Processing Flags
 - Sets `transcription_complete: true`
