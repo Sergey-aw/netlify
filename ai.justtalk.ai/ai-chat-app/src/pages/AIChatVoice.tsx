@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { getElevenLabsSignedUrl } from '@/lib/justai-api';
+import { getElevenLabsSignedUrl, getContextMemory } from '@/lib/justai-api';
 import { supabase } from '@/lib/supabase';
 import { useSession } from '@/hooks/useSession';
 import { FeedbackDrawer, type FeedbackData } from '@/components/FeedbackDrawer';
@@ -408,50 +408,24 @@ export default function AIChatVoice() {
         if (convError) throw convError;
         setConversationId(convData.id);
         
-        // Fetch previous step's dynamic variables for context continuity
-        let previousStepVariables = null;
+        // Get context memory from all previous conversations in the roleplay series
+        let contextMemory = '';
         if (agentDatabaseId) {
-          // Get the current agent to find parent and previous step
-          const { data: currentAgent } = await supabase
-            .from('justai_agents')
-            .select('parent_agent_id, step_number')
-            .eq('id', agentDatabaseId)
-            .single();
-          
-          if (currentAgent?.parent_agent_id && currentAgent.step_number && currentAgent.step_number > 1) {
-            // Find the previous step in this multi-step scenario
-            const { data: previousStepAgent } = await supabase
-              .from('justai_agents')
-              .select('id')
-              .eq('parent_agent_id', currentAgent.parent_agent_id)
-              .eq('step_number', currentAgent.step_number - 1)
-              .single();
+          try {
+            console.log('📚 Fetching context memory for agent:', agentDatabaseId);
+            contextMemory = await getContextMemory(agentDatabaseId);
             
-            if (previousStepAgent) {
-              // Get the most recent completed conversation for this agent
-              const { data: previousConversation } = await supabase
-                .from('justai_conversations')
-                .select('session_memory')
-                .eq('student_id', user.id)
-                .eq('agent_id', previousStepAgent.id)
-                .not('session_memory', 'is', null)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .single();
-              
-              if (previousConversation?.session_memory) {
-                // Pass full string content to ElevenLabs without truncation
-                const rawMemory = previousConversation.session_memory;
-                previousStepVariables = {
-                  conversation_summary: rawMemory.conversation_summary || '',
-                  emotional_notes: rawMemory.emotional_notes || '',
-                  open_threads: Array.isArray(rawMemory.open_threads) 
-                    ? rawMemory.open_threads.join('\n')
-                    : (rawMemory.open_threads || ''),
-                };
-                console.log('Found dynamic variables from previous step:', previousStepVariables);
-              }
+            if (contextMemory) {
+              console.log('✅ Context memory retrieved:', {
+                length: contextMemory.length,
+                preview: contextMemory.substring(0, 200),
+              });
+            } else {
+              console.log('ℹ️ No previous context memory found (first conversation or no memory stored)');
             }
+          } catch (error) {
+            console.error('❌ Error fetching context memory:', error);
+            // Continue without context memory
           }
         }
         
@@ -465,8 +439,8 @@ export default function AIChatVoice() {
         });
         
         console.log('🔍 Signed URL received:', signedUrl);
-        if (previousStepVariables) {
-          console.log('📝 Will pass dynamic variables to session:', previousStepVariables);
+        if (contextMemory) {
+          console.log('📝 Will pass context_memory dynamic variable to session');
         }
         console.log('🎤 Using voice ID:', userProfile.justai_preferred_voice || 'default agent voice');
         console.log('🤖 Using agent ID:', selectedAgentId || 'default agent');
@@ -490,12 +464,14 @@ export default function AIChatVoice() {
         }
         
         // Start conversation with ElevenLabs
-        // Pass dynamic variables from previous step for context continuity
+        // Pass context_memory dynamic variable with all previous conversations in the series
         const sessionInfo = await conversation.startSession({
           signedUrl,
-          ...(previousStepVariables && {
+          ...(contextMemory && {
             config: {
-              dynamicVariables: previousStepVariables,
+              dynamicVariables: {
+                context_memory: contextMemory,
+              },
             },
           }),
           ...((!selectedAgentId && userProfile?.justai_preferred_voice) && {

@@ -46,12 +46,23 @@ export interface VocabularySuggestion {
 }
 
 export interface LLMFeedback {
-  // New structure: separate memory and language feedback
+  // New structure from ElevenLabs webhook
   memory?: {
-    conversation_summary: string;
-    emotional_notes: string;
-    open_threads: string[];
-    unlock_next_scenario: boolean;
+    transcript_summary?: string;
+    call_successful?: string;
+    next_stage_result?: string;
+    next_stage_rationale?: string;
+    collected_data?: Array<{
+      name: string;
+      value: any;
+    }>;
+    conversation_timestamp?: string;
+    source?: string;
+    // Legacy OpenAI fields for backwards compatibility
+    conversation_summary?: string;
+    emotional_notes?: string;
+    open_threads?: string[];
+    unlock_next_scenario?: boolean;
   };
   language_feedback?: {
     score: number;

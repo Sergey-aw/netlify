@@ -57,6 +57,47 @@ export async function getElevenLabsSignedUrl(params: {
 }
 
 /**
+ * Get context memory from previous conversations in the roleplay series
+ */
+export async function getContextMemory(agentId: string): Promise<string> {
+  const session = await supabase.auth.getSession();
+  const accessToken = session.data.session?.access_token;
+  const user = session.data.session?.user;
+
+  if (!accessToken || !user) {
+    throw new Error('Not authenticated');
+  }
+
+  const response = await fetch(
+    `${SUPABASE_URL}/functions/v1/get-context-memory`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        agent_id: agentId,
+        student_id: user.id,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    console.error('Failed to get context memory, continuing without it');
+    return ''; // Return empty string if fails
+  }
+
+  const data = await response.json();
+  console.log('📚 Context memory retrieved:', {
+    length: data.context_memory?.length || 0,
+    conversationsCount: data.conversations_count || 0,
+  });
+  
+  return data.context_memory || '';
+}
+
+/**
  * Get conversation transcript from ElevenLabs
  */
 export async function getConversationTranscript(conversationId: string) {
