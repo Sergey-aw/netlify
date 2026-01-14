@@ -417,6 +417,8 @@ export default function AIChatVoice() {
             
             if (contextMemory) {
               console.log('✅ Context memory retrieved:', {
+                type: typeof contextMemory,
+                isString: typeof contextMemory === 'string',
                 length: contextMemory.length,
                 preview: contextMemory.substring(0, 200),
               });
@@ -446,6 +448,8 @@ export default function AIChatVoice() {
         // Log the actual context memory being sent (preview + snippet) for browser debugging
         if (contextMemory) {
           console.log('📤 Sending contextMemory to edge function:', {
+            type: typeof contextMemory,
+            isString: typeof contextMemory === 'string',
             length: contextMemory.length,
             preview: contextMemory.substring(0, 200),
             snippet1000: contextMemory.substring(0, 1000),
@@ -457,6 +461,13 @@ export default function AIChatVoice() {
         console.log('🔍 Signed URL received:', signedUrl);
         if (contextMemory) {
           console.log('📝 Context memory will be passed as dynamic variable to session');
+          console.log('🔍 Dynamic variables object:', {
+            context_memory: {
+              type: typeof contextMemory,
+              isString: typeof contextMemory === 'string',
+              valuePreview: contextMemory.substring(0, 100)
+            }
+          });
         }
         console.log('🎤 Using voice ID:', userProfile.justai_preferred_voice || 'default agent voice');
         console.log('🤖 Using agent ID:', selectedAgentId || 'default agent');

@@ -112,7 +112,7 @@ export function FeedbackDrawer({
   onContinue,
   showContinuePrompt = false,
 }: FeedbackDrawerProps) {
-  const [activeTab, setActiveTab] = useState<'snapshot' | 'vocabulary' | 'suggestions' | 'memory' | 'feedback'>('snapshot');
+  const [activeTab, setActiveTab] = useState<'snapshot' | 'vocabulary' | 'suggestions' | 'memory' | 'evaluation' | 'feedback'>('snapshot');
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -237,6 +237,17 @@ export function FeedbackDrawer({
                 >
                   <MessageSquare className="w-4 h-4 mr-1" />
                   Memory
+                </Button>
+              )}
+              {feedbackData.llmFeedback?.memory?.next_stage_result && (
+                <Button
+                  variant={activeTab === 'evaluation' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setActiveTab('evaluation')}
+                  className="whitespace-nowrap"
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-1" />
+                  Evaluation
                 </Button>
               )}
               {feedbackData.llmFeedback?.language_feedback && (
@@ -435,6 +446,69 @@ export function FeedbackDrawer({
                         <h4 className="font-semibold text-green-900">Ready for Next Step!</h4>
                         <p className="text-sm text-green-700">You've completed this scenario successfully.</p>
                       </div>
+                    </div>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'evaluation' && feedbackData.llmFeedback?.memory && (
+              <div className="space-y-4">
+                {/* Evaluation Result Card */}
+                <Card className={cn(
+                  "p-4 border-2",
+                  feedbackData.llmFeedback.memory.next_stage_result === 'success'
+                    ? "bg-gradient-to-br from-green-50 to-emerald-50 border-green-300"
+                    : "bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-300"
+                )}>
+                  <div className="flex items-start gap-3">
+                    {feedbackData.llmFeedback.memory.next_stage_result === 'success' ? (
+                      <CheckCircle2 className="w-8 h-8 text-green-600 flex-shrink-0" />
+                    ) : (
+                      <AlertCircle className="w-8 h-8 text-amber-600 flex-shrink-0" />
+                    )}
+                    <div className="flex-1">
+                      <h4 className="font-bold text-lg mb-2">
+                        {feedbackData.llmFeedback.memory.next_stage_result === 'success'
+                          ? '🎉 Scenario Complete!'
+                          : '📝 Keep Practicing'}
+                      </h4>
+                      <Badge
+                        variant={feedbackData.llmFeedback.memory.next_stage_result === 'success' ? 'default' : 'secondary'}
+                        className={cn(
+                          "mb-3",
+                          feedbackData.llmFeedback.memory.next_stage_result === 'success'
+                            ? "bg-green-600 hover:bg-green-700"
+                            : "bg-amber-600 hover:bg-amber-700 text-white"
+                        )}
+                      >
+                        {feedbackData.llmFeedback.memory.next_stage_result?.toUpperCase()}
+                      </Badge>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Rationale Card */}
+                {feedbackData.llmFeedback.memory.next_stage_rationale && (
+                  <Card className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-blue-600" />
+                      Evaluation Feedback
+                    </h4>
+                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                      {feedbackData.llmFeedback.memory.next_stage_rationale}
+                    </p>
+                  </Card>
+                )}
+
+                {/* Call Successful Status */}
+                {feedbackData.llmFeedback.memory.call_successful && (
+                  <Card className="p-3 bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-medium text-gray-700">Call Status:</span>
+                      <Badge variant="secondary" className="bg-purple-100">
+                        {feedbackData.llmFeedback.memory.call_successful}
+                      </Badge>
                     </div>
                   </Card>
                 )}
