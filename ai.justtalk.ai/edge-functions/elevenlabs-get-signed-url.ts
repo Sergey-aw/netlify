@@ -62,12 +62,43 @@ serve(async (req) => {
     
     // Add dynamic variables if provided (context from previous step)
     if (body.dynamicVariables) {
+      // ElevenLabs expects dynamic variable values to be plain strings.
+      // If a JSON/object was passed, convert values to strings (JSON.stringify for objects).
+      const dv = body.dynamicVariables;
+      let normalized: Record<string, string> | string;
+
+      if (typeof dv === 'string') {
+        // If a single string was passed, use it directly (legacy/simple case)
+        normalized = dv;
+      } else if (typeof dv === 'object' && dv !== null) {
+        normalized = Object.keys(dv).reduce((acc: Record<string, string>, key: string) => {
+          const val = dv[key];
+          if (val === null || val === undefined) {
+            acc[key] = '';
+          } else if (typeof val === 'string') {
+            acc[key] = val;
+          } else if (typeof val === 'object') {
+            try {
+              acc[key] = JSON.stringify(val);
+            } catch (e) {
+              acc[key] = String(val);
+            }
+          } else {
+            acc[key] = String(val);
+          }
+          return acc;
+        }, {} as Record<string, string>);
+      } else {
+        // Fallback: stringify anything else
+        normalized = String(dv);
+      }
+
       configOverride.agent = {
         prompt: {
-          dynamic_variables: body.dynamicVariables,
+          dynamic_variables: normalized,
         },
-      }
-      console.log('Adding dynamic variables:', body.dynamicVariables)
+      };
+      console.log('Adding dynamic variables (normalized):', normalized);
     }
     
     // Apply override if we have any configuration

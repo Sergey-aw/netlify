@@ -435,12 +435,28 @@ export default function AIChatVoice() {
           voiceId: userProfile.justai_preferred_voice,
           voiceName: selectedAgentName,
           agentId: selectedAgentId, // Pass the selected agent ID
-          // Note: dynamicVariables are passed to startSession() below, not here
+          // Pass dynamic variables (context memory) to the edge function so the
+          // signed URL includes the conversation_config_override on the server.
+          ...(contextMemory && {
+            dynamicVariables: {
+              context_memory: contextMemory,
+            },
+          }),
         });
+        // Log the actual context memory being sent (preview + snippet) for browser debugging
+        if (contextMemory) {
+          console.log('📤 Sending contextMemory to edge function:', {
+            length: contextMemory.length,
+            preview: contextMemory.substring(0, 200),
+            snippet1000: contextMemory.substring(0, 1000),
+          });
+        } else {
+          console.log('📤 No contextMemory to send to edge function');
+        }
         
         console.log('🔍 Signed URL received:', signedUrl);
         if (contextMemory) {
-          console.log('📝 Will pass context_memory dynamic variable to session');
+          console.log('📝 Context memory will be passed as dynamic variable to session');
         }
         console.log('🎤 Using voice ID:', userProfile.justai_preferred_voice || 'default agent voice');
         console.log('🤖 Using agent ID:', selectedAgentId || 'default agent');
@@ -464,14 +480,12 @@ export default function AIChatVoice() {
         }
         
         // Start conversation with ElevenLabs
-        // Pass context_memory dynamic variable with all previous conversations in the series
+        // Pass dynamic variables at top level as per ElevenLabs SDK
         const sessionInfo = await conversation.startSession({
           signedUrl,
           ...(contextMemory && {
-            config: {
-              dynamicVariables: {
-                context_memory: contextMemory,
-              },
+            dynamicVariables: {
+              context_memory: contextMemory,
             },
           }),
           ...((!selectedAgentId && userProfile?.justai_preferred_voice) && {
