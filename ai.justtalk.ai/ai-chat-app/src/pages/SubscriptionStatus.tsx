@@ -7,11 +7,13 @@ import { Progress } from '../components/ui/progress';
 import { Badge } from '../components/ui/badge';
 import { CheckCircle, ArrowLeft } from 'lucide-react';
 import { useSubscription } from '../hooks/useSubscription';
+import { trackSubscriptionActivated } from '@/lib/posthog';
 
 export default function SubscriptionStatus() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [hasTrackedActivation, setHasTrackedActivation] = useState(false);
   const { subscription, messagesRemaining, isLoading } = useSubscription();
 
   // Handle success parameter
@@ -26,6 +28,19 @@ export default function SubscriptionStatus() {
       return () => clearTimeout(timer);
     }
   }, [searchParams, setSearchParams]);
+
+  // Track subscription activation when subscription data loads after Stripe success
+  useEffect(() => {
+    if (searchParams.get('success') === 'true' && subscription && !hasTrackedActivation) {
+      trackSubscriptionActivated(
+        subscription.subscription_type,
+        subscription.stripe_subscription_id || undefined,
+        subscription.price_cents,
+        subscription.billing_period
+      );
+      setHasTrackedActivation(true);
+    }
+  }, [searchParams, subscription, hasTrackedActivation]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center p-8">Loading...</div>;

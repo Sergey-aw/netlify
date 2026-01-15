@@ -13,6 +13,7 @@ import progressPronunciation from '@/assets/progress-pronunciation.png';
 import progressSpeakWords from '@/assets/progress-speak-words.png';
 import { PersonalityCarousel } from '@/components/PersonalityCarousel';
 import { RolePlayCarousel } from '@/components/RolePlayCarousel';
+import { trackWelcomeStep } from '@/lib/posthog';
 
 const CARD_STACK_HEIGHT = 350;
 
@@ -63,6 +64,11 @@ export default function WelcomeProgress() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [glowingCard, setGlowingCard] = useState<string | null>(null);
+  
+  // Track page view on mount
+  useState(() => {
+    trackWelcomeStep('progress', { step_number: currentStep });
+  });
 
   const handleCardClick = (cardId: string) => {
     setGlowingCard(cardId);
@@ -72,6 +78,7 @@ export default function WelcomeProgress() {
   const handleContinue = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
+      trackWelcomeStep('progress', { step_number: currentStep + 1 });
     } else {
       navigate('/onboarding/pronunciation');
     }

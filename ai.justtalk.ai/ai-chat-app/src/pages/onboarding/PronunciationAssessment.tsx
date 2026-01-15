@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Mic, Square, Loader2, Volume2, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { getRandomPronunciationText } from '@/data/pronunciation-texts';
 import { scorePronunciation, type PronunciationResult } from '@/lib/speechace-api';
 import { updateOnboardingStep } from '@/lib/onboarding-state';
+import { trackOnboardingStep, trackPronunciationAssessment } from '@/lib/posthog';
 import Logo from '@/assets/logo.svg';
 
 export default function PronunciationAssessment() {
@@ -16,6 +17,10 @@ export default function PronunciationAssessment() {
   const [result, setResult] = useState<PronunciationResult | null>(null);
   const [showAllWords, setShowAllWords] = useState(false);
   const [error, setError] = useState('');
+  
+  useEffect(() => {
+    trackOnboardingStep('pronunciation', 'started');
+  }, []);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -80,6 +85,20 @@ export default function PronunciationAssessment() {
   };
 
   const handleContinue = () => {
+    // Track completion with score
+    if (result) {
+      const qualityScore = (result as any).quality_score || 0;
+      trackOnboardingStep('pronunciation', 'completed', {
+        quality_score: qualityScore,
+        fluency_score: (result as any).fluency_score,
+        text_score: (result as any).text_score?.quality_score,
+      });
+      trackPronunciationAssessment(qualityScore, {
+        fluency_score: (result as any).fluency_score,
+        text_score: (result as any).text_score?.quality_score,
+      });
+    }
+    
     // Update onboarding state and continue to email entry
     updateOnboardingStep('email-entry');
     navigate('/login');

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { learningGoals } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { updateOnboardingStep } from '@/lib/onboarding-state';
+import { trackOnboardingStep } from '@/lib/posthog';
 
 export default function OnboardingGoals() {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ export default function OnboardingGoals() {
 
   // Load from localStorage on mount
   useEffect(() => {
+    trackOnboardingStep('goals', 'started');
     const saved = JSON.parse(localStorage.getItem('justai_onboarding_data') || '{}');
     if (saved.goals) {
       setSelectedGoals(saved.goals);
@@ -30,6 +32,12 @@ export default function OnboardingGoals() {
       const saved = JSON.parse(localStorage.getItem('justai_onboarding_data') || '{}');
       saved.goals = selectedGoals;
       localStorage.setItem('justai_onboarding_data', JSON.stringify(saved));
+      
+      // Track completion
+      trackOnboardingStep('goals', 'completed', { 
+        goals_selected: selectedGoals.length,
+        goals: selectedGoals 
+      });
       
       // Update onboarding state
       updateOnboardingStep('onboarding-interests');

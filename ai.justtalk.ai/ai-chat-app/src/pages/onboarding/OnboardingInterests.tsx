@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { interestCategories } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { updateOnboardingStep } from '@/lib/onboarding-state';
+import { trackOnboardingStep } from '@/lib/posthog';
 
 export default function OnboardingInterests() {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ export default function OnboardingInterests() {
 
   // Load from localStorage on mount
   useEffect(() => {
+    trackOnboardingStep('interests', 'started');
     const saved = JSON.parse(localStorage.getItem('justai_onboarding_data') || '{}');
     if (saved.interests) {
       setSelectedInterests(saved.interests);
@@ -30,6 +32,12 @@ export default function OnboardingInterests() {
       const saved = JSON.parse(localStorage.getItem('justai_onboarding_data') || '{}');
       saved.interests = selectedInterests;
       localStorage.setItem('justai_onboarding_data', JSON.stringify(saved));
+      
+      // Track completion
+      trackOnboardingStep('interests', 'completed', { 
+        interests_selected: selectedInterests.length,
+        interests: selectedInterests 
+      });
       
       // Update onboarding state
       updateOnboardingStep('onboarding-preferences');

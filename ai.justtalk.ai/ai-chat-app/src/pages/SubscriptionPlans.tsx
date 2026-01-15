@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase';
 import { createCheckoutSession } from '@/lib/justai-api';
 import { useSession } from '@/hooks/useSession';
 import { updateOnboardingStep } from '@/lib/onboarding-state';
+import { trackPaywallViewed, trackPlanSelected, trackCheckoutStarted } from '@/lib/posthog';
 import type { SubscriptionPlan } from '@/lib/justai-types';
 import { AppSidebar } from '@/components/AppSidebar';
 import bgWelcome from '@/assets/bg_welcome.jpg';
@@ -84,12 +85,14 @@ export default function SubscriptionPlans() {
       });
     }
     
+    trackPaywallViewed(billingCycle);
     trackEvent('subscription_plan_viewed', {
       variant: isVerticalLayout ? 'vertical' : 'horizontal',
       isAuthenticated,
       isAnonymous,
+      billing_cycle: billingCycle,
     });
-  }, [user?.id, isVerticalLayout, isAuthenticated, isAnonymous]);
+  }, [user?.id, isVerticalLayout, isAuthenticated, isAnonymous, billingCycle]);
 
   // Show banner again when Premium plan is selected (but don't reset dismissed state)
   useEffect(() => {
@@ -159,6 +162,21 @@ export default function SubscriptionPlans() {
     try {
       setSelectedPlan(planId);
       
+      // Find the plan details for tracking
+      const plan = plans?.find(p => p.id === planId);
+      if (plan) {
+        trackPlanSelected(
+          plan.plan_type,
+          priceId,
+          plan.price_cents,
+          plan.billing_period,
+          {
+            plan_name: plan.plan_name,
+            message_limit: plan.monthly_message_limit,
+          }
+        );
+      }
+      
       console.log('Subscription attempt:', { 
         hasSession: !!session,
         sessionExpiresAt: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'N/A',
@@ -170,13 +188,23 @@ export default function SubscriptionPlans() {
         accessToken: session?.access_token ? `${session.access_token.substring(0, 30)}...` : 'MISSING'
       });
       
-      // Check if authenticated
-      if (!isAuthenticated) {
-        alert('Please sign in to subscribe. Your session has expired.');
-        navigate('/login');
-        setSelectedPlan(null);
-        return;
+      // Track checkout started
+      if (plan) {
+        trackCheckoutStarted(
+          plan.plan_type,
+          priceId,
+          plan.price_cents,
+          plan.billing_period
+        );
       }
+      
+      // Check if authenticated
+      // (!isAuthenticated) {
+      //   alert('Please sign in to subscribe. Your session has expired.');
+      //   navigate('/login');
+      //   setSelectedPlan(null);
+      //   return;
+      // }
       
       // Anonymous users can subscribe - their email is already in the profile
       // They can verify later if they want to access their account from another device

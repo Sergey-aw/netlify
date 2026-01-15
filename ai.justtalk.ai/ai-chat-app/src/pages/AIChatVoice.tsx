@@ -32,6 +32,7 @@ import {
   DrawerTitle,
 } from '@/components/ui/drawer';
 import { Badge } from '@/components/ui/badge';
+import { trackVoiceSessionStarted, trackVoiceSessionEnded } from '@/lib/posthog';
 
 interface TranscriptSegment {
   speaker: 'student' | 'ai';
@@ -517,6 +518,16 @@ export default function AIChatVoice() {
         }
 
         sessionStartTime.current = new Date();
+        
+        // Track voice session started
+        if (conversationId) {
+          trackVoiceSessionStarted(
+            selectedAgentId || 'default',
+            selectedAgentName,
+            selectedScenario,
+            conversationId
+          );
+        }
 
         // Add welcome message
         setTranscript([
@@ -747,6 +758,19 @@ export default function AIChatVoice() {
         const durationSeconds = Math.floor(
           (endTime.getTime() - sessionStartTime.current.getTime()) / 1000
         );
+        
+        // Track voice session ended
+        if (conversationId) {
+          trackVoiceSessionEnded(
+            selectedAgentId || 'default',
+            selectedAgentName,
+            selectedScenario,
+            conversationId,
+            durationSeconds,
+            transcript.length,
+            elevenLabsConvId || undefined
+          );
+        }
 
         console.log('🔵 Saving voice session:', {
           conversationId,

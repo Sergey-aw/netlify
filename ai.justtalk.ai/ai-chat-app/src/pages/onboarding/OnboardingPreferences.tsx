@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { markOnboardingComplete } from '@/lib/onboarding-state';
+import { trackOnboardingStep, trackOnboardingCompleted } from '@/lib/posthog';
 
 interface Voice {
   voice_id: string;
@@ -34,6 +35,7 @@ export default function OnboardingPreferences() {
 
   // Load voices from API
   useEffect(() => {
+    trackOnboardingStep('preferences', 'started');
     const loadVoices = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -175,6 +177,18 @@ export default function OnboardingPreferences() {
 
       // Mark onboarding as complete in state
       markOnboardingComplete();
+      
+      // Track completion
+      trackOnboardingStep('preferences', 'completed', {
+        cefr_level: cefrLevel,
+        correction_style: correctionStyle,
+        voice_id: voicePreference,
+      });
+      trackOnboardingCompleted({
+        cefr_level: cefrLevel,
+        correction_style: correctionStyle,
+        voice_id: voicePreference,
+      });
 
       // Redirect to subscription plans (paywall) regardless of auth status
       navigate('/subscription-plans');
