@@ -34,9 +34,10 @@ export default function SubscriptionStatus() {
     if (searchParams.get('success') === 'true' && subscription && !hasTrackedActivation) {
       trackSubscriptionActivated(
         subscription.subscription_type,
-        subscription.stripe_subscription_id || undefined,
+        'stripe_price_id_from_subscription', // Price ID not stored in subscription table
         subscription.price_cents,
-        subscription.billing_period
+        subscription.billing_period,
+        subscription.stripe_subscription_id || undefined
       );
       setHasTrackedActivation(true);
     }
