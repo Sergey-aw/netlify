@@ -234,12 +234,15 @@ export const trackVoiceSessionStarted = (
 ) => {
   const ph = getPostHog();
   if (ph) {
+    console.log('📊 PostHog: voice_session_started', { agentId, agentName, scenario, conversationId });
     ph.capture('voice_session_started', {
       agent_id: agentId,
       agent_name: agentName,
       scenario,
       conversation_id: conversationId,
     });
+  } else {
+    console.warn('⚠️ PostHog not initialized, event not tracked');
   }
 };
 

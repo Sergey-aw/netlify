@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { getElevenLabsSignedUrl, getContextMemory } from '@/lib/justai-api';
+import { getElevenLabsSignedUrl, getContextMemory, getConversationSuggestions } from '@/lib/justai-api';
 import { supabase } from '@/lib/supabase';
 import { useSession } from '@/hooks/useSession';
 import { FeedbackDrawer, type FeedbackData } from '@/components/FeedbackDrawer';
@@ -74,6 +74,7 @@ export default function AIChatVoice() {
   const [loadingTranslation, setLoadingTranslation] = useState<Record<string, boolean>>({});
   const [playingAudio, setPlayingAudio] = useState<Record<string, boolean>>({});
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showWordDrawer, setShowWordDrawer] = useState(false);
   const [selectedWord, setSelectedWord] = useState<{
     word: string;
@@ -85,6 +86,11 @@ export default function AIChatVoice() {
   } | null>(null);
   const [loadingWord, setLoadingWord] = useState(false);
   const [wordDefinitions, setWordDefinitions] = useState<Record<string, any>>({});
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestionsUsedCount, setSuggestionsUsedCount] = useState(0);
+  const MAX_SUGGESTIONS_PER_SESSION = 5;
 
   // Get agent info from navigation state
   const selectedAgentId = location.state?.agentId; // ElevenLabs agent ID (undefined = use default)
@@ -347,6 +353,11 @@ export default function AIChatVoice() {
     setIsAISpeaking(conversation.status === 'connected' && !conversation.isSpeaking);
   }, [conversation.isSpeaking, conversation.status]);
 
+  // Auto-scroll to bottom when transcript or suggestions change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [transcript, showSuggestions, suggestions]);
+
   // Initialize ElevenLabs connection
   useEffect(() => {
     const initConversation = async () => {
@@ -518,6 +529,9 @@ export default function AIChatVoice() {
         }
 
         sessionStartTime.current = new Date();
+        
+        // Reset suggestions counter for new session
+        setSuggestionsUsedCount(0);
         
         // Track voice session started
         if (conversationId) {
@@ -741,6 +755,81 @@ export default function AIChatVoice() {
       setShowWordDrawer(false);
     } finally {
       setLoadingWord(false);
+    }
+  };
+
+  // Handle "Help me answer" button click
+  const handleHelpMeAnswer = async () => {
+    if (loadingSuggestions || transcript.length === 0 || suggestionsUsedCount >= MAX_SUGGESTIONS_PER_SESSION) return;
+
+    setLoadingSuggestions(true);
+    setShowSuggestions(true);
+
+    try {
+      // Get active vocabulary goals for the user
+      const { data: vocabularyGoals } = await supabase.rpc('get_active_vocabulary_goals', {
+        p_student_id: user?.id,
+      });
+
+      const vocabularyWords = vocabularyGoals?.map((v: any) => v.lemma) || [];
+
+      // Convert transcript to the format expected by the API
+      const transcriptMessages = transcript.map(segment => ({
+        speaker: segment.speaker,
+        text: segment.text,
+      }));
+
+      // Get suggestions from API
+      const suggestionsList = await getConversationSuggestions({
+        transcript: transcriptMessages,
+        vocabularyWords,
+      });
+
+      setSuggestions(suggestionsList);
+      
+      // Increment usage count
+      setSuggestionsUsedCount(prev => prev + 1);
+    } catch (error) {
+      console.error('Failed to get suggestions:', error);
+      setSuggestions([]);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
+  // Handle suggestion click - send to ElevenLabs agent
+  const handleSuggestionClick = async (suggestion: string) => {
+    try {
+      // Hide suggestions
+      setShowSuggestions(false);
+      setSuggestions([]);
+
+      // Immediately add suggestion to transcript as user message
+      const segment: TranscriptSegment = {
+        speaker: 'student',
+        text: suggestion,
+        timestamp: Date.now(),
+      };
+      setTranscript((prev) => [...prev, segment]);
+
+      // Save to database
+      if (conversationId && user?.id) {
+        await supabase.from('justai_messages').insert({
+          conversation_id: conversationId,
+          role: 'user',
+          content: suggestion,
+          is_voice_message: false, // This is a text suggestion
+        });
+      }
+
+      // Send the text message to ElevenLabs conversation to get AI response
+      if (conversation.status === 'connected') {
+        conversation.sendUserMessage(suggestion);
+      } else {
+        console.warn('Conversation not connected, cannot get AI response');
+      }
+    } catch (error) {
+      console.error('Failed to send suggestion:', error);
     }
   };
 
@@ -1130,7 +1219,7 @@ export default function AIChatVoice() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.5 }}
-                className="flex-1 overflow-y-auto px-6 py-6 space-y-4"
+                className="flex-1 overflow-y-auto px-6 py-6 space-y-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
               >
                 {transcript.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
@@ -1256,6 +1345,40 @@ export default function AIChatVoice() {
                   );
                 })
                 )}
+                
+                {/* Suggestions - shown inline when help me answer is clicked */}
+                {showSuggestions && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="px-3 pt-2 pb-4 space-y-2"
+                  >
+                    <p className="text-xs text-gray-500 font-medium mb-2">Suggested responses:</p>
+                    {loadingSuggestions ? (
+                      <div className="space-y-2">
+                      <Skeleton className="h-10 w-3/4 rounded-full" />
+                      </div>
+                    ) : suggestions.length > 0 ? (
+                      suggestions.map((suggestion, idx) => (
+                        <motion.button
+                          key={idx}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3, delay: idx * 0.1 }}
+                          onClick={() => handleSuggestionClick(suggestion)}
+                          className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-left text-sm text-gray-700 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 shadow-sm hover:shadow"
+                        >
+                          {suggestion}
+                        </motion.button>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-400 text-center py-2">No suggestions available</p>
+                    )}
+                  </motion.div>
+                )}
+                {/* Scroll anchor */}
+                <div ref={messagesEndRef} />
               </motion.div>
             </div>
 
@@ -1296,10 +1419,21 @@ export default function AIChatVoice() {
                 {/* Help me answer Button - rounded pill */}
                 <Button
                   variant="outline"
-                  className="flex-1 h-12 rounded-full bg-white border-gray-300 text-gray-600 text-base"
-                  disabled
+                  className="flex-1 h-12 rounded-full bg-white border-gray-300 text-gray-600 text-sm disabled:opacity-50 relative"
+                  onClick={handleHelpMeAnswer}
+                  disabled={loadingSuggestions || transcript.length === 0 || conversation.status !== 'connected' || suggestionsUsedCount >= MAX_SUGGESTIONS_PER_SESSION}
                 >
-                  Help me answer
+                  {loadingSuggestions 
+                    ? 'Getting suggestions...' 
+                    : suggestionsUsedCount >= MAX_SUGGESTIONS_PER_SESSION
+                      ? 'No suggestions left'
+                      : 'Help me answer'
+                  }
+                  {!loadingSuggestions && suggestionsUsedCount < MAX_SUGGESTIONS_PER_SESSION && (
+                    <span className="-top-1 -right-1 bg-gray-700 text-white text-xs font-semibold w-5 h-5 rounded-full flex items-center justify-center">
+                      {MAX_SUGGESTIONS_PER_SESSION - suggestionsUsedCount}
+                    </span>
+                  )}
                 </Button>
 
                 {/* Close/Cancel Button - Just icon */}
