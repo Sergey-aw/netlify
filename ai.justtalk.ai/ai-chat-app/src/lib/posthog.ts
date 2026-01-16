@@ -8,8 +8,8 @@ export const initPostHog = () => {
     return posthog;
   }
 
-  const apiKey = import.meta.env.VITE_PUBLIC_POSTHOG_KEY;
-  const host = import.meta.env.VITE_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com';
+  const apiKey = import.meta.env.VITE_POSTHOG_API_KEY;
+  const host = import.meta.env.VITE_POSTHOG_HOST || 'https://us.i.posthog.com';
 
   if (!apiKey) {
     console.warn('PostHog API key not found. Analytics disabled.');
