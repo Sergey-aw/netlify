@@ -2,7 +2,68 @@ import { useEffect, useState } from 'react';
 import { getPostHog } from '@/lib/posthog';
 
 /**
- * Hook to get a feature flag value from PostHog
+ * Hook to get a feature flag variant from PostHog
+ * @param flagKey - The feature flag key
+ * @param defaultValue - Default variant value if flag is not loaded or doesn't exist
+ * @returns The feature flag variant as a string (e.g., 'control', 'test', 'true', 'false')
+ */
+export function useFeatureFlagVariant(
+  flagKey: string,
+  defaultValue?: string
+): string | boolean | undefined {
+  const [flagValue, setFlagValue] = useState<string | boolean | undefined>(defaultValue);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const posthog = getPostHog();
+    
+    console.log('[PostHog Hook] Initializing feature flag:', {
+      flagKey,
+      posthogAvailable: !!posthog,
+      posthogLoaded: posthog?.__loaded,
+      defaultValue,
+    });
+    
+    // Check if PostHog is available and loaded
+    if (!posthog || !posthog.__loaded) {
+      console.log('[PostHog Hook] PostHog not loaded, using default value:', defaultValue);
+      setIsLoading(false);
+      setFlagValue(defaultValue);
+      return;
+    }
+
+    // Get initial value - getFeatureFlag returns the variant key as string or boolean
+    const initialValue = posthog.getFeatureFlag(flagKey);
+    console.log('[PostHog Hook] Feature flag variant from PostHog:', {
+      flagKey,
+      initialValue,
+      type: typeof initialValue,
+      defaultValue,
+      finalValue: initialValue ?? defaultValue,
+    });
+    setFlagValue(initialValue ?? defaultValue);
+    setIsLoading(false);
+
+    // Listen for flag changes
+    const unsubscribe = posthog.onFeatureFlags(() => {
+      const newValue = posthog.getFeatureFlag(flagKey);
+      console.log('[PostHog Hook] Feature flag changed:', { flagKey, newValue, type: typeof newValue });
+      setFlagValue(newValue ?? defaultValue);
+    });
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [flagKey, defaultValue]);
+
+  return isLoading ? defaultValue : flagValue;
+}
+
+/**
+ * Hook to get a feature flag value from PostHog (legacy - kept for backwards compatibility)
+ * @deprecated Use useFeatureFlagVariant instead for variant-based flags
  * @param flagKey - The feature flag key
  * @param defaultValue - Default value if flag is not loaded or doesn't exist
  * @returns The feature flag value

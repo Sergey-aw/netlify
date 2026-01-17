@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
-import { useFeatureFlag, usePostHogTracking } from '@/hooks/usePostHog';
+import { useFeatureFlagVariant, usePostHogTracking } from '@/hooks/usePostHog';
 import { Check, AlertCircle, Crown, ChessQueen, CreditCard, Infinity, Mic, MessageSquare, BookOpen, BarChart, Sparkles, Zap, Volume2, TrendingUp, Target, Brain, Users, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,17 +43,23 @@ export default function SubscriptionPlans() {
   // Use session hook for better session management
   const { session, user, isAuthenticated, isAnonymous } = useSession();
   
-  // PostHog feature flag for A/B test
-  const isVerticalLayout = useFeatureFlag('subscription-plans-vertical-layout', false);
+  // PostHog feature flag for A/B test - get variant key
+  const layoutVariant = useFeatureFlagVariant('subscription-plans-vertical-layout', 'false');
+  
+  // Check if user is in vertical layout variant (variant A = true)
+  const isVerticalLayout = layoutVariant === 'true' || layoutVariant === true;
+  
   const { trackEvent, identifyUser } = usePostHogTracking();
 
   // Debug: Log feature flag value
   useEffect(() => {
     console.log('[A/B Test] Feature flag loaded:', {
+      layoutVariant,
+      type: typeof layoutVariant,
       isVerticalLayout,
-      variant: isVerticalLayout ? 'vertical' : 'horizontal',
+      variant: isVerticalLayout ? 'A (vertical)' : 'B (horizontal)',
     });
-  }, [isVerticalLayout]);
+  }, [layoutVariant, isVerticalLayout]);
 
   // Handle URL parameters
   useEffect(() => {
@@ -87,12 +93,13 @@ export default function SubscriptionPlans() {
     
     trackPaywallViewed(billingCycle);
     trackEvent('subscription_plan_viewed', {
-      variant: isVerticalLayout ? 'vertical' : 'horizontal',
+      layout_variant: layoutVariant,
+      is_vertical_layout: isVerticalLayout,
       isAuthenticated,
       isAnonymous,
       billing_cycle: billingCycle,
     });
-  }, [user?.id, isVerticalLayout, isAuthenticated, isAnonymous, billingCycle]);
+  }, [user?.id, layoutVariant, isVerticalLayout, isAuthenticated, isAnonymous, billingCycle]);
 
   // Show banner again when Premium plan is selected (but don't reset dismissed state)
   useEffect(() => {

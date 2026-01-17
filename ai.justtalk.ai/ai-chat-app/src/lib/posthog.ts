@@ -97,6 +97,21 @@ export const trackWelcomeCompleted = () => {
   }
 };
 
+// Email Entry Event
+export const trackEmailEntered = (email: string, isNewUser: boolean = true) => {
+  const ph = getPostHog();
+  if (ph) {
+    ph.capture('email_entered', {
+      email,
+      is_new_user: isNewUser,
+    });
+    // Also identify the user with their email
+    ph.identify(email, {
+      email,
+    });
+  }
+};
+
 // Onboarding Events
 export const trackOnboardingStep = (
   step: 'pronunciation' | 'goals' | 'interests' | 'preferences',

@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { checkEmailExists } from '@/lib/justai-api';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { saveOnboardingState } from '@/lib/onboarding-state';
+import { trackEmailEntered } from '@/lib/posthog';
 import Logo from '@/assets/logo.svg';
 
 export default function Login() {
@@ -71,6 +72,9 @@ export default function Login() {
       // Store the email for onboarding
       saveOnboardingEmail(trimmedEmail);
       localStorage.setItem('justai_pending_email', trimmedEmail);
+      
+      // Track email entry in PostHog
+      trackEmailEntered(trimmedEmail, true);
       
       // Save onboarding state
       saveOnboardingState({
