@@ -533,15 +533,13 @@ export default function AIChatVoice() {
         // Reset suggestions counter for new session
         setSuggestionsUsedCount(0);
         
-        // Track voice session started
-        if (conversationId) {
-          trackVoiceSessionStarted(
-            selectedAgentId || 'default',
-            selectedAgentName,
-            selectedScenario,
-            conversationId
-          );
-        }
+        // Track voice session started (use convData.id directly, not state)
+        trackVoiceSessionStarted(
+          selectedAgentId || 'default',
+          selectedAgentName,
+          selectedScenario,
+          convData.id
+        );
 
         // Add welcome message
         setTranscript([
