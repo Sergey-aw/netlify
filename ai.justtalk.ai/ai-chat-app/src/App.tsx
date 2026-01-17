@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
-import { useEffect } from 'react'
 
 // Contexts
 import { AuthProvider } from './contexts/AuthContext'
@@ -9,9 +8,6 @@ import { AuthProvider } from './contexts/AuthContext'
 // Components
 import ProtectedRoute from './components/ProtectedRoute'
 import { OnboardingResumeHandler } from './components/OnboardingResumeHandler'
-
-// PostHog
-import { initPostHog } from './lib/posthog'
 
 // Pages
 import Login from './pages/Login'
@@ -48,11 +44,6 @@ const queryClient = new QueryClient({
 })
 
 function App() {
-  // Initialize PostHog on app start
-  useEffect(() => {
-    initPostHog();
-  }, []);
-  
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
