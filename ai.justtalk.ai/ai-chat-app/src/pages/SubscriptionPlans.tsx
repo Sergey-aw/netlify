@@ -46,8 +46,8 @@ export default function SubscriptionPlans() {
   // PostHog feature flag for A/B test - get variant key
   const layoutVariant = useFeatureFlagVariant('subscription-plans-vertical-layout', 'false');
   
-  // Check if user is in vertical layout variant (variant A = true)
-  const isVerticalLayout = layoutVariant === 'true' || layoutVariant === true;
+  // Check if user is in vertical layout variant (variant A = control)
+  const isVerticalLayout = layoutVariant === 'control';
   
   const { trackEvent, identifyUser } = usePostHogTracking();
 
