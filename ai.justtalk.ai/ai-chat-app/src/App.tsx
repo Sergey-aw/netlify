@@ -23,6 +23,7 @@ import RolePlaysV2 from './pages/RolePlaysV2'
 import VocabularyBuilder from './pages/VocabularyBuilder'
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
+import ContactSupport from './pages/ContactSupport'
 import SubscriptionPlans from './pages/SubscriptionPlans'
 import SubscriptionStatus from './pages/SubscriptionStatus'
 import SubscriptionManagement from './pages/SubscriptionManagement'
@@ -79,6 +80,7 @@ function App() {
             <Route path="/dictionary" element={<ProtectedRoute><VocabularyBuilder /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/contact-support" element={<ProtectedRoute><ContactSupport /></ProtectedRoute>} />
             <Route path="/subscription-plans" element={<SubscriptionPlans />} />
             <Route path="/subscription-status" element={<ProtectedRoute><SubscriptionStatus /></ProtectedRoute>} />
             <Route path="/subscription/plans" element={<SubscriptionPlans />} />

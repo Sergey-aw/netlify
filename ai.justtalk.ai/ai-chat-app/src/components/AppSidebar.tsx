@@ -9,6 +9,7 @@ import {
   User,
   Home,
   Loader2,
+  HeadphonesIcon,
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -317,12 +318,30 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
                     <span>Dictionary</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          <SidebarSeparator />
+
+          {/* User Section */}
+          <SidebarGroup className="pt-2 flex-shrink-0">
+            <SidebarGroupContent>
+              <SidebarMenu>
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     onClick={() => handleNavigate('/profile')}
                   >
                     <User className="w-4 h-4" />
                     <span>Profile</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => handleNavigate('/contact-support')}
+                  >
+                    <HeadphonesIcon className="w-4 h-4" />
+                    <span>Contact support</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
