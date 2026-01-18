@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
-import { useFeatureFlagVariant, usePostHogTracking } from '@/hooks/usePostHog';
-import { Check, AlertCircle, Crown, ChessQueen, CreditCard, Infinity, Mic, MessageSquare, BookOpen, BarChart, Sparkles, Zap, Volume2, TrendingUp, Target, Brain, Users, Globe } from 'lucide-react';
+import { useFeatureFlagVariant, usePostHogTracking, useFeatureFlag } from '@/hooks/usePostHog';
+import { Check, AlertCircle, Crown, ChessQueen, CreditCard, Infinity, Mic, MessageSquare, BookOpen, BarChart, Sparkles, Zap, Volume2, TrendingUp, Target, Brain, Users, Globe, Trophy, Star, CheckCircle2, Award, GraduationCap, Heart, Briefcase, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'motion/react';
@@ -20,13 +20,20 @@ import bgWelcome from '@/assets/bg_welcome.jpg';
 export default function SubscriptionPlans() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+  const [billingCycle, setBillingCycle] = useState<'weekly' | 'monthly' | 'annual'>('monthly');
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [selectedPlanName, setSelectedPlanName] = useState<string | null>(null);
   const [showCanceledMessage, setShowCanceledMessage] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  
+  // Track user's manual selections per billing cycle
+  const [userSelections, setUserSelections] = useState<Record<'weekly' | 'monthly' | 'annual', string | null>>({
+    weekly: null,
+    monthly: null,
+    annual: null,
+  });
   
   // Add swipe gesture to open sidebar
   useSwipeGesture({
@@ -49,7 +56,39 @@ export default function SubscriptionPlans() {
   // Check if user is in vertical layout variant (variant A = control)
   const isVerticalLayout = layoutVariant === 'control';
   
+  // PostHog feature flag for weekly plan visibility
+  const weeklyPlanVariant = useFeatureFlagVariant('weekly-plan-show-paywall', 'hidden');
+  const showWeeklyPlan = weeklyPlanVariant === 'control';
+  
   const { trackEvent, identifyUser } = usePostHogTracking();
+
+  // Icon mapping for features
+  const getFeatureIcon = (iconName: string): LucideIcon => {
+    const iconMap: Record<string, LucideIcon> = {
+      'MessageSquare': MessageSquare,
+      'Sparkles': Sparkles,
+      'Globe': Globe,
+      'Zap': Zap,
+      'BookOpen': BookOpen,
+      'Trophy': Trophy,
+      'TrendingUp': TrendingUp,
+      'Users': Users,
+      'Star': Star,
+      'Crown': Crown,
+      'Target': Target,
+      'Award': Award,
+      'Briefcase': Briefcase,
+      'GraduationCap': GraduationCap,
+      'Heart': Heart,
+      'Mic': Mic,
+      'Volume2': Volume2,
+      'CheckCircle2': CheckCircle2,
+      'Brain': Brain,
+      'BarChart': BarChart,
+      'Infinity': Infinity,
+    };
+    return iconMap[iconName] || Sparkles; // Default to Sparkles if icon not found
+  };
 
   // Debug: Log feature flag value
   useEffect(() => {
@@ -140,9 +179,26 @@ export default function SubscriptionPlans() {
     },
   });
 
+  // Fetch weekly plans
+  const { data: weeklyPlans, isLoading: isLoadingWeekly } = useQuery({
+    queryKey: ['subscription-plans', 'weekly'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('justai_subscription_plans')
+        .select('*')
+        .eq('is_active', true)
+        .eq('billing_period', 'weekly')
+        .order('display_order');
+
+      if (error) throw error;
+      return data as SubscriptionPlan[];
+    },
+    enabled: showWeeklyPlan, // Only fetch if feature flag is enabled
+  });
+
   // Select plans based on current billing cycle
-  const plans = billingCycle === 'monthly' ? monthlyPlans : annualPlans;
-  const isLoading = isLoadingMonthly || isLoadingAnnual;
+  const plans = billingCycle === 'weekly' ? weeklyPlans : billingCycle === 'monthly' ? monthlyPlans : annualPlans;
+  const isLoading = isLoadingMonthly || isLoadingAnnual || isLoadingWeekly;
 
   // Set Premium monthly plan as default selection when plans load
   useEffect(() => {
@@ -157,13 +213,36 @@ export default function SubscriptionPlans() {
 
   // Sync selected plan when billing cycle changes
   useEffect(() => {
-    if (selectedPlanName && plans) {
-      const matchingPlan = plans.find(plan => plan.plan_name === selectedPlanName);
-      if (matchingPlan) {
-        setSelectedPlan(matchingPlan.id);
+    if (plans && plans.length > 0) {
+      // Check if user has manually selected a plan for this billing cycle
+      const userSelection = userSelections[billingCycle];
+      if (userSelection) {
+        const userSelectedPlan = plans.find(plan => plan.plan_name === userSelection);
+        if (userSelectedPlan) {
+          setSelectedPlan(userSelectedPlan.id);
+          setSelectedPlanName(userSelectedPlan.plan_name);
+          return;
+        }
+      }
+      
+      // No user selection - apply defaults
+      if (billingCycle === 'weekly') {
+        const startPlan = plans.find(plan => plan.plan_name === 'Start');
+        if (startPlan) {
+          setSelectedPlan(startPlan.id);
+          setSelectedPlanName(startPlan.plan_name);
+          return;
+        }
+      }
+      
+      // For monthly/annual, default to Premium
+      const premiumPlan = plans.find(plan => plan.plan_name === 'Premium');
+      if (premiumPlan) {
+        setSelectedPlan(premiumPlan.id);
+        setSelectedPlanName(premiumPlan.plan_name);
       }
     }
-  }, [billingCycle, plans, selectedPlanName]);
+  }, [billingCycle, plans, userSelections]);
 
   const handleSelectPlan = async (priceId: string, planId: string) => {
     try {
@@ -437,59 +516,78 @@ export default function SubscriptionPlans() {
             return isStructured ? (
               <div className="px-3 py-1">
                 <div className="space-y-3">
-                  {features.items.slice(0, 3).map((item, idx) => (
-                    <div key={idx} className="flex gap-[10px] items-start">
-                      <div className="w-16 h-16 flex flex-col items-center overflow-hidden rounded-lg shrink-0">
-                        <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.4" />
+                  {features.items.slice(0, 3).map((item, idx) => {
+                    // Default icons based on index if icon property doesn't exist
+                    const defaultIcons = [Sparkles, Users, Target];
+                    const IconComponent = item.icon ? getFeatureIcon(item.icon) : defaultIcons[idx];
+                    return (
+                      <div key={idx} className="flex items-start">
+                        <div className="w-16 h-16 flex items-center justify-center overflow-hidden rounded-lg shrink-0">
+                          <div className="w-12 h-12 rounded-lg flex items-start justify-center -mt-3">
+                            <IconComponent className="w-6 h-6 text-orange-500" />
+                          </div>
+                        </div>
+                        <div className="flex-1 flex flex-col gap-1 min-w-0">
+                          <p className="text-base font-medium text-black leading-normal">
+                            {item.name}
+                          </p>
+                          <p className="text-sm font-medium text-[#7b7b7b] leading-normal">
+                            {item.description}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex-1 flex flex-col gap-1 min-w-0">
-                        <p className="text-base font-medium text-black leading-normal">
-                          {item.name}
-                        </p>
-                        <p className="text-sm font-medium text-[#7b7b7b] leading-normal">
-                          {item.description}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ) : (
               <div className="px-3 py-1 space-y-3">
-                {(features as string[])?.slice(0, 3).map((feature, idx) => (
-                  <div key={idx} className="flex gap-[10px] items-start">
-                    <div className="w-16 h-[63px] bg-white flex flex-col items-center overflow-hidden rounded-lg shrink-0">
-                      <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.4" />
+                {(features as string[])?.slice(0, 3).map((feature, idx) => {
+                  const defaultIcons = [CheckCircle2, Star, Zap];
+                  const IconComponent = defaultIcons[idx] || CheckCircle2;
+                  return (
+                    <div key={idx} className="flex gap-[10px] items-start">
+                      <div className="w-16 h-[63px] bg-white flex items-center justify-center overflow-hidden rounded-lg shrink-0">
+                        <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg flex items-center justify-center">
+                          <IconComponent className="w-6 h-6 text-orange-600" />
+                        </div>
+                      </div>
+                      <div className="flex-1 flex flex-col gap-1 min-w-0">
+                        <p className="text-base font-semibold text-black leading-normal whitespace-nowrap">
+                          Feature {idx + 1}
+                        </p>
+                        <p className="text-sm font-medium text-[#7b7b7b] leading-normal min-w-full">
+                          {feature}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1 flex flex-col gap-1 min-w-0">
-                      <p className="text-base font-semibold text-black leading-normal whitespace-nowrap">
-                        Feature {idx + 1}
-                      </p>
-                      <p className="text-sm font-medium text-[#7b7b7b] leading-normal min-w-full">
-                        {feature}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             );
           })() : (
             <div className="px-8 py-3 space-y-3">
-              {[1, 2, 3].map((idx) => (
-                <div key={idx} className="flex gap-[10px] items-start">
-                  <div className="w-16 h-[63px] bg-white flex flex-col items-center overflow-hidden rounded-lg shrink-0">
-                    <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg mt-1.4" />
+              {[1, 2, 3].map((idx) => {
+                const placeholderIcons = [Sparkles, Star, Trophy];
+                const IconComponent = placeholderIcons[idx - 1];
+                return (
+                  <div key={idx} className="flex gap-[10px] items-start">
+                    <div className="w-16 h-[63px] bg-white flex items-center justify-center overflow-hidden rounded-lg shrink-0">
+                      <div className="w-12 h-12 bg-gradient-to-br from-orange-200 to-pink-300 rounded-lg flex items-center justify-center">
+                        <IconComponent className="w-6 h-6 text-orange-600" />
+                      </div>
+                    </div>
+                    <div className="flex-1 flex flex-col gap-1 min-w-0">
+                      <p className="text-[16px] font-semibold text-black leading-normal whitespace-nowrap">
+                        Select a plan
+                      </p>
+                      <p className="text-[16px] font-medium text-[#7b7b7b] leading-normal min-w-full">
+                        Choose your plan to see features
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 flex flex-col gap-1 min-w-0">
-                    <p className="text-[16px] font-semibold text-black leading-normal whitespace-nowrap">
-                      Select a plan
-                    </p>
-                    <p className="text-[16px] font-medium text-[#7b7b7b] leading-normal min-w-full">
-                      Choose your plan to see features
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -507,20 +605,24 @@ export default function SubscriptionPlans() {
           {/* Tabs Component */}
           <div className="flex justify-center w-full px-[60px]">
             <div className="w-full bg-muted rounded-md p-2 relative">
-              {/* Discount badge */}
-              <Badge 
-                variant="default" 
-                className="absolute -top-2 -right-4 bg-blue-500 hover:rotate-6 text-white text-[10px] px-1 py-0.4 shadow-sm z-20 rotate-[20deg]"
-              >
-                -34%
-              </Badge>
+              {/* Discount badge - show only on annual */}
+              {billingCycle === 'annual' && (
+                <Badge 
+                  variant="default" 
+                  className="absolute -top-2 -right-4 bg-blue-500 hover:rotate-6 text-white text-[10px] px-1 py-0.4 shadow-sm z-20 rotate-[20deg]"
+                >
+                  -34%
+                </Badge>
+              )}
               {/* Sliding background */}
               <motion.div
                 className="absolute top-1 bottom-1 bg-background rounded-sm shadow-sm"
                 initial={false}
                 animate={{
-                  left: billingCycle === 'monthly' ? '4px' : '50%',
-                  width: 'calc(50% - 4px)',
+                  left: showWeeklyPlan 
+                    ? (billingCycle === 'weekly' ? '4px' : billingCycle === 'monthly' ? 'calc(33.33% + 2px)' : 'calc(66.66% + 1px)')
+                    : (billingCycle === 'monthly' ? '4px' : '50%'),
+                  width: showWeeklyPlan ? 'calc(33.33% - 4px)' : 'calc(50% - 4px)',
                 }}
                 transition={{
                   type: 'spring',
@@ -531,6 +633,24 @@ export default function SubscriptionPlans() {
               
               {/* Tab buttons */}
               <div className="relative flex">
+                {showWeeklyPlan && (
+                  <button
+                    onClick={() => {
+                      setBillingCycle('weekly');
+                      trackEvent('subscription_billing_cycle_changed', {
+                        variant: isVerticalLayout ? 'vertical' : 'horizontal',
+                        billing_cycle: 'weekly',
+                        selected_plan: selectedPlanName,
+                      });
+                    }}
+                    className={cn(
+                      "flex-1 px-3 py-1.4 text-sm font-medium rounded-sm transition-colors relative z-10",
+                      billingCycle === 'weekly' ? 'text-foreground' : 'text-muted-foreground'
+                    )}
+                  >
+                    Weekly
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setBillingCycle('monthly');
@@ -573,9 +693,12 @@ export default function SubscriptionPlans() {
             isVerticalLayout ? "flex-col gap-4 items-stretch" : "flex-row gap-6"
           )}>
             {plans?.map((plan) => {
+              // Calculate display price based on billing cycle
               const monthlyPrice = billingCycle === 'annual'
                 ? plan.monthly_equivalent_cents / 100
-                : plan.price_cents / 100;
+                : billingCycle === 'weekly'
+                ? plan.price_cents / 100  // For weekly, show the weekly price directly
+                : plan.price_cents / 100; // For monthly, show the monthly price
               const isSelected = selectedPlan === plan.id;
               
               // Get features list
@@ -589,6 +712,11 @@ export default function SubscriptionPlans() {
                   onClick={() => {
                     setSelectedPlan(plan.id);
                     setSelectedPlanName(plan.plan_name);
+                    // Save user's manual selection for this billing cycle
+                    setUserSelections(prev => ({
+                      ...prev,
+                      [billingCycle]: plan.plan_name,
+                    }));
                     trackEvent('subscription_plan_selected', {
                       variant: isVerticalLayout ? 'vertical' : 'horizontal',
                       plan_name: plan.plan_name,
@@ -640,11 +768,11 @@ export default function SubscriptionPlans() {
                             </span>
                             <span className="text-[12px] font-medium text-black">/</span>
                             <span className="text-[12px] font-normal text-black">
-                              mo
+                              {billingCycle === 'weekly' ? 'wk' : 'mo'}
                             </span>
                           </div>
                           <span className='text-[12px] font-normal text-gray-500'>
-                            {billingCycle === 'annual' ? 'billed yearly' : 'billed monthly'}
+                            {billingCycle === 'weekly' ? 'billed weekly' : billingCycle === 'annual' ? 'billed yearly' : 'billed monthly'}
                           </span>
                         </div>
                       </div>
@@ -682,7 +810,7 @@ export default function SubscriptionPlans() {
                               : monthlyPrice.toFixed(2)}
                           </span>
                           <span className="text-[14px] text-gray-600">
-                            / {billingCycle === 'annual' ? 'year' : 'month'}
+                            / {billingCycle === 'weekly' ? 'week' : billingCycle === 'annual' ? 'year' : 'month'}
                           </span>
                         </div>
                         {/* <p className="text-[14px] text-gray-700 font-normal">
