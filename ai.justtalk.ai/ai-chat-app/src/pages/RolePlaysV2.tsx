@@ -1256,7 +1256,7 @@ export default function RolePlaysV2() {
               return (
                 <Card
                   key={step.id}
-                  className={`p-5 border-2 transition-all ${
+                  className={`p-5 border-1 transition-all ${
                     isLocked
                       ? 'opacity-60 cursor-not-allowed'
                       : 'cursor-pointer hover:shadow-md hover:border-primary'
@@ -1267,11 +1267,11 @@ export default function RolePlaysV2() {
                     {/* Step Number */}
                     {selectedAgent.is_multi_step && step.step_number && (
                       <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
+                        className={`w-7 h-7 rounded-full flex items-center justify-center font-semibold text-sm ${
                           isCompleted
                             ? 'bg-green-600 text-white'
                             : isInProgress
-                            ? 'bg-blue-600 text-white'
+                            ? 'bg-[hsl(var(--brand-blue))] text-white'
                             : isLocked
                             ? 'bg-gray-300 text-gray-600'
                             : 'bg-primary text-white'
