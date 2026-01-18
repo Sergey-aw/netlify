@@ -129,7 +129,7 @@ export default function ContactSupport() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase.functions.invoke('submit-support-request', {
+      const { error } = await supabase.functions.invoke('submit-support-request', {
         body: {
           topic,
           subject,
