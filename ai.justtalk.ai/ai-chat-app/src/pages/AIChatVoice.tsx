@@ -69,6 +69,7 @@ export default function AIChatVoice() {
   const [feedbackData, setFeedbackData] = useState<FeedbackData | null>(null);
   const [isFetchingFeedback, setIsFetchingFeedback] = useState(false);
   const [showContinuePrompt, setShowContinuePrompt] = useState(false);
+  const [recommendedDuration, setRecommendedDuration] = useState(60); // Fetched from DB, default 60 seconds
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const [visibleTranslations, setVisibleTranslations] = useState<Set<string>>(new Set());
   const [loadingTranslation, setLoadingTranslation] = useState<Record<string, boolean>>({});
@@ -87,6 +88,7 @@ export default function AIChatVoice() {
   const [loadingWord, setLoadingWord] = useState(false);
   const [wordDefinitions, setWordDefinitions] = useState<Record<string, any>>({});
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [currentSuggestionIndex, setCurrentSuggestionIndex] = useState(0);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestionsUsedCount, setSuggestionsUsedCount] = useState(0);
@@ -98,12 +100,6 @@ export default function AIChatVoice() {
   const selectedScenario = location.state?.scenario || 'general_conversation';
   const agentDatabaseId = location.state?.agentDatabaseId; // Database ID from justai_agents table
   
-  // Get agent config for recommended duration
-  const agentConfig = selectedAgentId 
-    ? getAgentByElevenLabsId(selectedAgentId)
-    : null;
-  const recommendedDuration = agentConfig?.recommendedDuration || 300; // Default 5 minutes
-
   // Log agent selection only once when component mounts or agent changes
   useEffect(() => {
     console.log('🤖 Selected Agent:', {
@@ -419,6 +415,20 @@ export default function AIChatVoice() {
 
         if (convError) throw convError;
         setConversationId(convData.id);
+        
+        // Fetch agent's recommended duration for feedback
+        if (agentDatabaseId) {
+          const { data: agentData } = await supabase
+            .from('justai_agents')
+            .select('recommended_duration_seconds')
+            .eq('id', agentDatabaseId)
+            .single();
+          
+          if (agentData?.recommended_duration_seconds) {
+            setRecommendedDuration(agentData.recommended_duration_seconds);
+            console.log('⏱️ Agent recommended duration:', agentData.recommended_duration_seconds);
+          }
+        }
         
         // Get context memory from all previous conversations in the roleplay series
         let contextMemory = '';
@@ -765,8 +775,9 @@ export default function AIChatVoice() {
 
     try {
       // Get active vocabulary goals for the user
-      const { data: vocabularyGoals } = await supabase.rpc('get_active_vocabulary_goals', {
-        p_student_id: user?.id,
+      const { data: vocabularyGoals } = await supabase.rpc('get_active_lesson_goals', {
+        student_uuid: user?.id,
+        lesson_uuid: null,
       });
 
       const vocabularyWords = vocabularyGoals?.map((v: any) => v.lemma) || [];
@@ -784,6 +795,7 @@ export default function AIChatVoice() {
       });
 
       setSuggestions(suggestionsList);
+      setCurrentSuggestionIndex(0); // Reset to first suggestion
       
       // Increment usage count
       setSuggestionsUsedCount(prev => prev + 1);
@@ -1057,7 +1069,15 @@ export default function AIChatVoice() {
         const result = await response.json();
         console.log('✅ Feedback result:', result);
         if (result.success && result.feedback) {
-          setFeedbackData(result.feedback);
+          // Check if conversation was too short
+          if (result.feedback.tooShort) {
+            console.log('⏱️ Conversation too short, showing continue prompt');
+            setShowContinuePrompt(true);
+            setShowFeedbackDrawer(true);
+          } else {
+            setFeedbackData(result.feedback);
+            setShowContinuePrompt(false);
+          }
         } else {
           console.error('Feedback result missing data:', result);
         }
@@ -1202,9 +1222,16 @@ export default function AIChatVoice() {
                 )}
                 
                 {/* Timer with fixed height */}
-                <div className="bg-white rounded-full px-4 py-2 min-w-[70px] flex items-center justify-center">
-                  <span className="text-sm font-medium tabular-nums">
+                <div className={cn(
+                  "bg-white rounded-full px-4 py-2 min-w-[70px] flex items-center justify-center transition-colors",
+                  sessionDuration >= recommendedDuration && "bg-green-50 ring-2 ring-green-500"
+                )}>
+                  <span className={cn(
+                    "text-sm font-medium tabular-nums",
+                    sessionDuration >= recommendedDuration && "text-green-700"
+                  )}>
                     {formatDuration(sessionDuration)}
+                    {sessionDuration >= recommendedDuration && " ✓"}
                   </span>
                 </div>
               </div>
@@ -1350,28 +1377,51 @@ export default function AIChatVoice() {
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="px-3 pt-2 pb-4 space-y-2"
+                    className="px-3 pt-2 pb-4"
                   >
-                    <p className="text-xs text-gray-500 font-medium mb-2">Suggested responses:</p>
+                    <p className="text-xs text-gray-500 font-medium mb-2">Suggested response:</p>
                     {loadingSuggestions ? (
-                      <div className="space-y-2">
-                      <Skeleton className="h-10 w-3/4 rounded-full" />
-                      </div>
+                      <Skeleton className="h-12 w-3/4 rounded-2xl" />
                     ) : suggestions.length > 0 ? (
-                      suggestions.map((suggestion, idx) => (
-                        <motion.button
-                          key={idx}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.3, delay: idx * 0.1 }}
-                          onClick={() => handleSuggestionClick(suggestion)}
-                          className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-left text-sm text-gray-700 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 shadow-sm hover:shadow"
+                      <div className="flex gap-2 items-start">
+                        <button
+                          onClick={() => handleSuggestionClick(suggestions[currentSuggestionIndex])}
+                          className="flex-1 px-4 py-3 bg-white border border-gray-200 rounded-2xl text-left text-sm text-gray-700 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 shadow-sm hover:shadow"
                         >
-                          {suggestion}
-                        </motion.button>
-                      ))
+                          <AnimatePresence mode="wait">
+                            <motion.span
+                              key={currentSuggestionIndex}
+                              initial={{ opacity: 0, y: 5 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -5 }}
+                              transition={{ duration: 0.15 }}
+                              className="block"
+                            >
+                              {suggestions[currentSuggestionIndex]}
+                            </motion.span>
+                          </AnimatePresence>
+                        </button>
+                        {suggestions.length > 1 && (
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="flex-shrink-0 h-10 w-10 rounded-2xl border-gray-200 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
+                            onClick={() => setCurrentSuggestionIndex((prev) => (prev + 1) % suggestions.length)}
+                            title="Show next suggestion"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                            </svg>
+                          </Button>
+                        )}
+                      </div>
                     ) : (
                       <p className="text-sm text-gray-400 text-center py-2">No suggestions available</p>
+                    )}
+                    {suggestions.length > 1 && (
+                      <p className="text-xs text-gray-400 mt-2 text-center">
+                        {currentSuggestionIndex + 1} of {suggestions.length}
+                      </p>
                     )}
                   </motion.div>
                 )}

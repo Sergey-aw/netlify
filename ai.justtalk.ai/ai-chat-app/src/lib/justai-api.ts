@@ -268,86 +268,43 @@ interface TranscriptMessage {
 
 /**
  * Get conversation suggestions from LLM based on recent transcript and vocabulary
+ * Uses Supabase Edge Function to avoid CORS issues and protect API keys
  */
 export async function getConversationSuggestions(params: {
   transcript: TranscriptMessage[];
   vocabularyWords?: string[];
 }): Promise<string[]> {
-  const openaiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('No active session');
+    }
 
-  if (!openaiKey) {
-    throw new Error('OpenAI API key not configured');
-  }
-
-  // Get the last 1-2 minutes of conversation (approximately last 6-10 messages)
-  const recentTranscript = params.transcript.slice(-10);
-  const transcriptText = recentTranscript
-    .map(m => `${m.speaker === 'student' ? 'Student' : 'AI'}: ${m.text}`)
-    .join('\n');
-
-  const vocabularyList = params.vocabularyWords && params.vocabularyWords.length > 0 
-    ? `\nVocabulary words the student is practicing: ${params.vocabularyWords.join(', ')}`
-    : '';
-
-  const prompt = `You are a speaking assistant for a language learner.
-Your task is to help the student continue the conversation naturally when they get stuck.
-
-You will receive:
-
-1. A recent transcript excerpt (approximately the last 1–2 minutes of conversation).
-2. A list of vocabulary words the student is trying to practice.
-
-Your output:
-
-- Produce exactly 2 or 3 short, natural sentences the student could realistically say next.
-- The sentences must fit the conversational context and topic.
-- If it feels natural, incorporate one or more of the target vocabulary words.
-- Do NOT force vocabulary usage. Naturalness is more important than coverage.
-- Do NOT explain, label, or comment on the sentences.
-- Do NOT ask questions unless questions clearly fit the flow of the conversation.
-- Avoid teacher-like language, meta commentary, or unnatural phrasing.
-- Keep sentences concise, spoken, and human.
-
-Output only the sentences. No additional text.
-
-Recent transcript:
-${transcriptText}${vocabularyList}`;
-
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openaiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'user',
-          content: prompt,
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-conversation-suggestions`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
-      ],
-      temperature: 0.7,
-      max_tokens: 200,
-    }),
-  });
+        body: JSON.stringify({
+          transcript: params.transcript,
+          vocabularyWords: params.vocabularyWords || [],
+        }),
+      }
+    );
 
-  if (!response.ok) {
-    const error = await response.text();
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to get suggestions: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.suggestions || [];
+  } catch (error) {
+    console.error('Error getting conversation suggestions:', error);
     throw new Error(`Failed to get suggestions: ${error}`);
   }
-
-  const data = await response.json();
-  const content = data.choices[0]?.message?.content || '';
-  
-  // Split by newlines and filter out empty lines
-  const suggestions = content
-    .split('\n')
-    .map((s: string) => s.trim())
-    .filter((s: string) => s.length > 0 && !s.match(/^[\d\-\.\*]+$/))  // Remove numbered/bulleted list markers
-    .map((s: string) => s.replace(/^[\d\-\.\*]+\s*/, ''))  // Clean any remaining list markers
-    .slice(0, 3);  // Ensure max 3 suggestions
-
-  return suggestions;
 }
 

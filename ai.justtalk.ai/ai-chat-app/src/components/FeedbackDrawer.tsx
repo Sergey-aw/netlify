@@ -46,44 +46,34 @@ export interface VocabularySuggestion {
 }
 
 export interface LLMFeedback {
-  // New structure from ElevenLabs webhook
-  memory?: {
-    transcript_summary?: string;
-    call_successful?: string;
-    next_stage_result?: string;
-    next_stage_rationale?: string;
-    collected_data?: Array<{
-      name: string;
-      value: any;
-    }>;
-    conversation_timestamp?: string;
-    source?: string;
-    // Legacy OpenAI fields for backwards compatibility
-    conversation_summary?: string;
-    emotional_notes?: string;
-    open_threads?: string[];
-    unlock_next_scenario?: boolean;
-  };
-  language_feedback?: {
-    score: number;
-    label: string;
-    diagnosis: string;
-    improvement_instruction: string;
-    example: {
-      original: string;
-      better: string;
+  scores?: {
+    clarity: {
+      score: number;
+      justification: string;
+      supporting_quotes: string[];
     };
+    range: {
+      score: number;
+      justification: string;
+      supporting_quotes: string[];
+    };
+    flow: {
+      score: number;
+      justification: string;
+      supporting_quotes: string[];
+    };
+    overall: number;
   };
-  // Legacy structure for backwards compatibility
-  scores?: Array<{
+  mistakes?: Array<{
     category: string;
-    score: number;
-    maxScore: number;
+    description: string;
+    quote: string;
+    correction: string;
+    explanation: string;
   }>;
-  advice?: Array<{
-    category: string;
-    feedback: string;
-  }>;
+  patterns?: string[];
+  vocabulary_level?: string;
+  fluency_notes?: string[];
 }
 
 export interface FeedbackData {
@@ -112,7 +102,7 @@ export function FeedbackDrawer({
   onContinue,
   showContinuePrompt = false,
 }: FeedbackDrawerProps) {
-  const [activeTab, setActiveTab] = useState<'snapshot' | 'vocabulary' | 'suggestions' | 'memory' | 'evaluation' | 'feedback'>('snapshot');
+  const [activeTab, setActiveTab] = useState<'snapshot' | 'vocabulary' | 'suggestions' | 'memory' | 'evaluation' | 'feedback'>('feedback');
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -219,15 +209,6 @@ export function FeedbackDrawer({
           <div className="space-y-4 overflow-y-auto">
             {/* Tabs */}
             <div className="flex gap-2 overflow-x-auto pb-2">
-              <Button
-                variant={activeTab === 'snapshot' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setActiveTab('snapshot')}
-                className="whitespace-nowrap"
-              >
-                <Clock className="w-4 h-4 mr-1" />
-                Summary
-              </Button>
               {feedbackData.llmFeedback?.memory && (
                 <Button
                   variant={activeTab === 'memory' ? 'default' : 'outline'}
@@ -250,7 +231,7 @@ export function FeedbackDrawer({
                   Evaluation
                 </Button>
               )}
-              {feedbackData.llmFeedback?.language_feedback && (
+              {feedbackData.llmFeedback?.scores && (
                 <Button
                   variant={activeTab === 'feedback' ? 'default' : 'outline'}
                   size="sm"
@@ -286,52 +267,6 @@ export function FeedbackDrawer({
             </div>
 
             {/* Tab Content */}
-            {activeTab === 'snapshot' && (
-              <div className="space-y-3">
-                <Card className="p-4 bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
-                        <Clock className="w-4 h-4" />
-                        Duration
-                      </div>
-                      <div className="text-2xl font-bold text-blue-600">
-                        {formatDuration(feedbackData.snapshot.duration)}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
-                        <MessageSquare className="w-4 h-4" />
-                        Turns
-                      </div>
-                      <div className="text-2xl font-bold text-purple-600">
-                        {feedbackData.snapshot.turns}
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-
-                <div className="grid grid-cols-3 gap-2">
-                  <Card className="p-3 text-center">
-                    <div className="text-sm text-gray-600 mb-1">Total Words</div>
-                    <div className="text-xl font-semibold">{feedbackData.snapshot.words}</div>
-                  </Card>
-                  <Card className="p-3 text-center bg-green-50">
-                    <div className="text-sm text-gray-600 mb-1">You</div>
-                    <div className="text-xl font-semibold text-green-700">
-                      {feedbackData.snapshot.studentWords}
-                    </div>
-                  </Card>
-                  <Card className="p-3 text-center bg-blue-50">
-                    <div className="text-sm text-gray-600 mb-1">AI</div>
-                    <div className="text-xl font-semibold text-blue-700">
-                      {feedbackData.snapshot.aiWords}
-                    </div>
-                  </Card>
-                </div>
-              </div>
-            )}
-
             {activeTab === 'vocabulary' && feedbackData.vocabularyGoals && (
               <div className="space-y-3">
                 <p className="text-sm text-gray-600">
@@ -517,124 +452,183 @@ export function FeedbackDrawer({
 
             {activeTab === 'feedback' && feedbackData.llmFeedback && (
               <div className="space-y-4">
-                {/* New structured feedback */}
-                {feedbackData.llmFeedback.language_feedback && (
-                  <>
-                    <Card className="p-4 bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-semibold flex items-center gap-2">
-                          <TrendingUp className="w-5 h-5 text-blue-600" />
-                          Overall Score
-                        </h4>
-                        <div className="text-right">
-                          <div className="text-3xl font-bold text-blue-600">
-                            {feedbackData.llmFeedback.language_feedback.score}
-                          </div>
-                          <div className="text-xs text-gray-600">out of 100</div>
-                        </div>
-                      </div>
-                      <Badge 
-                        variant="secondary"
-                        className={cn(
-                          'text-sm',
-                          feedbackData.llmFeedback.language_feedback.score >= 80 ? 'bg-green-100 text-green-800' :
-                          feedbackData.llmFeedback.language_feedback.score >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-orange-100 text-orange-800'
-                        )}
-                      >
-                        {feedbackData.llmFeedback.language_feedback.label}
-                      </Badge>
-                    </Card>
-
-                    <Card className="p-4 bg-gray-50">
-                      <h4 className="font-semibold mb-2">Diagnosis</h4>
-                      <p className="text-sm text-gray-700 leading-relaxed">
-                        {feedbackData.llmFeedback.language_feedback.diagnosis}
-                      </p>
-                    </Card>
-
-                    <Card className="p-4 bg-purple-50 border-purple-200">
-                      <h4 className="font-semibold mb-2 flex items-center gap-2">
-                        <Sparkles className="w-5 h-5 text-purple-600" />
-                        How to Improve
+                {/* Overall Score */}
+                {feedbackData.llmFeedback.scores && (
+                  <Card className="p-5 bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-semibold flex items-center gap-2">
+                        <TrendingUp className="w-5 h-5 text-blue-600" />
+                        Overall Score
                       </h4>
-                      <p className="text-sm text-gray-700 leading-relaxed mb-3">
-                        {feedbackData.llmFeedback.language_feedback.improvement_instruction}
-                      </p>
-                      
-                      <div className="space-y-2 mt-3 pt-3 border-t border-purple-200">
-                        <div className="text-xs font-semibold text-purple-900 mb-1">Example:</div>
-                        <div className="bg-red-50 border border-red-200 rounded p-2">
-                          <div className="text-xs text-red-600 font-medium mb-1">❌ Original</div>
-                          <p className="text-sm text-gray-700 italic">
-                            "{feedbackData.llmFeedback.language_feedback.example.original}"
-                          </p>
+                      <div className="text-right">
+                        <div className="text-4xl font-bold text-blue-600">
+                          {feedbackData.llmFeedback.scores.overall}
                         </div>
-                        <div className="bg-green-50 border border-green-200 rounded p-2">
-                          <div className="text-xs text-green-600 font-medium mb-1">✅ Better</div>
-                          <p className="text-sm text-gray-700 italic">
-                            "{feedbackData.llmFeedback.language_feedback.example.better}"
-                          </p>
-                        </div>
-                      </div>
-                    </Card>
-                  </>
-                )}
-
-                {/* Legacy format for backwards compatibility */}
-                {feedbackData.llmFeedback.scores && feedbackData.llmFeedback.advice && (
-                  <>
-                    {/* Scores */}
-                    <div>
-                      <h4 className="font-semibold mb-3">Performance Scores</h4>
-                      <div className="space-y-3">
-                        {feedbackData.llmFeedback.scores.map((score, idx) => (
-                          <div key={idx}>
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="text-sm font-medium">{score.category}</span>
-                              <span className="text-sm font-semibold">
-                                {score.score}/{score.maxScore}
-                              </span>
-                            </div>
-                            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                              <div
-                                className={cn(
-                                  'h-full transition-all',
-                                  score.score / score.maxScore >= 0.8
-                                    ? 'bg-green-500'
-                                    : score.score / score.maxScore >= 0.6
-                                    ? 'bg-yellow-500'
-                                    : 'bg-orange-500'
-                                )}
-                                style={{ width: `${(score.score / score.maxScore) * 100}%` }}
-                              />
-                            </div>
-                          </div>
-                        ))}
+                        <div className="text-xs text-gray-600">out of 3</div>
                       </div>
                     </div>
+                  </Card>
+                )}
 
-                    {/* Advice */}
-                    <div>
-                      <h4 className="font-semibold mb-3">Personalized Advice</h4>
-                      <div className="space-y-3">
-                        {feedbackData.llmFeedback.advice.map((item, idx) => (
-                      <Card key={idx} className="p-4 bg-purple-50 border-purple-200">
-                        <div className="flex items-start gap-2">
-                          <ChevronRight className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
-                          <ChevronRight className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
-                          <div>
-                            <div className="font-medium text-sm text-purple-900 mb-1">
-                              {item.category}
+                {/* Scores Breakdown */}
+                {feedbackData.llmFeedback.scores && (
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-sm text-gray-700">Score Breakdown</h4>
+                    
+                    {/* Clarity */}
+                    <Card className="p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-medium">💡 Clarity</span>
+                        <Badge variant="secondary" className="text-lg px-3">
+                          {feedbackData.llmFeedback.scores.clarity.score}/3
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-700 mb-3">
+                        {feedbackData.llmFeedback.scores.clarity.justification}
+                      </p>
+                      {feedbackData.llmFeedback.scores.clarity.supporting_quotes.length > 0 && (
+                        <div className="space-y-1 mt-2 pt-2 border-t">
+                          <div className="text-xs font-medium text-gray-500">Examples:</div>
+                          {feedbackData.llmFeedback.scores.clarity.supporting_quotes.map((quote, idx) => (
+                            <div key={idx} className="text-xs italic text-gray-600 bg-gray-50 p-2 rounded">
+                              "{quote}"
                             </div>
-                            <p className="text-sm text-gray-700">{item.feedback}</p>
+                          ))}
+                        </div>
+                      )}
+                    </Card>
+
+                    {/* Range */}
+                    <Card className="p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-medium">🎨 Range</span>
+                        <Badge variant="secondary" className="text-lg px-3">
+                          {feedbackData.llmFeedback.scores.range.score}/3
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-700 mb-3">
+                        {feedbackData.llmFeedback.scores.range.justification}
+                      </p>
+                      {feedbackData.llmFeedback.scores.range.supporting_quotes.length > 0 && (
+                        <div className="space-y-1 mt-2 pt-2 border-t">
+                          <div className="text-xs font-medium text-gray-500">Examples:</div>
+                          {feedbackData.llmFeedback.scores.range.supporting_quotes.map((quote, idx) => (
+                            <div key={idx} className="text-xs italic text-gray-600 bg-gray-50 p-2 rounded">
+                              "{quote}"
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </Card>
+
+                    {/* Flow */}
+                    <Card className="p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-medium">🌊 Flow</span>
+                        <Badge variant="secondary" className="text-lg px-3">
+                          {feedbackData.llmFeedback.scores.flow.score}/3
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-700 mb-3">
+                        {feedbackData.llmFeedback.scores.flow.justification}
+                      </p>
+                      {feedbackData.llmFeedback.scores.flow.supporting_quotes.length > 0 && (
+                        <div className="space-y-1 mt-2 pt-2 border-t">
+                          <div className="text-xs font-medium text-gray-500">Examples:</div>
+                          {feedbackData.llmFeedback.scores.flow.supporting_quotes.map((quote, idx) => (
+                            <div key={idx} className="text-xs italic text-gray-600 bg-gray-50 p-2 rounded">
+                              "{quote}"
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </Card>
+                  </div>
+                )}
+
+                {/* Mistakes */}
+                {feedbackData.llmFeedback.mistakes && feedbackData.llmFeedback.mistakes.length > 0 && (
+                  <Card className="p-4 border-red-200 bg-red-50">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      <AlertCircle className="w-5 h-5 text-red-600" />
+                      Mistakes to Fix
+                    </h4>
+                    <div className="space-y-3">
+                      {feedbackData.llmFeedback.mistakes.map((mistake, idx) => (
+                        <div key={idx} className="bg-white rounded-lg p-3 border border-red-200">
+                          <div className="flex items-start gap-2 mb-2">
+                            <Badge variant="secondary" className="text-xs bg-red-100 text-red-800">
+                              {mistake.category}
+                            </Badge>
+                            <span className="text-sm font-medium text-gray-900 flex-1">
+                              {mistake.description}
+                            </span>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="bg-red-50 border border-red-200 rounded p-2">
+                              <div className="text-xs text-red-600 font-medium mb-1">❌ What you said:</div>
+                              <p className="text-sm text-gray-700 italic">"{mistake.quote}"</p>
+                            </div>
+                            <div className="bg-green-50 border border-green-200 rounded p-2">
+                              <div className="text-xs text-green-600 font-medium mb-1">✅ Better:</div>
+                              <p className="text-sm text-gray-700 italic">"{mistake.correction}"</p>
+                            </div>
+                            <p className="text-xs text-gray-600 mt-2">
+                              💡 {mistake.explanation}
+                            </p>
                           </div>
                         </div>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-                  </>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+
+                {/* Patterns */}
+                {feedbackData.llmFeedback.patterns && feedbackData.llmFeedback.patterns.length > 0 && (
+                  <Card className="p-4 bg-amber-50 border-amber-200">
+                    <h4 className="font-semibold mb-3">📊 Patterns in Your Speech</h4>
+                    <ul className="space-y-2">
+                      {feedbackData.llmFeedback.patterns.map((pattern, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
+                          <ChevronRight className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                          <span>{pattern}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </Card>
+                )}
+
+                {/* Vocabulary Level */}
+                {feedbackData.llmFeedback.vocabulary_level && (
+                  <Card className="p-4 bg-blue-50 border-blue-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="w-5 h-5 text-blue-600" />
+                        <span className="font-semibold">Vocabulary Level</span>
+                      </div>
+                      <Badge className="bg-blue-600 text-white">
+                        {feedbackData.llmFeedback.vocabulary_level.replace('-', ' ').toUpperCase()}
+                      </Badge>
+                    </div>
+                  </Card>
+                )}
+
+                {/* Fluency Notes */}
+                {feedbackData.llmFeedback.fluency_notes && feedbackData.llmFeedback.fluency_notes.length > 0 && (
+                  <Card className="p-4 bg-purple-50 border-purple-200">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-purple-600" />
+                      Fluency Observations
+                    </h4>
+                    <ul className="space-y-2">
+                      {feedbackData.llmFeedback.fluency_notes.map((note, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
+                          <ChevronRight className="w-4 h-4 text-purple-600 flex-shrink-0 mt-0.5" />
+                          <span>{note}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </Card>
                 )}
               </div>
             )}
