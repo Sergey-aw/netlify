@@ -161,26 +161,47 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
 
   // Setup intersection observer for infinite scroll
   useEffect(() => {
-    if (!loadMoreRef.current) return;
+    const currentLoadMoreRef = loadMoreRef.current;
+    if (!currentLoadMoreRef || !open) {
+      console.log('🔍 Observer not attached:', { hasRef: !!currentLoadMoreRef, isOpen: open });
+      return;
+    }
+
+    // Clean up existing observer
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+
+    console.log('✅ Setting up pagination observer:', { 
+      hasNextPage, 
+      isFetchingNextPage, 
+      conversationsCount: conversations.length 
+    });
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
         const [entry] = entries;
+        console.log('👀 Intersection detected:', { 
+          isIntersecting: entry.isIntersecting, 
+          hasNextPage, 
+          isFetchingNextPage 
+        });
         if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          console.log('📥 Loading more conversations...');
           fetchNextPage();
         }
       },
       { threshold: 0.1 }
     );
 
-    observerRef.current.observe(loadMoreRef.current);
+    observerRef.current.observe(currentLoadMoreRef);
 
     return () => {
       if (observerRef.current) {
         observerRef.current.disconnect();
       }
     };
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, open, conversations.length]);
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -364,10 +385,12 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
                   ))}
                   
                   {/* Loading indicator for pagination */}
-                  <div ref={loadMoreRef} className="py-4 flex items-center justify-center">
-                    {isFetchingNextPage && (
+                  <div ref={loadMoreRef} className="py-4 flex items-center justify-center min-h-[40px]">
+                    {isFetchingNextPage ? (
                       <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                    )}
+                    ) : hasNextPage ? (
+                      <span className="text-xs text-muted-foreground">Scroll for more</span>
+                    ) : null}
                   </div>
                 </div>
               ) : (
