@@ -2,14 +2,11 @@
 // Deploy this to your main Supabase repo at: supabase/functions/process-voice-session/index.ts
 // 
 // Purpose: Post-process voice chat session after it ends
-// - Fetch transcript from ElevenLabs
+// - Fetch transcript and analysis from ElevenLabs
 // - Save messages to justai_messages
 // - Update voice session with character count and costs
 // - Create vocabulary evidence for student's words
 // - Mark session as processed
-// 
-// Note: Memory extraction (conversation_summary, emotional_notes, etc.) is handled by
-// analyze-conversation-feedback edge function using OpenAI, not ElevenLabs.
 // 
 // Required Secrets (set in Supabase Dashboard):
 // - ELEVENLABS_API_KEY
@@ -108,10 +105,16 @@ serve(async (req) => {
     const elevenLabsData = await elevenLabsResponse.json()
     console.log('ElevenLabs conversation data:', JSON.stringify(elevenLabsData, null, 2))
 
-    // Note: session_memory is populated by the elevenlabs-post-call-webhook function
-    // which receives the analysis data from ElevenLabs after the call ends.
-    // This function only processes the transcript and metadata.
-    console.log('Session memory will be populated by elevenlabs-post-call-webhook')
+    // Extract dynamic variables from analysis for next conversation
+    const analysis = elevenLabsData.analysis || {}
+    const dynamicVariables = {
+      conversation_summary: analysis.conversation_summary || null,
+      emotional_notes: analysis.emotional_notes || null,
+      open_threads: analysis.open_threads || null,
+      unlock_next_scenario: analysis.unlock_next_scenario || false,
+      extracted_at: new Date().toISOString(),
+    }
+    console.log('Extracted dynamic variables:', dynamicVariables)
 
     // Extract metadata for costs and usage
     const metadata = elevenLabsData.metadata || {}
@@ -329,8 +332,22 @@ serve(async (req) => {
 
     console.log('Voice session processing complete')
 
-    // Note: session_memory is populated by elevenlabs-post-call-webhook (not this function)
-    // The webhook receives analysis data from ElevenLabs after the call ends.
+    // // Save dynamic variables to conversation for context continuity
+    // if (Object.values(dynamicVariables).some(v => v !== null && v !== false)) {
+    //   const { error: conversationUpdateError } = await supabase
+    //     .from('justai_conversations')
+    //     .update({
+    //       session_memory: dynamicVariables,
+    //       updated_at: new Date().toISOString(),
+    //     })
+    //     .eq('id', voiceSession.conversation_id)
+
+    //   if (conversationUpdateError) {
+    //     console.error('Error saving dynamic variables:', conversationUpdateError)
+    //   } else {
+    //     console.log('Dynamic variables saved to conversation session_memory')
+    //   }
+    // }
 
     // Update student progress if this was a roleplay with an agent
     const conversation = voiceSession.justai_conversations
@@ -356,25 +373,33 @@ serve(async (req) => {
         } else {
           console.log('Student progress updated successfully')
           
-          // Check if this completes a step (set by elevenlabs-post-call-webhook)
-          const { data: conversationCheck } = await supabase
-            .from('justai_conversations')
-            .select('unlock_next_scenario, session_memory')
-            .eq('id', conversation.id)
-            .single()
+          // Check if this completes a step based on both sources:
+          // 1. ElevenLabs analysis (immediate)
+          // 2. Database conversation record (may be set by analyze-conversation-feedback later)
+          let shouldComplete = dynamicVariables.unlock_next_scenario === true
           
-          let shouldComplete = false
-          if (conversationCheck?.unlock_next_scenario === true) {
-            shouldComplete = true
-            console.log('Step completion criteria met from unlock_next_scenario')
-          } else if (conversationCheck?.session_memory?.next_stage_result === 'success') {
-            shouldComplete = true
-            console.log('Step completion criteria met from session_memory.next_stage_result')
+          // Also check the database in case feedback was already generated
+          if (!shouldComplete) {
+            const { data: conversationCheck } = await supabase
+              .from('justai_conversations')
+              .select('unlock_next_scenario, session_memory')
+              .eq('id', conversation.id)
+              .single()
+            
+            if (conversationCheck?.unlock_next_scenario === true) {
+              shouldComplete = true
+              console.log('Step completion criteria met from database unlock_next_scenario')
+            } else if (conversationCheck?.session_memory?.unlock_next_scenario === true) {
+              shouldComplete = true
+              console.log('Step completion criteria met from session_memory.unlock_next_scenario')
+            }
+          } else {
+            console.log('Step completion criteria met from ElevenLabs unlock_next_scenario')
           }
           
           if (shouldComplete) {
             // Mark step as completed
-            const { error: completeError } = await supabase
+            const { data: updatedProgress, error: completeError } = await supabase
               .from('justai_student_progress')
               .update({
                 status: 'completed',
@@ -384,23 +409,27 @@ serve(async (req) => {
               .eq('student_id', conversation.student_id)
               .eq('agent_id', conversation.agent_id)
               .neq('status', 'completed') // Only update if not already completed
+              .select()
             
             if (completeError) {
               console.error('Error marking step completed:', completeError)
-            } else {
+            } else if (updatedProgress && updatedProgress.length > 0) {
               console.log('Step marked as completed')
-              
-              // Try to unlock next step
-              const { error: unlockError } = await supabase.rpc('check_unlock_next_step', {
-                p_student_id: conversation.student_id,
-                p_current_agent_id: conversation.agent_id,
-              })
-              
-              if (unlockError) {
-                console.error('Error checking unlock next step:', unlockError)
-              } else {
-                console.log('Checked for next step unlock')
-              }
+            } else {
+              console.log('Step already completed, skipping status update')
+            }
+            
+            // Always try to unlock next step when unlock_next_scenario is true
+            // This ensures unlocking happens even if step was already completed
+            const { error: unlockError } = await supabase.rpc('check_unlock_next_step', {
+              p_student_id: conversation.student_id,
+              p_current_agent_id: conversation.agent_id,
+            })
+            
+            if (unlockError) {
+              console.error('Error checking unlock next step:', unlockError)
+            } else {
+              console.log('Checked for next step unlock')
             }
           }
         }
