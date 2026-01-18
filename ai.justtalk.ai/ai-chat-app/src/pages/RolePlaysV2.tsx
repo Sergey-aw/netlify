@@ -1261,7 +1261,7 @@ export default function RolePlaysV2() {
                       ? 'opacity-60 cursor-not-allowed'
                       : 'cursor-pointer hover:shadow-md hover:border-primary'
                   } ${getStatusColor(progress?.status)}`}
-                  onClick={() => handleStepClick(selectedAgent, step)}
+                  onClick={() => !isLocked && handleStepClick(selectedAgent, step)}
                 >
                   <div className="flex items-start gap-4">
                     {/* Step Number */}
