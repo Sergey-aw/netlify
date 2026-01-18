@@ -10,7 +10,7 @@ export interface Subscription {
   monthly_message_limit: number | null;
   price_cents: number;
   currency: string;
-  billing_period: 'monthly' | 'annual';
+  billing_period: 'weekly' | 'monthly' | 'annual';
   current_period_start: string;
   current_period_end: string;
   cancel_at_period_end: boolean;

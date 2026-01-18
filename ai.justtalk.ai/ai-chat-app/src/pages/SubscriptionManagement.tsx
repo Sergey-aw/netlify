@@ -25,7 +25,7 @@ interface SubscriptionPlan {
   id: string;
   plan_name: string;
   plan_type: 'basic' | 'premium' | 'unlimited';
-  billing_period: 'monthly' | 'annual';
+  billing_period: 'weekly' | 'monthly' | 'annual';
   monthly_message_limit: number | null;
   price_cents: number;
   stripe_price_id: string;

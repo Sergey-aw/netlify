@@ -146,7 +146,7 @@ export const trackOnboardingCompleted = (properties?: Record<string, any>) => {
 };
 
 // Paywall/Subscription Events
-export const trackPaywallViewed = (billingCycle?: 'monthly' | 'annual') => {
+export const trackPaywallViewed = (billingCycle?: 'weekly' | 'monthly' | 'annual') => {
   const ph = getPostHog();
   if (ph) {
     ph.capture('paywall_viewed', { billing_cycle: billingCycle });
@@ -157,7 +157,7 @@ export const trackPlanSelected = (
   planType: string,
   priceId: string,
   priceCents: number,
-  billingPeriod: 'monthly' | 'annual',
+  billingPeriod: 'weekly' | 'monthly' | 'annual',
   properties?: Record<string, any>
 ) => {
   const ph = getPostHog();
@@ -177,7 +177,7 @@ export const trackCheckoutStarted = (
   planType: string,
   priceId: string,
   priceCents: number,
-  billingPeriod: 'monthly' | 'annual'
+  billingPeriod: 'weekly' | 'monthly' | 'annual'
 ) => {
   const ph = getPostHog();
   if (ph) {
@@ -195,7 +195,7 @@ export const trackSubscriptionActivated = (
   subscriptionType: string,
   priceId: string,
   priceCents: number,
-  billingPeriod: 'monthly' | 'annual',
+  billingPeriod: 'weekly' | 'monthly' | 'annual',
   stripeSubscriptionId?: string
 ) => {
   const ph = getPostHog();

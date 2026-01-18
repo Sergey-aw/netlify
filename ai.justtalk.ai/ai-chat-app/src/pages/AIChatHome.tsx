@@ -220,6 +220,79 @@ export default function AIChatHome() {
     enabled: !!selectedConversation,
   });
 
+  // Get agent details and related steps/agents for the bottom bar
+  const { data: agentSteps } = useQuery({
+    queryKey: ['agent-steps', conversationFeedback?.agent_id, user?.id],
+    queryFn: async () => {
+      if (!conversationFeedback?.agent_id || !user?.id) return null;
+      
+      const agentId = conversationFeedback.agent_id;
+      
+      // First, get the current agent details
+      const { data: currentAgent, error: agentError } = await supabase
+        .from('justai_agents')
+        .select('*')
+        .eq('id', agentId)
+        .single();
+      
+      if (agentError) throw agentError;
+      
+      let relatedAgents = [];
+      
+      // If this is a multi-step agent or a step within a multi-step series
+      if (currentAgent.is_multi_step || currentAgent.parent_agent_id) {
+        const parentId = currentAgent.parent_agent_id || agentId;
+        
+        // Get all steps in this series with progress
+        const { data: steps, error: stepsError } = await supabase
+          .from('justai_agents')
+          .select(`
+            *,
+            progress:justai_student_progress(
+              status,
+              average_session_score,
+              best_session_score
+            )
+          `)
+          .eq('parent_agent_id', parentId)
+          .eq('progress.student_id', user.id)
+          .order('step_number', { ascending: true });
+        
+        if (!stepsError && steps) {
+          relatedAgents = steps;
+        }
+      } else {
+        // Single-step agent: get other agents from the same category
+        const { data: categoryAgents, error: categoryError } = await supabase
+          .from('justai_agents')
+          .select(`
+            *,
+            progress:justai_student_progress(
+              status,
+              average_session_score,
+              best_session_score
+            )
+          `)
+          .eq('category', currentAgent.category)
+          .eq('progress.student_id', user.id)
+          .is('parent_agent_id', null)
+          .order('display_order', { ascending: true })
+          .limit(10);
+        
+        if (!categoryError && categoryAgents) {
+          relatedAgents = categoryAgents;
+        }
+      }
+      
+      return {
+        currentAgent,
+        relatedAgents,
+        isMultiStep: currentAgent.is_multi_step || !!currentAgent.parent_agent_id,
+      };
+    },
+    enabled: !!conversationFeedback?.agent_id && !!user?.id,
+  });
+
   // Check subscription status
   const { data: hasAccess } = useQuery({
     queryKey: ['subscription-access'],
@@ -498,12 +571,12 @@ export default function AIChatHome() {
         />
 
         {/* Main Content Area */}
-        <div className="h-full bg-gray-100 rounded-[40px] pt-0 pb-0 m-2 flex flex-col">
+        <div className="h-full bg-gray-100 rounded-[40px] pt-0 pb-0 m-2 flex flex-col relative">
           {selectedConversation && messages ? (
             // Conversation View
             <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full px-6 overflow-hidden">
               {/* Messages - Scrollable */}
-              <div className="flex-1 overflow-y-auto space-y-4 pt-6 pb-6">
+              <div className="flex-1 overflow-y-auto space-y-4 pt-6 pb-24 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 {messages.map((message) => (
                   <div
                     key={message.id}
@@ -647,6 +720,74 @@ export default function AIChatHome() {
                 </div>
               </main>
             </>
+          )}
+
+          {/* Bottom Bar - Related Steps/Agents (Outside Dialogue Box) */}
+          {selectedConversation && agentSteps && agentSteps.relatedAgents && agentSteps.relatedAgents.length > 0 && (
+            <div className="absolute pt-2 bottom-0 left-0 right-0 bg-white border-t -px-2 pb-3 rounded-b-[40px]">
+              <div className="max-w-4xl mx-auto">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-medium text-gray-500">
+                    {agentSteps.isMultiStep ? 'Continue with following steps' : 'Similar Scenarios'}
+                  </span>
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {agentSteps.relatedAgents.map((agent: any) => {
+                    const isCurrentAgent = agent.id === conversationFeedback?.agent_id;
+                    const progress = agent.progress?.[0];
+                    const isLocked = progress?.status === 'locked' || (!progress && agent.step_number && agent.step_number > 1);
+                    const isCompleted = progress?.status === 'completed';
+                    
+                    return (
+                      <div
+                        key={agent.id}
+                        className={cn(
+                          'flex-shrink-0 rounded-xl px-4 py-2 min-w-[120px] transition-all cursor-pointer',
+                          isCurrentAgent
+                            ? 'bg-[hsl(var(--brand-blue))] text-white shadow-md'
+                            : isLocked
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
+                            : isCompleted
+                            ? 'bg-green-50 text-green-700 border border-green-200'
+                            : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                        )}
+                        onClick={() => {
+                          if (!isLocked && !isCurrentAgent) {
+                            navigate('/ai-chat/voice/new', {
+                              state: {
+                                agentId: agent.id,
+                                agentName: agent.name,
+                                elevenLabsAgentId: agent.elevenlabs_agent_id,
+                              },
+                            });
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          {agentSteps.isMultiStep && agent.step_number && (
+                            <span className={cn(
+                              'text-xs font-bold',
+                              isCurrentAgent ? 'text-white' : isLocked ? 'text-gray-400' : 'text-gray-500'
+                            )}>
+                              {agent.step_number}.
+                            </span>
+                          )}
+                          <span className="text-sm font-medium line-clamp-1">
+                            {agent.name}
+                          </span>
+                          {isLocked && (
+                            <span className="text-xs ml-1">🔒</span>
+                          )}
+                          {isCompleted && !isCurrentAgent && (
+                            <span className="text-xs ml-1">✓</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>

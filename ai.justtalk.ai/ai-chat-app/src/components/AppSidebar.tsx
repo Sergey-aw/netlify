@@ -334,7 +334,7 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
           {/* Conversations Section */}
           <SidebarGroup className="flex-1 min-h-0 flex flex-col">
             <SidebarGroupLabel className="px-2 flex-shrink-0">Conversations</SidebarGroupLabel>
-            <SidebarGroupContent className="overflow-y-auto flex-1 min-h-0" ref={scrollRef}>
+            <SidebarGroupContent className="overflow-y-auto flex-1 min-h-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" ref={scrollRef}>
               {conversationsLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />

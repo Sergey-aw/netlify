@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import {
-  Clock,
   MessageSquare,
   TrendingUp,
   BookOpen,
@@ -74,6 +73,20 @@ export interface LLMFeedback {
   patterns?: string[];
   vocabulary_level?: string;
   fluency_notes?: string[];
+  memory?: {
+    source?: string;
+    extracted_at?: string;
+    collected_data?: Array<{
+      name: string;
+      value: string;
+      rationale: string;
+    }>;
+    call_successful?: string;
+    next_stage_result?: string;
+    transcript_summary?: string;
+    next_stage_rationale?: string;
+    conversation_timestamp?: string;
+  };
 }
 
 export interface FeedbackData {
@@ -104,11 +117,11 @@ export function FeedbackDrawer({
 }: FeedbackDrawerProps) {
   const [activeTab, setActiveTab] = useState<'snapshot' | 'vocabulary' | 'suggestions' | 'memory' | 'evaluation' | 'feedback'>('feedback');
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  // const formatDuration = (seconds: number) => {
+  //   const mins = Math.floor(seconds / 60);
+  //   const secs = seconds % 60;
+  //   return `${mins}:${secs.toString().padStart(2, '0')}`;
+  // };
 
   // Show "talk more" prompt if requested and no full feedback
   if (showContinuePrompt) {
@@ -334,46 +347,48 @@ export function FeedbackDrawer({
 
             {activeTab === 'memory' && feedbackData.llmFeedback?.memory && (
               <div className="space-y-4">
-                <Card className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
-                  <h4 className="font-semibold mb-3 flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5 text-purple-600" />
-                    Conversation Summary
-                  </h4>
-                  <p className="text-sm text-gray-700 leading-relaxed">
-                    {feedbackData.llmFeedback.memory.conversation_summary}
-                  </p>
-                </Card>
-
-                {feedbackData.llmFeedback.memory.emotional_notes && (
-                  <Card className="p-4 bg-gradient-to-br from-pink-50 to-purple-50 border-pink-200">
+                {/* Conversation Summary */}
+                {feedbackData.llmFeedback.memory.transcript_summary && (
+                  <Card className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
                     <h4 className="font-semibold mb-3 flex items-center gap-2">
-                      <span className="text-lg">💭</span>
-                      Emotional Notes
+                      <MessageSquare className="w-5 h-5 text-purple-600" />
+                      Conversation Summary
                     </h4>
                     <p className="text-sm text-gray-700 leading-relaxed">
-                      {feedbackData.llmFeedback.memory.emotional_notes}
+                      {feedbackData.llmFeedback.memory.transcript_summary}
                     </p>
                   </Card>
                 )}
 
-                {feedbackData.llmFeedback.memory.open_threads && feedbackData.llmFeedback.memory.open_threads.length > 0 && (
+                {/* Collected Data - Key Moments */}
+                {feedbackData.llmFeedback.memory.collected_data && feedbackData.llmFeedback.memory.collected_data.length > 0 && (
                   <Card className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
                     <h4 className="font-semibold mb-3 flex items-center gap-2">
-                      <span className="text-lg">🧵</span>
-                      Open Threads
+                      <span className="text-lg">🎯</span>
+                      Key Moments & Insights
                     </h4>
-                    <ul className="space-y-2">
-                      {feedbackData.llmFeedback.memory.open_threads.map((thread, idx) => (
-                        <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
-                          <ChevronRight className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                          <span>{thread}</span>
-                        </li>
+                    <div className="space-y-3">
+                      {feedbackData.llmFeedback.memory.collected_data.map((item, idx) => (
+                        <div key={idx} className="bg-white rounded-lg p-3 border border-blue-200">
+                          <div className="font-medium text-sm text-gray-900 mb-1">
+                            {item.name.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                          </div>
+                          {item.value && (
+                            <div className="text-sm text-blue-700 font-medium mb-2">
+                              {item.value}
+                            </div>
+                          )}
+                          <p className="text-xs text-gray-600 leading-relaxed">
+                            {item.rationale}
+                          </p>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </Card>
                 )}
 
-                {feedbackData.llmFeedback.memory.unlock_next_scenario && (
+                {/* Success Badge */}
+                {feedbackData.llmFeedback.memory.next_stage_result === 'success' && (
                   <Card className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
                     <div className="flex items-center gap-3">
                       <CheckCircle2 className="w-6 h-6 text-green-600" />

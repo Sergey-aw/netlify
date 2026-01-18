@@ -108,18 +108,10 @@ serve(async (req) => {
     const elevenLabsData = await elevenLabsResponse.json()
     console.log('ElevenLabs conversation data:', JSON.stringify(elevenLabsData, null, 2))
 
-    // Note: Memory extraction (conversation_summary, emotional_notes, open_threads, unlock_next_scenario)
-    // is handled by the analyze-conversation-feedback edge function using OpenAI.
-    // ElevenLabs does NOT provide an 'analysis' field in their API response.
-    // The session_memory will be populated when the user requests feedback from the UI.
-    const dynamicVariables = {
-      conversation_summary: null,
-      emotional_notes: null,
-      open_threads: null,
-      unlock_next_scenario: false,
-      extracted_at: new Date().toISOString(),
-    }
-    console.log('Dynamic variables placeholder (will be populated by analyze-conversation-feedback):', dynamicVariables)
+    // Note: session_memory is populated by the elevenlabs-post-call-webhook function
+    // which receives the analysis data from ElevenLabs after the call ends.
+    // This function only processes the transcript and metadata.
+    console.log('Session memory will be populated by elevenlabs-post-call-webhook')
 
     // Extract metadata for costs and usage
     const metadata = elevenLabsData.metadata || {}
@@ -337,11 +329,8 @@ serve(async (req) => {
 
     console.log('Voice session processing complete')
 
-    // Note: Dynamic variables (session_memory) are intentionally empty here.
-    // Memory extraction happens later when the user requests feedback via the UI,
-    // which calls the analyze-conversation-feedback function that uses OpenAI to analyze the transcript.
-    // Skipping save of empty session_memory to avoid overwriting data from analyze-conversation-feedback.
-    console.log('Session memory will be populated by analyze-conversation-feedback when user requests feedback')
+    // Note: session_memory is populated by elevenlabs-post-call-webhook (not this function)
+    // The webhook receives analysis data from ElevenLabs after the call ends.
 
     // Update student progress if this was a roleplay with an agent
     const conversation = voiceSession.justai_conversations
@@ -367,28 +356,20 @@ serve(async (req) => {
         } else {
           console.log('Student progress updated successfully')
           
-          // Check if this completes a step based on both sources:
-          // 1. ElevenLabs analysis (immediate)
-          // 2. Database conversation record (may be set by analyze-conversation-feedback later)
-          let shouldComplete = dynamicVariables.unlock_next_scenario === true
+          // Check if this completes a step (set by elevenlabs-post-call-webhook)
+          const { data: conversationCheck } = await supabase
+            .from('justai_conversations')
+            .select('unlock_next_scenario, session_memory')
+            .eq('id', conversation.id)
+            .single()
           
-          // Also check the database in case feedback was already generated
-          if (!shouldComplete) {
-            const { data: conversationCheck } = await supabase
-              .from('justai_conversations')
-              .select('unlock_next_scenario, session_memory')
-              .eq('id', conversation.id)
-              .single()
-            
-            if (conversationCheck?.unlock_next_scenario === true) {
-              shouldComplete = true
-              console.log('Step completion criteria met from database unlock_next_scenario')
-            } else if (conversationCheck?.session_memory?.unlock_next_scenario === true) {
-              shouldComplete = true
-              console.log('Step completion criteria met from session_memory.unlock_next_scenario')
-            }
-          } else {
-            console.log('Step completion criteria met from ElevenLabs unlock_next_scenario')
+          let shouldComplete = false
+          if (conversationCheck?.unlock_next_scenario === true) {
+            shouldComplete = true
+            console.log('Step completion criteria met from unlock_next_scenario')
+          } else if (conversationCheck?.session_memory?.next_stage_result === 'success') {
+            shouldComplete = true
+            console.log('Step completion criteria met from session_memory.next_stage_result')
           }
           
           if (shouldComplete) {

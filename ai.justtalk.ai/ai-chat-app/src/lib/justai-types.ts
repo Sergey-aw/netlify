@@ -3,6 +3,7 @@
 export interface FeatureItem {
   name: string;
   description: string;
+  icon?: string;
 }
 
 export interface PlanFeatures {
@@ -15,7 +16,7 @@ export interface SubscriptionPlan {
   id: string;
   plan_name: string;
   plan_type: 'basic' | 'premium' | 'unlimited';
-  billing_period: 'monthly' | 'annual';
+  billing_period: 'weekly' | 'monthly' | 'annual';
   description: string;
   monthly_message_limit: number | null;
   includes_voice: boolean;
@@ -34,7 +35,7 @@ export interface Subscription {
   id: string;
   student_id: string;
   plan_id: string;
-  billing_period: 'monthly' | 'annual';
+  billing_period: 'weekly' | 'monthly' | 'annual';
   status: 'active' | 'past_due' | 'canceled' | 'incomplete';
   stripe_subscription_id: string;
   stripe_customer_id: string;

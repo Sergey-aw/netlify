@@ -21,7 +21,6 @@ import { getElevenLabsSignedUrl, getContextMemory, getConversationSuggestions } 
 import { supabase } from '@/lib/supabase';
 import { useSession } from '@/hooks/useSession';
 import { FeedbackDrawer, type FeedbackData } from '@/components/FeedbackDrawer';
-import { getAgentByElevenLabsId } from '@/config/elevenlabs-agents';
 import { VoiceBars } from '@/components/VoiceBars';
 import { CenteredAgentIntro } from '@/components/CenteredAgentIntro';
 import bgWelcome from '@/assets/bg_welcome.jpg';
