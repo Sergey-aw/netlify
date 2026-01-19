@@ -210,7 +210,7 @@ export default function AIChatHome() {
       
       const { data, error } = await supabase
         .from('justai_conversations')
-        .select('language_feedback, conversation_score, agent_id, justai_agents(image_url, name)')
+        .select('language_feedback, conversation_score, session_memory, agent_id, justai_agents(image_url, name)')
         .eq('id', selectedConversation)
         .single();
 
@@ -917,7 +917,10 @@ export default function AIChatHome() {
             aiWords: 0,
           },
           vocabularyGoals: conversationFeedback.language_feedback.vocabularyGoals,
-          llmFeedback: conversationFeedback.language_feedback,
+          llmFeedback: {
+            ...conversationFeedback.language_feedback,
+            memory: conversationFeedback.session_memory || undefined,
+          },
         } : null}
       />
     </div>

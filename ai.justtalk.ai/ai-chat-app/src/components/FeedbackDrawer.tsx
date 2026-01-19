@@ -222,7 +222,8 @@ export function FeedbackDrawer({
           <div className="space-y-4 overflow-y-auto">
             {/* Tabs */}
             <div className="flex gap-2 overflow-x-auto pb-2">
-              {feedbackData.llmFeedback?.memory && (
+              {/* Memory tab hidden - data still available in backend */}
+              {/* {feedbackData.llmFeedback?.memory && (
                 <Button
                   variant={activeTab === 'memory' ? 'default' : 'outline'}
                   size="sm"
@@ -232,7 +233,7 @@ export function FeedbackDrawer({
                   <MessageSquare className="w-4 h-4 mr-1" />
                   Memory
                 </Button>
-              )}
+              )} */}
               {feedbackData.llmFeedback?.memory?.next_stage_result && (
                 <Button
                   variant={activeTab === 'evaluation' ? 'default' : 'outline'}
@@ -411,31 +412,39 @@ export function FeedbackDrawer({
                   "p-4 border-2",
                   feedbackData.llmFeedback.memory.next_stage_result === 'success'
                     ? "bg-gradient-to-br from-green-50 to-emerald-50 border-green-300"
+                    : feedbackData.llmFeedback.memory.next_stage_result === 'failure'
+                    ? "bg-gradient-to-br from-red-50 to-rose-50 border-red-300"
                     : "bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-300"
                 )}>
                   <div className="flex items-start gap-3">
                     {feedbackData.llmFeedback.memory.next_stage_result === 'success' ? (
-                      <CheckCircle2 className="w-8 h-8 text-green-600 flex-shrink-0" />
+                      <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0" />
+                    ) : feedbackData.llmFeedback.memory.next_stage_result === 'failure' ? (
+                      <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
                     ) : (
-                      <AlertCircle className="w-8 h-8 text-amber-600 flex-shrink-0" />
+                      <AlertCircle className="w-6 h-6 text-amber-600 flex-shrink-0" />
                     )}
                     <div className="flex-1">
-                      <h4 className="font-bold text-lg mb-2">
+                      <h4 className="font-semibold text-base">
                         {feedbackData.llmFeedback.memory.next_stage_result === 'success'
-                          ? '🎉 Scenario Complete!'
-                          : '📝 Keep Practicing'}
+                          ? 'Scenario Complete'
+                          : feedbackData.llmFeedback.memory.next_stage_result === 'failure'
+                          ? 'Scenario Incomplete'
+                          : 'Needs More Interaction'}
                       </h4>
-                      <Badge
+                      {/* <Badge
                         variant={feedbackData.llmFeedback.memory.next_stage_result === 'success' ? 'default' : 'secondary'}
                         className={cn(
                           "mb-3",
                           feedbackData.llmFeedback.memory.next_stage_result === 'success'
                             ? "bg-green-600 hover:bg-green-700"
+                            : feedbackData.llmFeedback.memory.next_stage_result === 'failure'
+                            ? "bg-red-600 hover:bg-red-700 text-white"
                             : "bg-amber-600 hover:bg-amber-700 text-white"
                         )}
                       >
                         {feedbackData.llmFeedback.memory.next_stage_result?.toUpperCase()}
-                      </Badge>
+                      </Badge> */}
                     </div>
                   </div>
                 </Card>
@@ -445,7 +454,7 @@ export function FeedbackDrawer({
                   <Card className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
                     <h4 className="font-semibold mb-3 flex items-center gap-2">
                       <Sparkles className="w-5 h-5 text-blue-600" />
-                      Evaluation Feedback
+                       Feedback
                     </h4>
                     <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
                       {feedbackData.llmFeedback.memory.next_stage_rationale}
@@ -453,17 +462,7 @@ export function FeedbackDrawer({
                   </Card>
                 )}
 
-                {/* Call Successful Status */}
-                {feedbackData.llmFeedback.memory.call_successful && (
-                  <Card className="p-3 bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="font-medium text-gray-700">Call Status:</span>
-                      <Badge variant="secondary" className="bg-purple-100">
-                        {feedbackData.llmFeedback.memory.call_successful}
-                      </Badge>
-                    </div>
-                  </Card>
-                )}
+                
               </div>
             )}
 
