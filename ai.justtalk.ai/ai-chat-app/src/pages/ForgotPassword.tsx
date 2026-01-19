@@ -49,10 +49,10 @@ export default function ForgotPassword() {
     <div className="flex items-center justify-center min-h-screen bg-[#F5F5F5] p-4">
       <Card className="w-full max-w-[480px] shadow-sm">
         <CardHeader className="text-center space-y-2 pb-4">
-          <div className="flex justify-center mb-2">
-            <img src={Logo} alt="JustTalk" className="h-12" />
+          <div className="flex justify-center mb-4">
+            <img src={Logo} alt="JustTalk" className="h-10" />
           </div>
-          <CardTitle className="text-2xl font-semibold">Reset your password</CardTitle>
+          <CardTitle className="text-base font-medium">Reset your password</CardTitle>
           <CardDescription>
             Enter your email address and we'll send you a link to reset your password
           </CardDescription>
