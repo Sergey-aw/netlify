@@ -23,6 +23,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { AppSidebar } from '@/components/AppSidebar';
+import AvatarCropModal from '@/components/AvatarCropModal';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -30,6 +31,8 @@ export default function Profile() {
   const { subscription, messagesRemaining } = useSubscription();
   const [showSidebar, setShowSidebar] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [imageSrc, setImageSrc] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
@@ -185,6 +188,18 @@ export default function Profile() {
       return;
     }
 
+    // Create a preview URL and show crop modal
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImageSrc(reader.result as string);
+      setShowCropModal(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropComplete = async (croppedImageBlob: Blob) => {
+    if (!user) return;
+
     setUploadingAvatar(true);
 
     try {
@@ -201,16 +216,16 @@ export default function Profile() {
         }
       }
 
-      // Upload new avatar
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
+      // Upload cropped avatar
+      const fileName = `${Date.now()}.jpg`;
       const filePath = `${authUser.id}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('profile-photos')
-        .upload(filePath, file, {
+        .upload(filePath, croppedImageBlob, {
           cacheControl: '3600',
           upsert: false,
+          contentType: 'image/jpeg',
         });
 
       if (uploadError) throw uploadError;
@@ -272,6 +287,14 @@ export default function Profile() {
     <div className="min-h-screen bg-gray-50 pb-24 page-enter">
       {/* Sidebar */}
       <AppSidebar open={showSidebar} onOpenChange={setShowSidebar} />
+
+      {/* Avatar Crop Modal */}
+      <AvatarCropModal
+        open={showCropModal}
+        onClose={() => setShowCropModal(false)}
+        imageSrc={imageSrc}
+        onCropComplete={handleCropComplete}
+      />
 
       {/* Header */}
       <header className="px-4 py-4">

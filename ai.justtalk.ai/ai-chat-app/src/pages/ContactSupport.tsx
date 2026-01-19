@@ -176,7 +176,7 @@ export default function ContactSupport() {
       <div className="flex flex-col h-screen bg-background">
         {/* Header */}
         <div className="flex-shrink-0 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="flex items-center justify-between h-14 px-4">
+          <div className="flex items-center h-14 px-4">
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
@@ -185,16 +185,9 @@ export default function ContactSupport() {
               >
                 <PanelLeft className="w-5 h-5" />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate(-1)}
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </Button>
             </div>
-            <h1 className="text-lg font-semibold">Contact Support</h1>
-            <div className="w-20" /> {/* Spacer for centering */}
+            <h1 className="text-lg font-medium flex-1 text-center">Contact Support</h1>
+            <div className="w-10"></div>
           </div>
         </div>
 
@@ -253,7 +246,7 @@ export default function ContactSupport() {
                     placeholder="Message"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    rows={6}
+                    rows={3}
                     required
                   />
                 </div>

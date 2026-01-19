@@ -1,12 +1,36 @@
 # Avatar Upload Setup
 
 ## Features Added
-- Profile picture upload on Profile page
-- Camera icon button overlay on avatar
+- Profile picture upload on Profile page with **image cropping**
+- Interactive crop modal with zoom control
+- Circular crop preview
+- Camera icon button overlay on avatar (only for users without profile picture)
 - Upload validation (image type, max 5MB)
 - Automatic deletion of old avatar when uploading new one
 - Loading state during upload
 - Public URL storage in `profile_photo_url` column
+
+## User Experience Flow
+
+1. User clicks on their avatar (or camera icon if no avatar set)
+2. Selects an image file from their device
+3. **Crop Modal Opens** - User can:
+   - Drag to reposition the image
+   - Use zoom slider to adjust size (1x to 3x)
+   - Preview circular crop in real-time
+4. Click "Save" to upload the cropped image
+5. Avatar updates immediately
+
+## Technical Implementation
+
+### Libraries Used
+- `react-easy-crop` - For interactive image cropping
+- `@radix-ui/react-slider` - For zoom control slider
+
+### Components
+- `AvatarCropModal.tsx` - Modal dialog with cropping interface
+- `slider.tsx` - Radix UI slider component
+- Profile.tsx updated with crop workflow
 
 ## Supabase Storage Configuration Required
 

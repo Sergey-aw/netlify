@@ -322,20 +322,13 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
             </SidebarGroupContent>
           </SidebarGroup>
 
-          <SidebarSeparator />
+          
 
           {/* User Section */}
-          <SidebarGroup className="pt-2 flex-shrink-0">
+          <SidebarGroup className="pt-1 flex-shrink-0">
             <SidebarGroupContent>
               <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    onClick={() => handleNavigate('/profile')}
-                  >
-                    <User className="w-4 h-4" />
-                    <span>Profile</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+             
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     onClick={() => handleNavigate('/contact-support')}
@@ -348,7 +341,7 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
             </SidebarGroupContent>
           </SidebarGroup>
 
-          <SidebarSeparator />
+          
 
           {/* Conversations Section */}
           <SidebarGroup className="flex-1 min-h-0 flex flex-col">
