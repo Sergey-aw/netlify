@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   Settings, 
   Crown, 
@@ -10,7 +10,9 @@ import {
   Award,
   ChevronRight,
   LogOut,
-  PanelLeft
+  PanelLeft,
+  Camera,
+  Loader2
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
@@ -27,6 +29,9 @@ export default function Profile() {
   const { signOut } = useAuth();
   const { subscription, messagesRemaining } = useSubscription();
   const [showSidebar, setShowSidebar] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
 
   // Add swipe gesture to open sidebar
   useSwipeGesture({
@@ -160,6 +165,83 @@ export default function Profile() {
     navigate('/login');
   };
 
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size must be less than 5MB');
+      return;
+    }
+
+    setUploadingAvatar(true);
+
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error('Not authenticated');
+
+      // Delete old avatar if exists
+      if (user.profile_photo_url) {
+        const oldPath = user.profile_photo_url.split('/').pop();
+        if (oldPath) {
+          await supabase.storage
+            .from('profile-photos')
+            .remove([`${authUser.id}/${oldPath}`]);
+        }
+      }
+
+      // Upload new avatar
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${authUser.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('profile-photos')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile-photos')
+        .getPublicUrl(filePath);
+
+      // Update profile with new avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ profile_photo_url: publicUrl })
+        .eq('id', authUser.id);
+
+      if (updateError) throw updateError;
+
+      // Invalidate queries to refetch with new avatar
+      queryClient.invalidateQueries({ queryKey: ['current-user'] });
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      alert('Failed to upload avatar. Please try again.');
+    } finally {
+      setUploadingAvatar(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   const stats = [
     { label: 'Conversations', value: userStats?.conversationCount?.toString() || '0', icon: TrendingUp },
     { label: 'Current Streak', value: `${userStats?.streak || 0} days`, icon: Target },
@@ -217,12 +299,42 @@ export default function Profile() {
                   Intermediate Level
                 </Badge>
               </div>
-              <Avatar className="w-20 h-20 flex-shrink-0">
-                <AvatarImage src={user?.profile_photo_url} />
-                <AvatarFallback className="text-2xl">
-                  {user?.display_name?.[0] || 'U'}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative flex-shrink-0">
+                <button
+                  onClick={handleAvatarClick}
+                  disabled={uploadingAvatar}
+                  className="relative group"
+                  title="Change profile picture"
+                >
+                  <Avatar className="w-20 h-20">
+                    <AvatarImage src={user?.profile_photo_url} />
+                    <AvatarFallback className="text-2xl">
+                      {user?.display_name?.[0] || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  {!user?.profile_photo_url && (
+                    <div className="absolute bottom-0 right-0 p-1.5 bg-blue-600 rounded-full text-white shadow-lg group-hover:bg-blue-700 transition-colors">
+                      {uploadingAvatar ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Camera className="w-4 h-4" />
+                      )}
+                    </div>
+                  )}
+                  {user?.profile_photo_url && uploadingAvatar && (
+                    <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                      <Loader2 className="w-6 h-6 text-white animate-spin" />
+                    </div>
+                  )}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
+              </div>
             </div>
           )}
         </div>
