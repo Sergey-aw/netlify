@@ -419,8 +419,6 @@ function DiscoverTab({
   lexemeSearch,
   selectedDiscoverWords,
   toggleDiscoverWordSelection,
-  clearDiscoverSelection,
-  currentSetId,
   setCurrentSetId
 }: DiscoverTabProps) {
   if (isLoading) {
@@ -453,7 +451,6 @@ function DiscoverTab({
           getCefrBadgeColor={getCefrBadgeColor}
           selectedDiscoverWords={selectedDiscoverWords}
           toggleDiscoverWordSelection={toggleDiscoverWordSelection}
-          currentSetId={currentSetId}
           setCurrentSetId={setCurrentSetId}
         />
       ))}
@@ -477,7 +474,6 @@ interface VocabSetCardProps {
   getCefrBadgeColor: (level: string | null) => string;
   selectedDiscoverWords: Set<string>;
   toggleDiscoverWordSelection: (lexemeId: string) => void;
-  currentSetId: string | null;
   setCurrentSetId: (setId: string | null) => void;
 }
 
@@ -486,7 +482,6 @@ function VocabSetCard({
   getCefrBadgeColor,
   selectedDiscoverWords,
   toggleDiscoverWordSelection,
-  currentSetId,
   setCurrentSetId
 }: VocabSetCardProps) {
   const [showDetails, setShowDetails] = useState(false);
