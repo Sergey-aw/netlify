@@ -6,7 +6,6 @@ import {
   Star,
   MessageSquare,
   BookOpen,
-  User,
   Home,
   Loader2,
   HeadphonesIcon,
@@ -26,7 +25,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarSeparator,
 } from '@/components/ui/sidebar';
 import { supabase } from '@/lib/supabase';
 import Logo from '@/assets/logo.svg';

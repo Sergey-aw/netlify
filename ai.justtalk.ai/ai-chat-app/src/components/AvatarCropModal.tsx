@@ -88,7 +88,7 @@ export default function AvatarCropModal({
   };
 
   const onCropAreaComplete = useCallback(
-    (croppedArea: CropArea, croppedAreaPixels: CropArea) => {
+    (_croppedArea: CropArea, croppedAreaPixels: CropArea) => {
       setCroppedAreaPixels(croppedAreaPixels);
     },
     []

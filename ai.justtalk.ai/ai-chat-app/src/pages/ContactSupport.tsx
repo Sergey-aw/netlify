@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
-import { X, Upload, ChevronLeft, Loader2, PanelLeft } from 'lucide-react';
+import { X, Upload, Loader2, PanelLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
