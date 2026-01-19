@@ -53,12 +53,18 @@ export default function Login() {
       if (anonError) throw anonError;
       if (!anonData.user) throw new Error('No user returned from anonymous sign in');
       
-      // Step 2: Update the anonymous user's email (this sends verification email)
-      // This will upgrade the anonymous user to an email user once they verify
-      const { error: updateError } = await supabase.auth.updateUser({
+      // Step 2: Send email verification link (using OTP method for better redirect control)
+      // This will send an email with a link to set up password
+      const { error: updateError } = await supabase.auth.signInWithOtp({
         email: trimmedEmail,
-      }, {
-        emailRedirectTo: `${window.location.origin}/auth/setup-password`,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/setup-password`,
+          shouldCreateUser: false, // Don't create new user, we already have anonymous user
+          data: {
+            is_onboarding: true,
+            user_id: anonData.user.id,
+          }
+        },
       });
 
       if (updateError) throw updateError;

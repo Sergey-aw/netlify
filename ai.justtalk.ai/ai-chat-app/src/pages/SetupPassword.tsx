@@ -16,6 +16,7 @@ export default function SetupPassword() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [name, setName] = useState('');
+  const [isPasswordReset, setIsPasswordReset] = useState(false);
 
   useEffect(() => {
     // Check if we have verification parameters OR an active session
@@ -23,11 +24,20 @@ export default function SetupPassword() {
     const tokenHash = searchParams.get('token_hash');
     const type = searchParams.get('type');
     
+    // Check if this is a password recovery flow
+    if (type === 'recovery' || type === 'password_recovery') {
+      setIsPasswordReset(true);
+    }
+    
     // Also check URL hash (Supabase sometimes uses hash fragments)
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const hashCode = hashParams.get('code');
     const hashTokenHash = hashParams.get('token_hash');
     const hashType = hashParams.get('type');
+    
+    if (hashType === 'recovery' || hashType === 'password_recovery') {
+      setIsPasswordReset(true);
+    }
     const hashAccessToken = hashParams.get('access_token');
     
     console.log('Setup password params:', { 
@@ -146,6 +156,14 @@ export default function SetupPassword() {
         hasPrefs: !!preferencesData,
       });
       
+      // If this is a password reset (not initial signup), skip onboarding data transfer
+      if (isPasswordReset) {
+        console.log('Password reset flow - skipping onboarding data transfer');
+        // Just redirect to main app
+        navigate('/ai-chat');
+        return;
+      }
+      
       if (onboardingData || preferencesData) {
         const data = JSON.parse(onboardingData || '{}');
         const prefs = JSON.parse(preferencesData || '{}');
@@ -216,26 +234,30 @@ export default function SetupPassword() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Set Up Your Account</CardTitle>
+          <CardTitle>{isPasswordReset ? 'Reset Your Password' : 'Set Up Your Account'}</CardTitle>
           <CardDescription>
-            Choose a password to secure your account
+            {isPasswordReset 
+              ? 'Enter your new password below' 
+              : 'Choose a password to secure your account'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
-                Your Name
-              </label>
-              <Input
-                type="text"
-                placeholder="John Doe"
-                value={name}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
-                required
-                disabled={loading}
-              />
-            </div>
+            {!isPasswordReset && (
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  Your Name
+                </label>
+                <Input
+                  type="text"
+                  placeholder="John Doe"
+                  value={name}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+                  required
+                  disabled={loading}
+                />
+              </div>
+            )}
 
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">

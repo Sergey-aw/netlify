@@ -12,6 +12,7 @@ import { OnboardingResumeHandler } from './components/OnboardingResumeHandler'
 // Pages
 import Login from './pages/Login'
 import SignIn from './pages/SignIn'
+import ForgotPassword from './pages/ForgotPassword'
 import EmailVerification from './pages/EmailVerification'
 import AuthCallback from './pages/AuthCallback'
 import SetupPassword from './pages/SetupPassword'
@@ -61,6 +62,7 @@ function App() {
             <Route path="/welcome/sync" element={<WelcomeSync />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signin" element={<SignIn />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/email-verification" element={<EmailVerification />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/auth/setup-password" element={<SetupPassword />} />

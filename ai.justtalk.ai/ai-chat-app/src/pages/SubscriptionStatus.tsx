@@ -7,7 +7,8 @@ import { Progress } from '../components/ui/progress';
 import { Badge } from '../components/ui/badge';
 import { CheckCircle, ArrowLeft } from 'lucide-react';
 import { useSubscription } from '../hooks/useSubscription';
-import { trackSubscriptionActivated } from '@/lib/posthog';
+import { useSession } from '../hooks/useSession';
+import { trackSubscriptionActivated, identifyUser } from '@/lib/posthog';
 
 export default function SubscriptionStatus() {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ export default function SubscriptionStatus() {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [hasTrackedActivation, setHasTrackedActivation] = useState(false);
   const { subscription, messagesRemaining, isLoading } = useSubscription();
+  const { user, getEmail } = useSession();
 
   // Handle success parameter
   useEffect(() => {
@@ -31,17 +33,31 @@ export default function SubscriptionStatus() {
 
   // Track subscription activation when subscription data loads after Stripe success
   useEffect(() => {
-    if (searchParams.get('success') === 'true' && subscription && !hasTrackedActivation) {
-      trackSubscriptionActivated(
-        subscription.subscription_type,
-        'stripe_price_id_from_subscription', // Price ID not stored in subscription table
-        subscription.price_cents,
-        subscription.billing_period,
-        subscription.stripe_subscription_id || undefined
-      );
-      setHasTrackedActivation(true);
-    }
-  }, [searchParams, subscription, hasTrackedActivation]);
+    const trackActivation = async () => {
+      if (searchParams.get('success') === 'true' && subscription && !hasTrackedActivation && user?.id) {
+        // First, ensure PostHog has the user's email
+        const email = await getEmail();
+        
+        // Identify user with email before tracking subscription event
+        identifyUser(user.id, {
+          email: email || undefined,
+          isAnonymous: user.is_anonymous,
+        });
+        
+        // Now track the subscription activation
+        trackSubscriptionActivated(
+          subscription.subscription_type,
+          'stripe_price_id_from_subscription', // Price ID not stored in subscription table
+          subscription.price_cents,
+          subscription.billing_period,
+          subscription.stripe_subscription_id || undefined
+        );
+        setHasTrackedActivation(true);
+      }
+    };
+    
+    trackActivation();
+  }, [searchParams, subscription, hasTrackedActivation, user, getEmail]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center p-8">Loading...</div>;
@@ -106,7 +122,7 @@ export default function SubscriptionStatus() {
       )}
 
       <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+        <Button variant="ghost" size="icon" onClick={() => navigate('/ai-chat')}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <h1 className="text-3xl font-bold">My Subscription</h1>
