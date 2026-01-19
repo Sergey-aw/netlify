@@ -21,6 +21,8 @@ export default function VocabularyBuilder() {
   const [activeTab, setActiveTab] = useState<TabType>('active');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedWords, setSelectedWords] = useState<Set<string>>(new Set());
+  const [selectedDiscoverWords, setSelectedDiscoverWords] = useState<Set<string>>(new Set());
+  const [currentSetId, setCurrentSetId] = useState<string | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
 
   // Add swipe gesture to open sidebar
@@ -83,6 +85,16 @@ export default function VocabularyBuilder() {
     setSelectedWords(newSelection);
   };
 
+  const toggleDiscoverWordSelection = (lexemeId: string) => {
+    const newSelection = new Set(selectedDiscoverWords);
+    if (newSelection.has(lexemeId)) {
+      newSelection.delete(lexemeId);
+    } else {
+      newSelection.add(lexemeId);
+    }
+    setSelectedDiscoverWords(newSelection);
+  };
+
   const selectAll = () => {
     if (selectedWords.size === words.length) {
       setSelectedWords(new Set());
@@ -94,6 +106,10 @@ export default function VocabularyBuilder() {
   const handleBulkArchive = async () => {
     await bulkArchive(Array.from(selectedWords));
     setSelectedWords(new Set());
+  };
+
+  const clearDiscoverSelection = () => {
+    setSelectedDiscoverWords(new Set());
   };
 
   const getCefrBadgeColor = (level: string | null) => {
@@ -139,7 +155,7 @@ export default function VocabularyBuilder() {
             className={cn(
               'flex-1 py-2 px-4 rounded-lg font-medium transition-colors',
               activeTab === 'active'
-                ? 'bg-blue-500 text-white'
+                ? 'bg-[hsl(var(--brand-blue))] text-white'
                 : 'bg-gray-100 text-gray-700'
             )}
           >
@@ -147,7 +163,7 @@ export default function VocabularyBuilder() {
               <BookOpen className="w-4 h-4" />
               <span>Active</span>
               {stats && stats.activeWords > 0 && (
-                <Badge className="bg-white text-blue-500">{stats.activeWords}</Badge>
+                <Badge className="bg-white text-[hsl(var(--brand-blue))]">{stats.activeWords}</Badge>
               )}
             </div>
           </button>
@@ -156,7 +172,7 @@ export default function VocabularyBuilder() {
             className={cn(
               'flex-1 py-2 px-4 rounded-lg font-medium transition-colors',
               activeTab === 'discover'
-                ? 'bg-blue-500 text-white'
+                ? 'bg-[hsl(var(--brand-blue))] text-white'
                 : 'bg-gray-100 text-gray-700'
             )}
           >
@@ -168,7 +184,7 @@ export default function VocabularyBuilder() {
         </div>
 
         {/* Search Bar */}
-        <div className="flex items-center gap-2 bg-gray-100 rounded-full px-4 py-3">
+        <div className="flex items-center gap-2 bg-gray-100 rounded-full px-3 py-2">
           <Search className="w-5 h-5 text-gray-500" />
           <input
             type="text"
@@ -198,13 +214,18 @@ export default function VocabularyBuilder() {
             isLoading={isLoadingSets}
             getCefrBadgeColor={getCefrBadgeColor}
             lexemeSearch={lexemeSearch}
+            selectedDiscoverWords={selectedDiscoverWords}
+            toggleDiscoverWordSelection={toggleDiscoverWordSelection}
+            clearDiscoverSelection={clearDiscoverSelection}
+            currentSetId={currentSetId}
+            setCurrentSetId={setCurrentSetId}
           />
         )}
       </main>
 
-      {/* Bulk Actions Bar */}
-      {selectedWords.size > 0 && (
-        <div className="fixed bottom-20 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 shadow-lg z-20">
+      {/* Unified Bottom Bar for Active Tab */}
+      {activeTab === 'active' && selectedWords.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 shadow-lg z-20">
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             <span className="text-sm font-medium text-gray-700">
               {selectedWords.size} word{selectedWords.size > 1 ? 's' : ''} selected
@@ -228,6 +249,16 @@ export default function VocabularyBuilder() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Unified Bottom Bar for Discover Tab */}
+      {activeTab === 'discover' && selectedDiscoverWords.size > 0 && (
+        <DiscoverBottomBar
+          selectedCount={selectedDiscoverWords.size}
+          selectedWords={selectedDiscoverWords}
+          onCancel={clearDiscoverSelection}
+          setId={currentSetId}
+        />
       )}
     </div>
   );
@@ -274,7 +305,7 @@ function ActiveTab({
               className={cn(
                 'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
                 selectedWords.size === words.length
-                  ? 'bg-blue-500 border-blue-500'
+                  ? 'bg-[hsl(var(--brand-blue))] border-[hsl(var(--brand-blue))]'
                   : 'border-gray-300'
               )}
             >
@@ -296,7 +327,7 @@ function ActiveTab({
             key={word.id} 
             className={cn(
               "p-4 cursor-pointer transition-colors hover:bg-gray-50",
-              selectedWords.has(word.id) && "bg-blue-50"
+              selectedWords.has(word.id) && "bg-[hsl(var(--brand-blue))]/10"
             )}
             onClick={() => toggleWordSelection(word.id)}
           >
@@ -307,7 +338,7 @@ function ActiveTab({
                   className={cn(
                     'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
                     selectedWords.has(word.id)
-                      ? 'bg-blue-500 border-blue-500'
+                      ? 'bg-[hsl(var(--brand-blue))] border-[hsl(var(--brand-blue))]'
                       : 'border-gray-300'
                   )}
                 >
@@ -374,9 +405,24 @@ interface DiscoverTabProps {
   isLoading: boolean;
   getCefrBadgeColor: (level: string | null) => string;
   lexemeSearch: any;
+  selectedDiscoverWords: Set<string>;
+  toggleDiscoverWordSelection: (lexemeId: string) => void;
+  clearDiscoverSelection: () => void;
+  currentSetId: string | null;
+  setCurrentSetId: (setId: string | null) => void;
 }
 
-function DiscoverTab({ sets, isLoading, getCefrBadgeColor, lexemeSearch }: DiscoverTabProps) {
+function DiscoverTab({ 
+  sets, 
+  isLoading, 
+  getCefrBadgeColor, 
+  lexemeSearch,
+  selectedDiscoverWords,
+  toggleDiscoverWordSelection,
+  clearDiscoverSelection,
+  currentSetId,
+  setCurrentSetId
+}: DiscoverTabProps) {
   if (isLoading) {
     return (
       <div className="text-center py-12">
@@ -405,6 +451,10 @@ function DiscoverTab({ sets, isLoading, getCefrBadgeColor, lexemeSearch }: Disco
           key={set.set_id}
           set={set}
           getCefrBadgeColor={getCefrBadgeColor}
+          selectedDiscoverWords={selectedDiscoverWords}
+          toggleDiscoverWordSelection={toggleDiscoverWordSelection}
+          currentSetId={currentSetId}
+          setCurrentSetId={setCurrentSetId}
         />
       ))}
 
@@ -425,9 +475,20 @@ function DiscoverTab({ sets, isLoading, getCefrBadgeColor, lexemeSearch }: Disco
 interface VocabSetCardProps {
   set: any;
   getCefrBadgeColor: (level: string | null) => string;
+  selectedDiscoverWords: Set<string>;
+  toggleDiscoverWordSelection: (lexemeId: string) => void;
+  currentSetId: string | null;
+  setCurrentSetId: (setId: string | null) => void;
 }
 
-function VocabSetCard({ set, getCefrBadgeColor }: VocabSetCardProps) {
+function VocabSetCard({ 
+  set, 
+  getCefrBadgeColor,
+  selectedDiscoverWords,
+  toggleDiscoverWordSelection,
+  currentSetId,
+  setCurrentSetId
+}: VocabSetCardProps) {
   const [showDetails, setShowDetails] = useState(false);
 
   return (
@@ -465,7 +526,13 @@ function VocabSetCard({ set, getCefrBadgeColor }: VocabSetCardProps) {
 
       {showDetails && (
         <div className="mt-4 pt-4 border-t">
-          <VocabSetDetails setId={set.set_id} getCefrBadgeColor={getCefrBadgeColor} />
+          <VocabSetDetails 
+            setId={set.set_id} 
+            getCefrBadgeColor={getCefrBadgeColor}
+            selectedWords={selectedDiscoverWords}
+            toggleWord={toggleDiscoverWordSelection}
+            setCurrentSetId={() => setCurrentSetId(set.set_id)}
+          />
         </div>
       )}
     </Card>
@@ -476,32 +543,22 @@ function VocabSetCard({ set, getCefrBadgeColor }: VocabSetCardProps) {
 interface VocabSetDetailsProps {
   setId: string;
   getCefrBadgeColor: (level: string | null) => string;
+  selectedWords: Set<string>;
+  toggleWord: (lexemeId: string) => void;
+  setCurrentSetId: () => void;
 }
 
-function VocabSetDetails({ setId, getCefrBadgeColor }: VocabSetDetailsProps) {
-  const { words, isLoading, bulkAddWords, isAdding } = useVocabSetWords({
+function VocabSetDetails({ 
+  setId, 
+  getCefrBadgeColor,
+  selectedWords,
+  toggleWord,
+  setCurrentSetId
+}: VocabSetDetailsProps) {
+  const { words, isLoading } = useVocabSetWords({
     setId,
     enabled: true,
   });
-
-  const [selectedWords, setSelectedWords] = useState<Set<string>>(new Set());
-
-  const toggleWord = (lexemeId: string) => {
-    const newSelection = new Set(selectedWords);
-    if (newSelection.has(lexemeId)) {
-      newSelection.delete(lexemeId);
-    } else {
-      newSelection.add(lexemeId);
-    }
-    setSelectedWords(newSelection);
-  };
-
-  const addSelectedWords = async () => {
-    if (selectedWords.size > 0) {
-      await bulkAddWords(Array.from(selectedWords), true);
-      setSelectedWords(new Set());
-    }
-  };
 
   const toggleSelectAllUnacquired = () => {
     const unacquiredWords = words.filter(w => !w.is_acquired && !w.in_builder);
@@ -510,14 +567,17 @@ function VocabSetDetails({ setId, getCefrBadgeColor }: VocabSetDetailsProps) {
     // Check if all unacquired words are currently selected
     const allSelected = unacquiredWords.every(w => selectedWords.has(w.lexeme_id));
     
-    if (allSelected) {
-      // Deselect all unacquired words
-      const newSelection = new Set(selectedWords);
-      unacquiredIds.forEach(id => newSelection.delete(id));
-      setSelectedWords(newSelection);
-    } else {
-      // Select all unacquired words
-      setSelectedWords(new Set([...selectedWords, ...unacquiredIds]));
+    // Update parent state by toggling each word
+    unacquiredIds.forEach(id => {
+      const isCurrentlySelected = selectedWords.has(id);
+      if ((allSelected && isCurrentlySelected) || (!allSelected && !isCurrentlySelected)) {
+        toggleWord(id);
+      }
+    });
+    
+    // Set this as the current set when selecting words
+    if (!allSelected) {
+      setCurrentSetId();
     }
   };
 
@@ -533,31 +593,18 @@ function VocabSetDetails({ setId, getCefrBadgeColor }: VocabSetDetailsProps) {
 
   return (
     <div className="space-y-3">
-      {wordsNotInBuilder.length > 0 && (
+      {wordsNotInBuilder.length > 0 && unacquiredCount > 0 && (
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            {unacquiredCount > 0 && (
-              <Button
-                onClick={toggleSelectAllUnacquired}
-                variant="outline"
-                size="sm"
-              >
-                {allUnacquiredSelected 
-                  ? `Deselect all (${unacquiredCount}) unacquired words`
-                  : `Select all (${unacquiredCount}) unacquired words`
-                }
-              </Button>
-            )}
-            {selectedWords.size > 0 && (
-              <Button
-                onClick={addSelectedWords}
-                disabled={isAdding}
-                size="sm"
-              >
-                Add to Active
-              </Button>
-            )}
-          </div>
+          <Button
+            onClick={toggleSelectAllUnacquired}
+            variant="outline"
+            size="sm"
+          >
+            {allUnacquiredSelected 
+              ? `Deselect all (${unacquiredCount}) unacquired words`
+              : `Select all (${unacquiredCount}) unacquired words`
+            }
+          </Button>
         </div>
       )}
 
@@ -567,9 +614,14 @@ function VocabSetDetails({ setId, getCefrBadgeColor }: VocabSetDetailsProps) {
           className={cn(
             'flex items-center justify-between p-3 rounded-lg border transition-colors',
             word.in_builder ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-300 cursor-pointer hover:bg-gray-50',
-            !word.in_builder && selectedWords.has(word.lexeme_id) && 'bg-blue-50'
+            !word.in_builder && selectedWords.has(word.lexeme_id) && 'bg-[hsl(var(--brand-blue))]/10'
           )}
-          onClick={() => !word.in_builder && toggleWord(word.lexeme_id)}
+          onClick={() => {
+            if (!word.in_builder) {
+              toggleWord(word.lexeme_id);
+              setCurrentSetId();
+            }
+          }}
         >
           <div className="flex items-center gap-3 flex-1">
             {!word.in_builder && (
@@ -578,7 +630,7 @@ function VocabSetDetails({ setId, getCefrBadgeColor }: VocabSetDetailsProps) {
                   className={cn(
                     'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
                     selectedWords.has(word.lexeme_id)
-                      ? 'bg-blue-500 border-blue-500'
+                      ? 'bg-[hsl(var(--brand-blue))] border-[hsl(var(--brand-blue))]'
                       : 'border-gray-300'
                   )}
                 >
@@ -722,6 +774,60 @@ function LexemeSearchResult({ result, getCefrBadgeColor }: LexemeSearchResultPro
             + Add
           </Button>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Discover Bottom Bar Component
+interface DiscoverBottomBarProps {
+  selectedCount: number;
+  selectedWords: Set<string>;
+  onCancel: () => void;
+  setId: string | null;
+}
+
+function DiscoverBottomBar({ 
+  selectedCount, 
+  selectedWords,
+  onCancel,
+  setId
+}: DiscoverBottomBarProps) {
+  const { bulkAddWords, isAdding } = useVocabSetWords({
+    setId: setId || '',
+    enabled: !!setId,
+  });
+
+  const handleAddToActive = async () => {
+    if (selectedWords.size > 0 && setId) {
+      await bulkAddWords(Array.from(selectedWords), true);
+      onCancel(); // Clear selection after adding
+    }
+  };
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 shadow-lg z-20">
+      <div className="max-w-4xl mx-auto flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">
+          {selectedCount} word{selectedCount > 1 ? 's' : ''} selected
+        </span>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onCancel}
+          >
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleAddToActive}
+            disabled={isAdding}
+            className="bg-[hsl(var(--brand-blue))] hover:bg-[hsl(var(--brand-blue))]/90 text-white"
+          >
+            Add to Active
+          </Button>
+        </div>
       </div>
     </div>
   );
