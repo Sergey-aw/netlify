@@ -164,10 +164,10 @@ export function FeedbackDrawer({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="px-6 pb-6 max-h-[85vh]">
+      <DrawerContent className="px-6 pb-2 max-h-[85vh]">
         <DrawerHeader className="px-0">
           <DrawerTitle className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-purple-600" />
+            <Sparkles className="w-5 h-5 text-blue-600" />
             Conversation Insights
           </DrawerTitle>
         </DrawerHeader>
@@ -303,11 +303,13 @@ export function FeedbackDrawer({
                       )}
                     </div>
                     <p className="text-sm text-gray-600 italic mb-2">"{goal.context}"</p>
-                    {goal.note && (
+                   
+                   {/* Goal note from Supabase grammar feedback json */}
+                    {/* {goal.note && (
                       <p className="text-sm text-gray-700 bg-gray-50 p-2 rounded">
                         {goal.note}
                       </p>
-                    )}
+                    )} */}
                   </Card>
                 ))}
               </div>
@@ -649,7 +651,7 @@ export function FeedbackDrawer({
             )}
 
             {/* Actions */}
-            <div className="flex gap-3 pt-4 sticky bottom-0 bg-white pb-2">
+            {/* <div className="flex gap-3 pt-4 sticky bottom-0 bg-white pb-2">
               <Button
                 variant="outline"
                 className="flex-1"
@@ -657,7 +659,7 @@ export function FeedbackDrawer({
               >
                 Close
               </Button>
-            </div>
+            </div> */}
           </div>
         ) : (
           <div className="py-8 text-center text-gray-500">
