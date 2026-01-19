@@ -131,7 +131,8 @@ export default function SetupPassword() {
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
-          full_name: name,
+          display_name: name,
+          name: name,
           role: 'student',
           email: user.email, // Ensure email is set
         })
