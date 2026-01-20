@@ -260,6 +260,8 @@ export default function RolePlaysV2() {
     if (!categoryName) return <Target className="w-6 h-6 text-gray-400" />;
     const key = categoryName.toLowerCase();
     switch (key) {
+      case 'personalized for you':
+        return <Star className="w-6 h-6 text-yellow-400 fill-yellow-400" />;
       case 'business':
         return <TrendingUp className="w-6 h-6 text-blue-400" />;
       case 'daily life':
@@ -278,7 +280,7 @@ export default function RolePlaysV2() {
       case 'travel':
         return <Plane className="w-6 h-6 text-sky-400" />;
       default:
-        return <Target className="w-6 h-6 text-gray-400" />;
+        return <Target className="w-6 h-6 text-amber-400" />;
     }
   };
 
@@ -785,23 +787,30 @@ export default function RolePlaysV2() {
           <h3 className="text-lg font-semibold text-gray-900">Choose a Category</h3>
           <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
             {categories.map((category) => {
+              const isPersonalized = category.category === 'Personalized for you';
               return (
                 <Card
                   key={category.category}
-                  className="p-6 cursor-pointer hover:shadow-lg transition-shadow border-1 hover:border-primary"
+                  className={`p-6 cursor-pointer hover:shadow-lg transition-shadow border-1 hover:border-primary relative overflow-hidden ${
+                    isPersonalized ? 'bg-cover bg-center' : ''
+                  }`}
+                  style={isPersonalized ? {
+                    backgroundImage: `url(${new URL('../assets/bg_blue1_square.jpg', import.meta.url).href})`,
+                  } : undefined}
                   onClick={() => setSelectedCategory(category.category)}
                 >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="text-4xl">{getCategoryIcon(category.category)}</div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  {isPersonalized && <div className="absolute inset-0" />}
+                  <div className={`flex items-start justify-between mb-3 relative z-10`}>
+                    <div className={`text-4xl ${isPersonalized ? '' : ''}`}>{getCategoryIcon(category.category)}</div>
+                    <ChevronRight className={`w-5 h-5 ${isPersonalized ? 'text-white' : 'text-gray-400'}`} />
                   </div>
-                  <h4 className="font-medium text-lg mb-2">{category.category}</h4>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">
+                  <h4 className={`font-medium text-lg mb-2 relative z-10 ${isPersonalized ? 'text-white' : ''}`}>{category.category}</h4>
+                  <div className={`flex items-center justify-between text-sm relative z-10`}>
+                    <span className={isPersonalized ? 'text-white/90' : 'text-muted-foreground'}>
                       {category.totalAgents} scenario{category.totalAgents !== 1 ? 's' : ''}
                     </span>
                     {category.completedAgents > 0 && (
-                      <Badge variant="secondary" className="bg-green-100 text-green-800">
+                      <Badge variant="secondary" className={isPersonalized ? 'bg-white/90 text-blue-900' : 'bg-green-100 text-green-800'}>
                         {category.completedAgents} completed
                       </Badge>
                     )}
@@ -1073,7 +1082,7 @@ export default function RolePlaysV2() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="text-lg font-semibold">{agent.name}</h3>
+                        <h3 className="text-lg font-medium">{agent.name}</h3>
                         {agent.is_premium && (
                           <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
                             Premium
@@ -1085,18 +1094,23 @@ export default function RolePlaysV2() {
                           </Badge>
                         )}
                       </div>
+                      {agent.description && (
+                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                          {agent.description}
+                        </p>
+                      )}
                       <div className="flex flex-wrap gap-2">
                         {agent.difficulty_level && (
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs font-normal">
                             {agent.difficulty_level}
                           </Badge>
                         )}
                         {agent.recommended_cefr_level && (
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs font-normal">
                             {agent.recommended_cefr_level}
                           </Badge>
                         )}
-                        <Badge variant="outline" className="text-xs flex items-center gap-1">
+                        <Badge variant="outline" className="text-xs font-normal flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           {formatDuration(agent.recommended_duration_seconds)}
                         </Badge>

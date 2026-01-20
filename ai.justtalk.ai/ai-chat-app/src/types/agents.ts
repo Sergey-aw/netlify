@@ -36,6 +36,11 @@ export interface JustAIAgent {
   is_premium: boolean;
   display_order: number;
   
+  // Personalization (for custom agents)
+  teacher_id: string | null;
+  student_id: string[] | null; // Array of student UUIDs who have access
+  is_published: boolean;
+  
   // Metadata
   created_at: string;
   updated_at: string;

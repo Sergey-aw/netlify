@@ -67,6 +67,23 @@ export async function getAgentsByCategory(userId: string, personalityFilter?: st
 
   if (agentsError) throw agentsError;
 
+  // Separate personalized agents (where student has access)
+  const personalizedAgents: typeof agents = [];
+  const regularAgents: typeof agents = [];
+
+  agents?.forEach(agent => {
+    // Check if this is a personalized agent for this student
+    if (agent.student_id && Array.isArray(agent.student_id) && agent.student_id.includes(userId)) {
+      // Only include published personalized agents
+      if (agent.is_published) {
+        personalizedAgents.push(agent);
+      }
+    } else if (!agent.student_id || agent.student_id.length === 0) {
+      // Include only agents without student_id restriction (public agents)
+      regularAgents.push(agent);
+    }
+  });
+
   // Fetch user's progress for all agents
   const { data: progress, error: progressError } = await supabase
     .from('justai_student_progress')
@@ -79,10 +96,8 @@ export async function getAgentsByCategory(userId: string, personalityFilter?: st
   const progressMap = new Map<string, StudentProgress>();
   progress?.forEach(p => progressMap.set(p.agent_id, p));
 
-  // Group agents by category
-  const categoryMap = new Map<string, AgentWithProgress[]>();
-
-  for (const agent of agents || []) {
+  // Helper function to process agent with progress and steps
+  const processAgent = async (agent: any): Promise<AgentWithProgress> => {
     const agentWithProgress: AgentWithProgress = {
       ...agent,
       progress: progressMap.get(agent.id),
@@ -102,6 +117,25 @@ export async function getAgentsByCategory(userId: string, personalityFilter?: st
       })) || [];
     }
 
+    return agentWithProgress;
+  };
+
+  // Group agents by category
+  const categoryMap = new Map<string, AgentWithProgress[]>();
+
+  // Process personalized agents first
+  for (const agent of personalizedAgents) {
+    const agentWithProgress = await processAgent(agent);
+    const category = 'Personalized for you'; // Custom category for personalized agents
+    if (!categoryMap.has(category)) {
+      categoryMap.set(category, []);
+    }
+    categoryMap.get(category)!.push(agentWithProgress);
+  }
+
+  // Process regular agents by their original categories
+  for (const agent of regularAgents) {
+    const agentWithProgress = await processAgent(agent);
     const category = agent.category;
     if (!categoryMap.has(category)) {
       categoryMap.set(category, []);
@@ -110,7 +144,7 @@ export async function getAgentsByCategory(userId: string, personalityFilter?: st
   }
 
   // Convert to array of categories
-  return Array.from(categoryMap.entries()).map(([category, agents]) => {
+  const categoriesArray = Array.from(categoryMap.entries()).map(([category, agents]) => {
     const completedAgents = agents.filter(a => 
       a.progress?.status === 'completed'
     ).length;
@@ -132,13 +166,22 @@ export async function getAgentsByCategory(userId: string, personalityFilter?: st
 
     return {
       category,
-      icon: agents[0]?.icon || '📚',
+      icon: category === 'Personalized for you' ? '⭐' : (agents[0]?.icon || '📚'),
       agents,
       totalAgents,
       completedAgents,
       unlockedAgents,
     };
   });
+
+  // Sort to ensure "Personalized for you" appears first
+  categoriesArray.sort((a, b) => {
+    if (a.category === 'Personalized for you') return -1;
+    if (b.category === 'Personalized for you') return 1;
+    return 0; // Keep original order for other categories
+  });
+
+  return categoriesArray;
 }
 
 /**
