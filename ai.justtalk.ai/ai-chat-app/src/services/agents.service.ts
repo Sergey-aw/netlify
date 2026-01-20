@@ -73,15 +73,16 @@ export async function getAgentsByCategory(userId: string, personalityFilter?: st
 
   agents?.forEach(agent => {
     // Check if this is a personalized agent for this student
-    if (agent.student_id && Array.isArray(agent.student_id) && agent.student_id.includes(userId)) {
+    if (agent.student_id && Array.isArray(agent.student_id) && agent.student_id.length > 0 && agent.student_id.includes(userId)) {
       // Only include published personalized agents
       if (agent.is_published) {
         personalizedAgents.push(agent);
       }
-    } else if (!agent.student_id || agent.student_id.length === 0) {
-      // Include only agents without student_id restriction (public agents)
+    } else if (!agent.teacher_id && (!agent.student_id || agent.student_id.length === 0)) {
+      // Include only truly public agents (no teacher_id and no student restrictions)
       regularAgents.push(agent);
     }
+    // Agents with teacher_id but student not in student_id array are hidden
   });
 
   // Fetch user's progress for all agents
