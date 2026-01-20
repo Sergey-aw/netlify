@@ -23,6 +23,7 @@ import { FeedbackDrawer } from '@/components/FeedbackDrawer';
 import { supabase } from '@/lib/supabase';
 import { checkSubscriptionAccess } from '@/lib/justai-api';
 import { getAgentsByCategory } from '@/services/agents.service';
+import { toast } from 'sonner';
 // import LogoBars from '@/assets/logo_bars.svg';
 import Logo from '@/assets/logo.svg';
 import { cn } from '@/lib/utils';
@@ -515,6 +516,46 @@ export default function AIChatHome() {
     }
   };
 
+  const handleRetryScenario = async () => {
+    if (!conversationFeedback?.agent_id) {
+      toast.error('Agent information not available');
+      return;
+    }
+    
+    try {
+      // Fetch agent details including elevenlabs_agent_id
+      const { data: agent, error } = await supabase
+        .from('justai_agents')
+        .select('id, name, elevenlabs_agent_id, description')
+        .eq('id', conversationFeedback.agent_id)
+        .single();
+
+      if (error) throw error;
+      if (!agent) {
+        toast.error('Agent not found');
+        return;
+      }
+
+      // Close feedback drawer
+      setShowFeedbackDrawer(false);
+
+      // Navigate to voice chat with agent data
+      navigate('/ai-chat/voice/new', {
+        state: {
+          fromTransition: true,
+          agentId: agent.elevenlabs_agent_id,
+          agentName: agent.name,
+          scenario: agent.description || 'Conversation scenario',
+          agentDatabaseId: agent.id,
+          isRetryAttempt: true, // Mark as retry to prevent session_memory reuse
+        },
+      });
+    } catch (error) {
+      console.error('Error retrying scenario:', error);
+      toast.error('Failed to restart scenario. Please try again.');
+    }
+  };
+
   return (
     <div className="h-[95vh] bg-white page-enter flex flex-col">
       {/* Voice Button Transition Overlay */}
@@ -922,6 +963,8 @@ export default function AIChatHome() {
             memory: conversationFeedback.session_memory || undefined,
           },
         } : null}
+        agentId={conversationFeedback?.agent_id}
+        onRetry={handleRetryScenario}
       />
     </div>
   );

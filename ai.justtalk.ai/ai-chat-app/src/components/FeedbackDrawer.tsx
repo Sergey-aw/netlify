@@ -17,6 +17,7 @@ import {
   ChevronRight,
   CheckCircle2,
   AlertCircle,
+  RotateCcw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -105,6 +106,8 @@ interface FeedbackDrawerProps {
   feedbackData?: FeedbackData | null;
   onContinue?: () => void;
   showContinuePrompt?: boolean; // Show "talk more to get insights"
+  agentId?: string | null; // Agent database ID to enable retry
+  onRetry?: () => void; // Callback for retry action
 }
 
 export function FeedbackDrawer({
@@ -114,6 +117,8 @@ export function FeedbackDrawer({
   feedbackData,
   onContinue,
   showContinuePrompt = false,
+  agentId,
+  onRetry,
 }: FeedbackDrawerProps) {
   const [activeTab, setActiveTab] = useState<'snapshot' | 'vocabulary' | 'suggestions' | 'memory' | 'evaluation' | 'feedback'>('feedback');
 
@@ -459,6 +464,30 @@ export function FeedbackDrawer({
                     <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
                       {feedbackData.llmFeedback.memory.next_stage_rationale}
                     </p>
+                  </Card>
+                )}
+
+                {/* Retry Button - Only for failure/unknown */}
+                {feedbackData.llmFeedback.memory.next_stage_result &&
+                 feedbackData.llmFeedback.memory.next_stage_result !== 'success' &&
+                 agentId &&
+                 onRetry && (
+                  <Card className="p-4 bg-gray-100">
+                    <div className="space-y-3">
+                      <div>
+                        <h4 className="font-semibold mb-2">Want to improve your result?</h4>
+                        <p className="text-sm text-gray-600">
+                          Try this scenario again to practice and improve your performance.
+                        </p>
+                      </div>
+                      <Button
+                        onClick={onRetry}
+                        className="w-full bg-[hsl(var(--brand-blue))] hover:to-blue-700"
+                      >
+                        <RotateCcw className="w-4 h-4 mr-2" />
+                        Try This Scenario Again
+                      </Button>
+                    </div>
                   </Card>
                 )}
 

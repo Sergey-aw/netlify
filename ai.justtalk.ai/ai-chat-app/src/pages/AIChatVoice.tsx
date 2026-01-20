@@ -408,6 +408,7 @@ export default function AIChatVoice() {
             title: `Voice Chat: ${selectedAgentName}`,
             scenario: selectedScenario,
             agent_id: agentDatabaseId || null, // Link to agent for progress tracking
+            is_retry_attempt: location.state?.isRetryAttempt || false, // Mark retry attempts
           })
           .select()
           .single();
