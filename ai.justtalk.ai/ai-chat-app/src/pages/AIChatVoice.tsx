@@ -98,6 +98,7 @@ export default function AIChatVoice() {
   const selectedAgentName = location.state?.agentName || 'AI Teacher';
   const selectedScenario = location.state?.scenario || 'general_conversation';
   const agentDatabaseId = location.state?.agentDatabaseId; // Database ID from justai_agents table
+  const passedSessionMemory = location.state?.sessionMemory; // Session memory from previous conversation (for replays)
   
   // Log agent selection only once when component mounts or agent changes
   useEffect(() => {
@@ -106,8 +107,9 @@ export default function AIChatVoice() {
       agentName: selectedAgentName,
       scenario: selectedScenario,
       agentDatabaseId: agentDatabaseId || 'None (no progress tracking)',
+      hasSessionMemory: !!passedSessionMemory,
     });
-  }, [selectedAgentId, selectedAgentName, selectedScenario, agentDatabaseId]);
+  }, [selectedAgentId, selectedAgentName, selectedScenario, agentDatabaseId, passedSessionMemory]);
 
   // Get user's preferred voice
   const { data: userProfile } = useQuery({
@@ -431,8 +433,51 @@ export default function AIChatVoice() {
         }
         
         // Get context memory from all previous conversations in the roleplay series
+        // Or use passed session memory if this is a replay of a completed agent
         let contextMemory = '';
-        if (agentDatabaseId) {
+        
+        // If sessionMemory was passed (replay of completed agent), use it directly
+        if (passedSessionMemory) {
+          console.log('📚 Using passed session memory for replay:', {
+            type: typeof passedSessionMemory,
+            isObject: typeof passedSessionMemory === 'object',
+            sessionsCount: passedSessionMemory.sessions_count,
+          });
+          // Convert combined session_memory object to string format for the agent
+          if (typeof passedSessionMemory === 'object') {
+            const memoryParts: string[] = [];
+            
+            // Handle combined memory format (multiple sessions)
+            if (passedSessionMemory.conversation_summaries?.length > 0) {
+              memoryParts.push(`Previous conversation history:\n${passedSessionMemory.conversation_summaries.join('\n')}`);
+            }
+            if (passedSessionMemory.emotional_notes?.length > 0) {
+              memoryParts.push(`Emotional journey:\n${passedSessionMemory.emotional_notes.join('\n')}`);
+            }
+            if (passedSessionMemory.open_threads?.length > 0) {
+              memoryParts.push(`Topics to potentially revisit: ${passedSessionMemory.open_threads.join(', ')}`);
+            }
+            
+            // Also handle single session memory format (backward compatibility)
+            if (passedSessionMemory.conversation_summary) {
+              memoryParts.push(`Previous conversation summary: ${passedSessionMemory.conversation_summary}`);
+            }
+            if (passedSessionMemory.emotional_notes && typeof passedSessionMemory.emotional_notes === 'string') {
+              memoryParts.push(`Emotional notes: ${passedSessionMemory.emotional_notes}`);
+            }
+            if (passedSessionMemory.open_threads?.length > 0 && !passedSessionMemory.conversation_summaries) {
+              memoryParts.push(`Open discussion threads: ${passedSessionMemory.open_threads.join(', ')}`);
+            }
+            
+            contextMemory = memoryParts.join('\n\n');
+          } else {
+            contextMemory = String(passedSessionMemory);
+          }
+          console.log('✅ Session memory formatted for replay:', {
+            length: contextMemory.length,
+            preview: contextMemory.substring(0, 300),
+          });
+        } else if (agentDatabaseId) {
           try {
             console.log('📚 Fetching context memory for agent:', agentDatabaseId);
             contextMemory = await getContextMemory(agentDatabaseId);

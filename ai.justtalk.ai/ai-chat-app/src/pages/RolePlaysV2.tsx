@@ -316,11 +316,81 @@ export default function RolePlaysV2() {
       return;
     }
 
-    // If completed, show feedback drawer instead of navigating
+    // For completed multi-step agents, show feedback drawer
+    // For completed single-step agents, allow replay with session_memory
     if (progress?.status === 'completed') {
-      setFeedbackAgentId(targetAgent.id);
-      setShowFeedbackDrawer(true);
-      return;
+      if (agent.is_multi_step) {
+        setFeedbackAgentId(targetAgent.id);
+        setShowFeedbackDrawer(true);
+        return;
+      }
+      
+      // For single-step agents, fetch ALL session_memories from previous conversations
+      try {
+        // Get all conversations with this agent that have session_memory
+        const { data: allConversations } = await supabase
+          .from('justai_conversations')
+          .select('session_memory, created_at')
+          .eq('agent_id', targetAgent.id)
+          .eq('student_id', userId)
+          .not('session_memory', 'is', null)
+          .order('created_at', { ascending: true }); // Oldest first to build chronological memory
+
+        // Combine all session memories into a comprehensive memory object
+        let combinedMemory: {
+          conversation_summaries: string[];
+          emotional_notes: string[];
+          open_threads: string[];
+          sessions_count: number;
+        } | null = null;
+
+        if (allConversations && allConversations.length > 0) {
+          combinedMemory = {
+            conversation_summaries: [],
+            emotional_notes: [],
+            open_threads: [],
+            sessions_count: allConversations.length,
+          };
+
+          allConversations.forEach((conv, index) => {
+            const memory = conv.session_memory;
+            if (memory) {
+              if (memory.conversation_summary) {
+                combinedMemory!.conversation_summaries.push(
+                  `Session ${index + 1}: ${memory.conversation_summary}`
+                );
+              }
+              if (memory.emotional_notes) {
+                combinedMemory!.emotional_notes.push(
+                  `Session ${index + 1}: ${memory.emotional_notes}`
+                );
+              }
+              if (memory.open_threads?.length > 0) {
+                combinedMemory!.open_threads.push(...memory.open_threads);
+              }
+            }
+          });
+
+          // Deduplicate open_threads
+          combinedMemory.open_threads = [...new Set(combinedMemory.open_threads)];
+        }
+
+        navigate('/ai-chat/voice/new', {
+          state: {
+            fromTransition: true,
+            agentId: targetAgent.elevenlabs_agent_id,
+            agentName: targetAgent.name,
+            scenario: targetAgent.description,
+            agentDatabaseId: targetAgent.id,
+            stepName: targetAgent.name,
+            sessionMemory: combinedMemory,
+          },
+        });
+        return;
+      } catch (error) {
+        console.error('Error fetching session memory:', error);
+        // Continue without session memory if there's an error
+      }
     }
 
     // If unlocking for the first time, update status
@@ -809,11 +879,6 @@ export default function RolePlaysV2() {
                     <span className={isPersonalized ? 'text-white/90' : 'text-muted-foreground'}>
                       {category.totalAgents} scenario{category.totalAgents !== 1 ? 's' : ''}
                     </span>
-                    {category.completedAgents > 0 && (
-                      <Badge variant="secondary" className={isPersonalized ? 'bg-white/90 text-blue-900' : 'bg-green-100 text-green-800'}>
-                        {category.completedAgents} completed
-                      </Badge>
-                    )}
                   </div>
                 </Card>
               );
@@ -1119,6 +1184,12 @@ export default function RolePlaysV2() {
                     <div className="flex flex-col items-end gap-2">
                       {isLocked ? (
                         <Lock className="w-6 h-6 text-gray-400" />
+                      ) : progressPercent === 100 ? (
+                        <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
                       ) : (
                         <ChevronRight className="w-6 h-6 text-gray-400" />
                       )}
