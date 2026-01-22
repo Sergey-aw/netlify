@@ -10,6 +10,9 @@ import {
   Languages,
   MessageCircle,
   Bookmark,
+  Star,
+  Check,
+  Play,
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -294,6 +297,182 @@ export default function AIChatHome() {
     enabled: !!conversationFeedback?.agent_id && !!user?.id,
   });
 
+  // Get recent agent interactions for home screen
+  const { data: recentAgents } = useQuery({
+    queryKey: ['recent-agents', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return { personal: [], multiStep: [], singleStep: [] };
+      
+      // Get recent conversations with agent details
+      const { data: conversations, error } = await supabase
+        .from('justai_conversations')
+        .select(`
+          id,
+          agent_id,
+          created_at,
+          conversation_score,
+          justai_agents (
+            id,
+            name,
+            description,
+            image_url,
+            icon,
+            elevenlabs_agent_id,
+            category,
+            parent_agent_id,
+            step_number,
+            teacher_id,
+            student_id
+          )
+        `)
+        .eq('student_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      if (error) {
+        console.error('Error fetching conversations:', error);
+        return { personal: [], multiStep: [], singleStep: [] };
+      }
+      
+      if (!conversations || conversations.length === 0) {
+        console.log('No conversations found for user');
+        return { personal: [], multiStep: [], singleStep: [] };
+      }
+      
+      console.log('Found conversations:', conversations.length);
+      
+      // Group by agent_id and get most recent for each
+      const agentMap = new Map();
+      conversations?.forEach((conv: any) => {
+        const agent = conv.justai_agents;
+        if (!agent || agentMap.has(agent.id)) return;
+        
+        agentMap.set(agent.id, {
+          ...agent,
+          lastConversationDate: conv.created_at,
+          lastConversationId: conv.id,
+          bestScore: conv.conversation_score,
+        });
+      });
+      
+      const uniqueAgents = Array.from(agentMap.values());
+      
+      // Get progress for all agents
+      const { data: progressData } = await supabase
+        .from('justai_student_progress')
+        .select('*')
+        .eq('student_id', user.id)
+        .in('agent_id', uniqueAgents.map((a: any) => a.id));
+      
+      // Attach progress to agents
+      const agentsWithProgress = uniqueAgents.map((agent: any) => ({
+        ...agent,
+        progress: progressData?.find((p: any) => p.agent_id === agent.id) || null,
+      }));
+      
+      // Categorize agents
+      const personal: any[] = [];
+      const multiStepMap = new Map();
+      const singleStep: any[] = [];
+      
+      for (const agent of agentsWithProgress) {
+        // Personal agents have teacher_id or student_id set
+        const isPersonal = agent.teacher_id || (agent.student_id && agent.student_id.length > 0);
+        
+        if (isPersonal) {
+          personal.push(agent);
+        } else if (agent.parent_agent_id) {
+          // This is a step in a multi-step agent - group by parent
+          if (!multiStepMap.has(agent.parent_agent_id)) {
+            multiStepMap.set(agent.parent_agent_id, []);
+          }
+          multiStepMap.get(agent.parent_agent_id).push(agent);
+        } else {
+          // Check if this agent has child steps
+          const hasSteps = agentsWithProgress.some((a: any) => a.parent_agent_id === agent.id);
+          if (hasSteps) {
+            multiStepMap.set(agent.id, [agent]);
+          } else {
+            singleStep.push(agent);
+          }
+        }
+      }
+      
+      // Build complete multi-step agent data with all steps
+      const multiStep: any[] = [];
+      for (const [parentId] of multiStepMap) {
+        const { data: allSteps } = await supabase
+          .from('justai_agents')
+          .select('*')
+          .or(`id.eq.${parentId},parent_agent_id.eq.${parentId}`)
+          .order('step_number', { ascending: true });
+        
+        if (allSteps && allSteps.length > 0) {
+          const parentAgent = allSteps.find((s: any) => !s.parent_agent_id) || allSteps[0];
+          const steps = allSteps.filter((s: any) => s.parent_agent_id === parentId);
+          
+          // Get progress for all steps
+          const { data: stepsProgress } = await supabase
+            .from('justai_student_progress')
+            .select('*')
+            .eq('student_id', user.id)
+            .in('agent_id', steps.map((s: any) => s.id));
+          
+          const stepsWithProgress = steps.map((step: any) => ({
+            ...step,
+            progress: stepsProgress?.find((p: any) => p.agent_id === step.id) || null,
+          }));
+          
+          // Find current step (first incomplete or last completed)
+          let currentStepIndex = stepsWithProgress.findIndex(
+            (s: any) => s.progress?.status !== 'completed'
+          );
+          if (currentStepIndex === -1) currentStepIndex = stepsWithProgress.length - 1;
+          
+          multiStep.push({
+            ...parentAgent,
+            steps: stepsWithProgress,
+            currentStepIndex,
+            lastConversationDate: agentsWithProgress.find((a: any) => a.id === parentId)?.lastConversationDate,
+          });
+        }
+      }
+      
+      return {
+        personal: personal.sort((a: any, b: any) => 
+          new Date(b.lastConversationDate).getTime() - new Date(a.lastConversationDate).getTime()
+        ).slice(0, 6),
+        multiStep: multiStep.sort((a: any, b: any) => 
+          new Date(b.lastConversationDate || 0).getTime() - new Date(a.lastConversationDate || 0).getTime()
+        ).slice(0, 4),
+        singleStep: singleStep.sort((a: any, b: any) => 
+          new Date(b.lastConversationDate).getTime() - new Date(a.lastConversationDate).getTime()
+        ).slice(0, 6),
+      };
+      
+      const result = {
+        personal: personal.sort((a: any, b: any) => 
+          new Date(b.lastConversationDate).getTime() - new Date(a.lastConversationDate).getTime()
+        ).slice(0, 6),
+        multiStep: multiStep.sort((a: any, b: any) => 
+          new Date(b.lastConversationDate || 0).getTime() - new Date(a.lastConversationDate || 0).getTime()
+        ).slice(0, 4),
+        singleStep: singleStep.sort((a: any, b: any) => 
+          new Date(b.lastConversationDate).getTime() - new Date(a.lastConversationDate).getTime()
+        ).slice(0, 6),
+      };
+      
+      console.log('Recent agents result:', {
+        personal: result.personal.length,
+        multiStep: result.multiStep.length,
+        singleStep: result.singleStep.length,
+      });
+      
+      return result;
+    },
+    enabled: !!user?.id,
+  });
+
   // Check subscription status
   const { data: hasAccess } = useQuery({
     queryKey: ['subscription-access'],
@@ -556,6 +735,51 @@ export default function AIChatHome() {
     }
   };
 
+  const handleAgentCardClick = async (agent: any) => {
+    try {
+      // For multi-step agents, navigate to the current step
+      let targetAgent = agent;
+      if (agent.steps && agent.currentStepIndex !== undefined) {
+        targetAgent = agent.steps[agent.currentStepIndex];
+      }
+      
+      navigate('/ai-chat/voice/new', {
+        state: {
+          fromTransition: true,
+          agentId: targetAgent.elevenlabs_agent_id,
+          agentName: targetAgent.name,
+          scenario: targetAgent.description || '',
+          agentDatabaseId: targetAgent.id,
+        },
+      });
+    } catch (error) {
+      console.error('Error starting conversation:', error);
+      toast.error('Failed to start conversation. Please try again.');
+    }
+  };
+
+  const formatLastInteraction = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  const getScoreBadgeColor = (score: number) => {
+    if (score >= 85) return 'bg-green-100 text-green-800 border-green-300';
+    if (score >= 70) return 'bg-blue-100 text-blue-800 border-blue-300';
+    if (score >= 50) return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+    return 'bg-red-100 text-red-800 border-red-300';
+  };
+
   return (
     <div className="h-[95vh] bg-white page-enter flex flex-col">
       {/* Voice Button Transition Overlay */}
@@ -730,35 +954,297 @@ export default function AIChatHome() {
               </div>
             </div>
           ) : (
-            // Default Home View
+            // Default Home View - Show recent agents if available
             <>
               <div className="flex justify-center pt-8">
                 <img src={Logo} alt="JustTalk AI" className="h-8" />
               </div>
-              <main className="flex-1 flex flex-col justify-center max-w-2xl mx-auto w-full">
-                {/* Greeting */}
-                <div className="text-center mb-12 px-6">
-                  {userLoading ? (
-                    <div className="text-gray-400">Loading...</div>
-                  ) : (
-                    <>
-                      {/* <h1 className="text-xl font-semibold text-gray-900">
-                        Good to see you,
+              <main className="flex-1 flex flex-col max-w-2xl mx-auto w-full px-4 overflow-y-auto">
+                {recentAgents && (recentAgents.personal?.length > 0 || recentAgents.multiStep?.length > 0 || recentAgents.singleStep?.length > 0) ? (
+                  // Recent Agents View - Categorized
+                  <div className="py-8 space-y-8">
+                    {/* Welcome Header */}
+                    <div className="text-center">
+                      <h1 className="text-2xl font-semibold text-gray-900 mb-1">
+                        Welcome back, {user?.display_name || 'Student'}!
                       </h1>
-                      <h2 className="text-4xl font-semibold text-gray-400 mb-6">
-                        {user?.display_name || 'Student'}.
-                      </h2>
-                      <p className="text-gray-500 text-base">
-                        JustTalk AI your personal AI Teacher.
-                      </p> */}
-                    </>
-                  )}
-                </div>
+                      <p className="text-gray-500">
+                        Continue your learning journey
+                      </p>
+                    </div>
 
-                {/* Feature Card Gallery */}
-                <div className="mb-6">
-                  <FeatureCardGallery onNavigate={(route) => navigate(route)} />
-                </div>
+                    {/* Personal Agents */}
+                    {recentAgents.personal && recentAgents.personal.length > 0 && (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+                          <h2 className="text-xl font-semibold text-gray-900">Personal Agents</h2>
+                        </div>
+                        <div className="space-y-3">
+                          {recentAgents.personal.map((agent: any) => (
+                            <div
+                              key={agent.id}
+                              onClick={() => handleAgentCardClick(agent)}
+                              className="bg-white border border-gray-200 rounded-2xl p-4 hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                            >
+                              <div className="flex gap-4">
+                                <div className="relative flex-shrink-0">
+                                  <Avatar className="w-16 h-16">
+                                    <AvatarImage src={getAvatarUrl(agent.image_url)} />
+                                    <AvatarFallback>{agent.icon || agent.name?.[0] || '🤖'}</AvatarFallback>
+                                  </Avatar>
+                                  {agent.bestScore && (
+                                    <div className={cn(
+                                      "absolute -bottom-1 -right-1 text-xs font-semibold px-2 py-0.5 rounded-full border",
+                                      getScoreBadgeColor(agent.bestScore)
+                                    )}>
+                                      ★{agent.bestScore}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-start justify-between gap-2 mb-2">
+                                    <h3 className="font-semibold text-gray-900 group-hover:text-[hsl(var(--brand-blue))] transition-colors">
+                                      {agent.name}
+                                    </h3>
+                                    <div className="flex flex-col items-end gap-1">
+                                      <span className="text-xs text-gray-400">
+                                        {formatLastInteraction(agent.lastConversationDate)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <p className="text-sm text-gray-500 line-clamp-2">
+                                    {agent.description}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Multi-Step Agents */}
+                    {recentAgents.multiStep && recentAgents.multiStep.length > 0 && (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Play className="w-5 h-5 text-purple-500" />
+                          <h2 className="text-xl font-semibold text-gray-900">Learning Paths</h2>
+                        </div>
+                        <div className="space-y-4">
+                          {recentAgents.multiStep.map((agent: any) => {
+                            const currentStep = agent.steps[agent.currentStepIndex];
+                            const completedSteps = agent.steps.filter((s: any) => s.progress?.status === 'completed').length;
+                            
+                            return (
+                              <div
+                                key={agent.id}
+                                onClick={() => handleAgentCardClick(agent)}
+                                className="bg-white border border-gray-200 rounded-2xl p-4 hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                              >
+                                <div className="space-y-4">
+                                  {/* Header with current step info */}
+                                  <div className="flex gap-4">
+                                    <div className="relative flex-shrink-0">
+                                      <Avatar className="w-16 h-16">
+                                        <AvatarImage src={getAvatarUrl(currentStep.image_url)} />
+                                        <AvatarFallback>{currentStep.icon || currentStep.name?.[0] || '🎯'}</AvatarFallback>
+                                      </Avatar>
+                                      <div className="absolute -bottom-1 -right-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-300">
+                                        {agent.currentStepIndex + 1}/{agent.steps.length}
+                                      </div>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-xs text-gray-500 mb-1">{agent.name}</div>
+                                      <h3 className="font-semibold text-gray-900 group-hover:text-[hsl(var(--brand-blue))] transition-colors mb-1">
+                                        {currentStep.name}
+                                      </h3>
+                                      <p className="text-sm text-gray-500 line-clamp-2">
+                                        {currentStep.description}
+                                      </p>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-1">
+                                      <span className="text-xs text-gray-400">
+                                        {formatLastInteraction(agent.lastConversationDate)}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Progress Bar */}
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="text-gray-600">Progress</span>
+                                      <span className="font-medium text-gray-900">
+                                        {completedSteps}/{agent.steps.length} completed
+                                      </span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                      <div
+                                        className="bg-gradient-to-r from-blue-500 to-purple-500 h-full rounded-full transition-all duration-300"
+                                        style={{ width: `${(completedSteps / agent.steps.length) * 100}%` }}
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* Steps List */}
+                                  <div className="space-y-1.5">
+                                    {agent.steps.map((step: any, idx: number) => {
+                                      const isCompleted = step.progress?.status === 'completed';
+                                      const isCurrent = idx === agent.currentStepIndex;
+                                      
+                                      return (
+                                        <div
+                                          key={step.id}
+                                          className={cn(
+                                            "flex items-center gap-2 px-3 py-2 rounded-lg transition-all",
+                                            isCurrent && "bg-blue-50 border border-blue-200",
+                                            !isCurrent && "bg-gray-50"
+                                          )}
+                                        >
+                                          <div className={cn(
+                                            "w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 border",
+                                            isCompleted && "bg-green-100 border-green-400",
+                                            isCurrent && !isCompleted && "bg-blue-100 border-blue-400",
+                                            !isCurrent && !isCompleted && "bg-gray-200 border-gray-300"
+                                          )}>
+                                            {isCompleted ? (
+                                              <Check className="w-3 h-3 text-green-600" />
+                                            ) : (
+                                              <span className={cn(
+                                                "text-[10px] font-medium",
+                                                isCurrent ? "text-blue-600" : "text-gray-500"
+                                              )}>
+                                                {idx + 1}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <span className={cn(
+                                            "text-xs flex-1 truncate",
+                                            isCurrent && "font-medium text-gray-900",
+                                            !isCurrent && "text-gray-600"
+                                          )}>
+                                            {step.name}
+                                          </span>
+                                          {step.progress?.best_score && (
+                                            <span className="text-xs text-yellow-600 font-medium">
+                                              ★{step.progress.best_score}
+                                            </span>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Single-Step Agents */}
+                    {recentAgents.singleStep && recentAgents.singleStep.length > 0 && (
+                      <div className="space-y-4">
+                        <h2 className="text-xl font-semibold text-gray-900">Continue Learning</h2>
+                        <div className="space-y-3">
+                          {recentAgents.singleStep.map((agent: any) => (
+                            <div
+                              key={agent.id}
+                              onClick={() => handleAgentCardClick(agent)}
+                              className="bg-white border border-gray-200 rounded-2xl p-4 hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                            >
+                              <div className="flex gap-4">
+                                <div className="relative flex-shrink-0">
+                                  <Avatar className="w-16 h-16">
+                                    <AvatarImage src={getAvatarUrl(agent.image_url)} />
+                                    <AvatarFallback>{agent.icon || agent.name?.[0] || '🤖'}</AvatarFallback>
+                                  </Avatar>
+                                  {agent.bestScore && (
+                                    <div className={cn(
+                                      "absolute -bottom-1 -right-1 text-xs font-semibold px-2 py-0.5 rounded-full border",
+                                      getScoreBadgeColor(agent.bestScore)
+                                    )}>
+                                      ★{agent.bestScore}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-start justify-between gap-2 mb-2">
+                                    <h3 className="font-semibold text-gray-900 group-hover:text-[hsl(var(--brand-blue))] transition-colors">
+                                      {agent.name}
+                                    </h3>
+                                    <div className="flex flex-col items-end gap-1">
+                                      <span className="text-xs text-gray-400">
+                                        {formatLastInteraction(agent.lastConversationDate)}
+                                      </span>
+                                      {agent.category && (
+                                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                                          {agent.category}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <p className="text-sm text-gray-500 line-clamp-2">
+                                    {agent.description}
+                                  </p>
+                                  {agent.progress && agent.progress.average_session_score && (
+                                    <div className="mt-2 flex items-center gap-2">
+                                      <span className="text-xs text-gray-600">Average score:</span>
+                                      <span className={cn(
+                                        "text-sm font-semibold",
+                                        agent.progress.average_session_score >= 85 ? "text-green-600" :
+                                        agent.progress.average_session_score >= 70 ? "text-blue-600" :
+                                        agent.progress.average_session_score >= 50 ? "text-yellow-600" :
+                                        "text-red-600"
+                                      )}>
+                                        {agent.progress.average_session_score.toFixed(0)}%
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Explore More Button */}
+                    <div className="text-center pt-4 pb-8">
+                      <Button
+                        variant="outline"
+                        onClick={() => navigate('/role-plays')}
+                        className="rounded-full"
+                      >
+                        Explore More Agents
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  // Empty State - No Recent Conversations
+                  <div className="text-center flex-1 flex flex-col justify-center px-6 pb-24">
+                    {userLoading ? (
+                      <div className="text-gray-400">Loading...</div>
+                    ) : (
+                      <>
+                        <h1 className="text-xl font-semibold text-gray-900">
+                          Good to see you,
+                        </h1>
+                        <h2 className="text-4xl font-semibold text-gray-400 mb-6">
+                          {user?.display_name || 'Student'}.
+                        </h2>
+                        <p className="text-gray-500 text-base">
+                          JustTalk AI your personal AI Teacher.
+                        </p>
+
+                        {/* Feature Card Gallery */}
+                        <div className="mt-12">
+                          <FeatureCardGallery onNavigate={(route) => navigate(route)} />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </main>
             </>
           )}
