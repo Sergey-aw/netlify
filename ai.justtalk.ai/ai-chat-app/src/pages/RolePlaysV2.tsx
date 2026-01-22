@@ -1258,7 +1258,7 @@ export default function RolePlaysV2() {
         )}
 
         {/* Agents */}
-        <div className="max-w-7xl mx-auto px-4 py-6 space-y-4">
+        <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
           {selectedCategoryData.agents.map((agent) => {
             const { completedSteps, totalSteps, progressPercent, averageScore, isArchived } =
               getAgentProgress(agent);
