@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
+import ReactMarkdown from 'react-markdown';
 import { Play, Lock, ChevronRight, Trophy, Clock, PanelLeft, Archive, RotateCcw, Loader2, MessageCircle, Star, TrendingUp, Target, AlertCircle, Bookmark, X, MessagesSquare, Coffee, Heart, Mic, Users, Plane, BookOpen } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
@@ -53,6 +54,9 @@ export default function RolePlaysV2() {
   const [availablePersonalities, setAvailablePersonalities] = useState<Array<{ name: string; description: string; avatar: string }>>([]);
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [showAgentDetailDrawer, setShowAgentDetailDrawer] = useState(false);
+  const [agentDetailData, setAgentDetailData] = useState<AgentWithProgress | null>(null);
+  const [agentLongDescription, setAgentLongDescription] = useState<string | null>(null);
 
   // Get current user
   const { data: userAuth } = useQuery({
@@ -316,6 +320,27 @@ export default function RolePlaysV2() {
       return;
     }
 
+    // Check if agent has long_description - if so, show detail drawer first
+    if (!progress || progress.status !== 'completed') {
+      try {
+        const { data: agentData } = await supabase
+          .from('justai_agents')
+          .select('long_description')
+          .eq('id', targetAgent.id)
+          .single();
+
+        if (agentData?.long_description) {
+          setAgentDetailData(targetAgent);
+          setAgentLongDescription(agentData.long_description);
+          setShowAgentDetailDrawer(true);
+          return;
+        }
+      } catch (error) {
+        console.error('Error fetching agent long description:', error);
+        // Continue to normal flow if there's an error
+      }
+    }
+
     // For completed multi-step agents, show feedback drawer
     // For completed single-step agents, allow replay with session_memory
     if (progress?.status === 'completed') {
@@ -447,6 +472,35 @@ export default function RolePlaysV2() {
     }
   };
 
+  const handleStartConversation = async () => {
+    if (!agentDetailData || !userId) return;
+
+    setShowAgentDetailDrawer(false);
+
+    const targetAgent = agentDetailData;
+    const progress = targetAgent.progress;
+
+    // If unlocking for the first time, update status
+    if (!progress && userId) {
+      try {
+        await unlockFirstStep(userId, targetAgent.id);
+      } catch (error) {
+        console.error('Error unlocking step:', error);
+      }
+    }
+
+    navigate('/ai-chat/voice/new', {
+      state: {
+        fromTransition: true,
+        agentId: targetAgent.elevenlabs_agent_id,
+        agentName: targetAgent.name,
+        scenario: targetAgent.description,
+        agentDatabaseId: targetAgent.id,
+        stepName: targetAgent.name,
+      },
+    });
+  };
+
   // Calculate agent progress
   const getAgentProgress = (agent: AgentWithProgress) => {
     if (!agent.is_multi_step || !agent.steps) {
@@ -490,6 +544,102 @@ export default function RolePlaysV2() {
       isArchived: archivedSteps > 0,
     };
   };
+
+  const renderAgentDetailDrawer = () => (
+    <AnimatePresence mode="wait">
+      {showAgentDetailDrawer && agentDetailData && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+          style={{ willChange: 'opacity' }}
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+          onClick={() => setShowAgentDetailDrawer(false)}
+        >
+          <div className="flex items-center justify-center min-h-screen p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ 
+                type: "spring",
+                damping: 30,
+                stiffness: 300,
+                mass: 0.5
+              }}
+              style={{ willChange: 'transform, opacity' }}
+              className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl max-h-[85vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Close Button */}
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ 
+                  delay: 0.1,
+                  duration: 0.2,
+                  ease: [0.4, 0, 0.2, 1]
+                }}
+                style={{ willChange: 'transform, opacity' }}
+                onClick={() => setShowAgentDetailDrawer(false)}
+                className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/90 hover:bg-white flex items-center justify-center transition-colors shadow-lg"
+              >
+                <X className="w-6 h-6 text-gray-600" />
+              </motion.button>
+
+              {/* Header Section */}
+              <div className="px-8 pt-8 pb-4 border-b">
+                <h2 className="text-2xl font-bold text-gray-900 pr-12">{agentDetailData.name}</h2>
+                {agentDetailData.description && (
+                  <p className="text-sm text-gray-600 mt-2">{agentDetailData.description}</p>
+                )}
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {agentDetailData.difficulty_level && (
+                    <Badge variant="outline" className="text-xs font-normal">
+                      {agentDetailData.difficulty_level}
+                    </Badge>
+                  )}
+                  {agentDetailData.recommended_cefr_level && (
+                    <Badge variant="outline" className="text-xs font-normal">
+                      {agentDetailData.recommended_cefr_level}
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="text-xs font-normal flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {formatDuration(agentDetailData.recommended_duration_seconds)}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto px-8 py-6">
+                {agentLongDescription ? (
+                  <div className="prose prose-slate max-w-none prose-headings:font-medium prose-h1:text-xl prose-h1:mb-4 prose-h2:text-lg prose-h2:mb-3 prose-h3:text-base prose-h3:mb-2 prose-p:text-gray-700 prose-p:text-sm prose-p:mb-4 prose-a:text-blue-600 prose-strong:text-gray-900 prose-ul:my-4 prose-ol:my-4 prose-li:text-gray-700">
+                    <ReactMarkdown>{agentLongDescription}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <p className="text-gray-600">No additional details available.</p>
+                )}
+              </div>
+
+              {/* Footer with Start Button */}
+              <div className="px-8 py-6 border-t bg-gray-50 rounded-b-3xl">
+                <Button
+                  onClick={handleStartConversation}
+                  className="w-full h-12 text-base font-semibold"
+                  size="lg"
+                >
+                  <Play className="w-5 h-5 mr-2" />
+                  Start Conversation
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 
   const renderPersonalityDrawer = () => (
     <AnimatePresence mode="wait">
@@ -819,6 +969,7 @@ export default function RolePlaysV2() {
             <p className="text-muted-foreground">Loading roleplays...</p>
           </div>
         </div>
+        {renderAgentDetailDrawer()}
         {renderPersonalityDrawer()}
         {renderFeedbackDrawer()}
       </>
@@ -885,6 +1036,7 @@ export default function RolePlaysV2() {
             })}
           </div>
         </div>
+        {renderAgentDetailDrawer()}
       </div>
     );
   }
@@ -1179,6 +1331,12 @@ export default function RolePlaysV2() {
                           <Clock className="w-3 h-3" />
                           {formatDuration(agent.recommended_duration_seconds)}
                         </Badge>
+                        {agent.long_description && (
+                          <Badge variant="outline" className="text-xs font-normal flex items-center gap-1">
+                            <BookOpen className="w-3 h-3" />
+                            Guide
+                          </Badge>
+                        )}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-2">
@@ -1237,6 +1395,7 @@ export default function RolePlaysV2() {
         </div>
         </div>
       </div>
+      {renderAgentDetailDrawer()}
       {renderPersonalityDrawer()}
       {renderFeedbackDrawer()}
     </>
@@ -1437,6 +1596,7 @@ export default function RolePlaysV2() {
           </div>
         </div>
       </div>
+      {renderAgentDetailDrawer()}
       {renderPersonalityDrawer()}
       {renderFeedbackDrawer()}
     </>
@@ -1449,6 +1609,7 @@ export default function RolePlaysV2() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <p className="text-muted-foreground">Loading...</p>
       </div>
+      {renderAgentDetailDrawer()}
       {renderPersonalityDrawer()}
       {renderFeedbackDrawer()}
     </>

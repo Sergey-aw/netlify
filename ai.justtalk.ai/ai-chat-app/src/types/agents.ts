@@ -12,6 +12,7 @@ export interface JustAIAgent {
   // Agent details
   name: string;
   description: string | null;
+  long_description: string | null;
   icon: string | null;
   image_url: string | null;
   
