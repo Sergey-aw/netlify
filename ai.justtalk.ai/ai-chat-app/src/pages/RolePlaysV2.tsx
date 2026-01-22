@@ -321,24 +321,22 @@ export default function RolePlaysV2() {
     }
 
     // Check if agent has long_description - if so, show detail drawer first
-    if (!progress || progress.status !== 'completed') {
-      try {
-        const { data: agentData } = await supabase
-          .from('justai_agents')
-          .select('long_description')
-          .eq('id', targetAgent.id)
-          .single();
+    try {
+      const { data: agentData } = await supabase
+        .from('justai_agents')
+        .select('long_description')
+        .eq('id', targetAgent.id)
+        .single();
 
-        if (agentData?.long_description) {
-          setAgentDetailData(targetAgent);
-          setAgentLongDescription(agentData.long_description);
-          setShowAgentDetailDrawer(true);
-          return;
-        }
-      } catch (error) {
-        console.error('Error fetching agent long description:', error);
-        // Continue to normal flow if there's an error
+      if (agentData?.long_description) {
+        setAgentDetailData(targetAgent);
+        setAgentLongDescription(agentData.long_description);
+        setShowAgentDetailDrawer(true);
+        return;
       }
+    } catch (error) {
+      console.error('Error fetching agent long description:', error);
+      // Continue to normal flow if there's an error
     }
 
     // For completed multi-step agents, show feedback drawer
