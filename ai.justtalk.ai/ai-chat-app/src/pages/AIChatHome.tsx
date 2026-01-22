@@ -13,6 +13,16 @@ import {
   Star,
   Check,
   Play,
+  Coffee,
+  Briefcase,
+  GraduationCap,
+  Heart,
+  Plane,
+  ShoppingBag,
+  Users,
+  BookOpen,
+  Home,
+  Utensils,
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -55,6 +65,25 @@ const getAvatarUrl = (imageUrl: string | null | undefined): string | undefined =
   }
   
   return imageUrl;
+};
+
+// Category icon and color mapping
+const getCategoryStyle = (category: string | undefined) => {
+  const categoryMap: Record<string, { icon: any; bgColor: string; textColor: string; borderColor: string }> = {
+    'Daily Life': { icon: Coffee, bgColor: 'bg-blue-50', textColor: 'text-blue-700', borderColor: 'border-blue-200' },
+    'Education': { icon: GraduationCap, bgColor: 'bg-purple-50', textColor: 'text-purple-700', borderColor: 'border-purple-200' },
+    'Business': { icon: Briefcase, bgColor: 'bg-indigo-50', textColor: 'text-indigo-700', borderColor: 'border-indigo-200' },
+    'Dating': { icon: Heart, bgColor: 'bg-pink-50', textColor: 'text-pink-700', borderColor: 'border-pink-200' },
+    'Travel': { icon: Plane, bgColor: 'bg-sky-50', textColor: 'text-sky-700', borderColor: 'border-sky-200' },
+    'Shopping': { icon: ShoppingBag, bgColor: 'bg-emerald-50', textColor: 'text-emerald-700', borderColor: 'border-emerald-200' },
+    'Social': { icon: Users, bgColor: 'bg-amber-50', textColor: 'text-amber-700', borderColor: 'border-amber-200' },
+    'Interview': { icon: Briefcase, bgColor: 'bg-slate-50', textColor: 'text-slate-700', borderColor: 'border-slate-200' },
+    'Restaurant': { icon: Utensils, bgColor: 'bg-orange-50', textColor: 'text-orange-700', borderColor: 'border-orange-200' },
+    'Learning': { icon: BookOpen, bgColor: 'bg-violet-50', textColor: 'text-violet-700', borderColor: 'border-violet-200' },
+    'Home': { icon: Home, bgColor: 'bg-teal-50', textColor: 'text-teal-700', borderColor: 'border-teal-200' },
+  };
+  
+  return categoryMap[category || ''] || { icon: BookOpen, bgColor: 'bg-gray-50', textColor: 'text-gray-700', borderColor: 'border-gray-200' };
 };
 
 export default function AIChatHome() {
@@ -978,12 +1007,12 @@ export default function AIChatHome() {
                   // Recent Agents View - Categorized
                   <div className="py-8 space-y-4">
                     {/* Welcome Header */}
-                    <div className="text-center">
+                    {/* <div className="text-center">
                    
                       <p className="text-gray-500 text-sm">
                         Continue your learning journey
                       </p>
-                    </div>
+                    </div> */}
 
                     {/* Personal Agents */}
                     {recentAgents.personal && recentAgents.personal.length > 0 && (
@@ -1041,7 +1070,7 @@ export default function AIChatHome() {
                       <div className="space-y-4">
                         <div className="flex items-center gap-2">
                           <Play className="w-5 h-5 text-blue-500" />
-                          <h2 className="text-xl font-medium text-gray-900">Learning Paths</h2>
+                          <h2 className="text-lg font-semibold text-gray-900">Learning Paths</h2>
                         </div>
                         <div className="space-y-4">
                           {recentAgents.multiStep.map((agent: any) => {
@@ -1060,7 +1089,7 @@ export default function AIChatHome() {
                                     <div className="relative flex-shrink-0">
                                       <Avatar className="w-16 h-16">
                                         <AvatarImage src={getAvatarUrl(currentStep.image_url)} />
-                                        <AvatarFallback>{currentStep.icon || currentStep.name?.[0] || '🎯'}</AvatarFallback>
+                                        <AvatarFallback><Play className="w-6 h-6 text-blue-500" /></AvatarFallback>
                                       </Avatar>
                                    
                                     </div>
@@ -1155,19 +1184,25 @@ export default function AIChatHome() {
                     {/* Single-Step Agents */}
                     {recentAgents.singleStep && recentAgents.singleStep.length > 0 && (
                       <div className="space-y-4">
-                        <h2 className="text-xl font-semibold text-gray-900">Continue Learning</h2>
+                        <h2 className="text-lg font-semibold text-gray-900">Continue Learning</h2>
                         <div className="space-y-3">
-                          {recentAgents.singleStep.map((agent: any) => (
+                          {recentAgents.singleStep.map((agent: any) => {
+                            const categoryStyle = getCategoryStyle(agent.category);
+                            const CategoryIcon = categoryStyle.icon;
+                            
+                            return (
                             <div
                               key={agent.id}
                               onClick={() => handleAgentCardClick(agent)}
-                              className="bg-white border border-gray-200 rounded-2xl p-4 hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                              className="bg-white border border-gray-200 rounded-3xl p-4 hover:shadow-lg transition-all duration-200 cursor-pointer group"
                             >
                               <div className="flex gap-4">
                                 <div className="relative flex-shrink-0">
                                   <Avatar className="w-16 h-16">
                                     <AvatarImage src={getAvatarUrl(agent.image_url)} />
-                                    <AvatarFallback>{agent.icon || agent.name?.[0] || '🤖'}</AvatarFallback>
+                                    <AvatarFallback className={cn(categoryStyle.bgColor, categoryStyle.textColor)}>
+                                      <CategoryIcon className="w-6 h-6" />
+                                    </AvatarFallback>
                                   </Avatar>
                                   {agent.bestScore && (
                                     <div className={cn(
@@ -1188,33 +1223,27 @@ export default function AIChatHome() {
                                         {formatLastInteraction(agent.lastConversationDate)}
                                       </span>
                                       {agent.category && (
-                                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                                          {agent.category}
-                                        </span>
+                                        <div className={cn(
+                                          "flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border",
+                                          categoryStyle.bgColor,
+                                          categoryStyle.textColor,
+                                          categoryStyle.borderColor
+                                        )}>
+                                          <CategoryIcon className="w-3 h-3" />
+                                          <span>{agent.category}</span>
+                                        </div>
                                       )}
                                     </div>
                                   </div>
                                   <p className="text-sm text-gray-500 line-clamp-2">
                                     {agent.description}
                                   </p>
-                                  {agent.progress && agent.progress.average_session_score && (
-                                    <div className="mt-2 flex items-center gap-2">
-                                      <span className="text-xs text-gray-600">Average score:</span>
-                                      <span className={cn(
-                                        "text-sm font-semibold",
-                                        agent.progress.average_session_score >= 85 ? "text-green-600" :
-                                        agent.progress.average_session_score >= 70 ? "text-blue-600" :
-                                        agent.progress.average_session_score >= 50 ? "text-yellow-600" :
-                                        "text-red-600"
-                                      )}>
-                                        {agent.progress.average_session_score.toFixed(0)}%
-                                      </span>
-                                    </div>
-                                  )}
+                             
                                 </div>
                               </div>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     )}
