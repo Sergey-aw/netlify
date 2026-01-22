@@ -791,15 +791,25 @@ export default function AIChatHome() {
 
       {/* Header */}
       <header className="bg-white px-4 py-4">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
+        <div className={cn(
+          "flex items-center max-w-7xl mx-auto",
+          selectedConversation ? "justify-between" : ""
+        )}>
           <Button 
             variant="ghost" 
             size="icon" 
-            className="-ml-2"
+            className="-ml-2 flex-shrink-0"
             onClick={() => setShowSidebar(!showSidebar)}
           >
             {showSidebar ? <ChevronLeft className="w-6 h-6 text-gray-600" /> : <PanelLeft className="w-6 h-6 text-gray-600" />}
           </Button>
+          
+          {!selectedConversation && (
+            <div className="flex-1 flex justify-center">
+              <img src={Logo} alt="JustTalk AI" className="h-7" />
+            </div>
+          )}
+
           {selectedConversation && conversationFeedback?.language_feedback && (
             <Button
               onClick={() => setShowFeedbackDrawer(true)}
@@ -818,7 +828,11 @@ export default function AIChatHome() {
               )}
             </Button>
           )}
-          <Avatar className="w-10 h-10 cursor-pointer" onClick={() => navigate('/profile')}>
+
+          <Avatar className={cn(
+            "w-10 h-10 cursor-pointer flex-shrink-0",
+            !selectedConversation && "ml-auto"
+          )} onClick={() => navigate('/profile')}>
             <AvatarImage src={user?.profile_photo_url} />
             <AvatarFallback>{user?.display_name?.[0] || 'U'}</AvatarFallback>
           </Avatar>
@@ -956,19 +970,17 @@ export default function AIChatHome() {
           ) : (
             // Default Home View - Show recent agents if available
             <>
-              <div className="flex justify-center pt-8">
+              {/* <div className="flex justify-center pt-8">
                 <img src={Logo} alt="JustTalk AI" className="h-8" />
-              </div>
+              </div> */}
               <main className="flex-1 flex flex-col max-w-2xl mx-auto w-full px-4 overflow-y-auto">
                 {recentAgents && (recentAgents.personal?.length > 0 || recentAgents.multiStep?.length > 0 || recentAgents.singleStep?.length > 0) ? (
                   // Recent Agents View - Categorized
-                  <div className="py-8 space-y-8">
+                  <div className="py-8 space-y-4">
                     {/* Welcome Header */}
                     <div className="text-center">
-                      <h1 className="text-2xl font-semibold text-gray-900 mb-1">
-                        Welcome back, {user?.display_name || 'Student'}!
-                      </h1>
-                      <p className="text-gray-500">
+                   
+                      <p className="text-gray-500 text-sm">
                         Continue your learning journey
                       </p>
                     </div>
@@ -978,14 +990,14 @@ export default function AIChatHome() {
                       <div className="space-y-4">
                         <div className="flex items-center gap-2">
                           <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
-                          <h2 className="text-xl font-semibold text-gray-900">Personal Agents</h2>
+                          <h2 className="text-lg font-semibold text-gray-900">Personal Scenarios</h2>
                         </div>
                         <div className="space-y-3">
                           {recentAgents.personal.map((agent: any) => (
                             <div
                               key={agent.id}
                               onClick={() => handleAgentCardClick(agent)}
-                              className="bg-white border border-gray-200 rounded-2xl p-4 hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                              className="bg-white border border-gray-200 rounded-3xl p-4 hover:shadow-lg transition-all duration-200 cursor-pointer group"
                             >
                               <div className="flex gap-4">
                                 <div className="relative flex-shrink-0">
@@ -1003,8 +1015,8 @@ export default function AIChatHome() {
                                   )}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex items-start justify-between gap-2 mb-2">
-                                    <h3 className="font-semibold text-gray-900 group-hover:text-[hsl(var(--brand-blue))] transition-colors">
+                                  <div className="flex items-start justify-between gap-2 mb-0">
+                                    <h3 className="font-medium text-gray-900 group-hover:text-[hsl(var(--brand-blue))] transition-colors">
                                       {agent.name}
                                     </h3>
                                     <div className="flex flex-col items-end gap-1">
@@ -1028,8 +1040,8 @@ export default function AIChatHome() {
                     {recentAgents.multiStep && recentAgents.multiStep.length > 0 && (
                       <div className="space-y-4">
                         <div className="flex items-center gap-2">
-                          <Play className="w-5 h-5 text-purple-500" />
-                          <h2 className="text-xl font-semibold text-gray-900">Learning Paths</h2>
+                          <Play className="w-5 h-5 text-blue-500" />
+                          <h2 className="text-xl font-medium text-gray-900">Learning Paths</h2>
                         </div>
                         <div className="space-y-4">
                           {recentAgents.multiStep.map((agent: any) => {
@@ -1040,7 +1052,7 @@ export default function AIChatHome() {
                               <div
                                 key={agent.id}
                                 onClick={() => handleAgentCardClick(agent)}
-                                className="bg-white border border-gray-200 rounded-2xl p-4 hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                                className="bg-white border border-gray-200 rounded-3xl p-4 hover:shadow-lg transition-all duration-200 cursor-pointer group"
                               >
                                 <div className="space-y-4">
                                   {/* Header with current step info */}
@@ -1050,13 +1062,11 @@ export default function AIChatHome() {
                                         <AvatarImage src={getAvatarUrl(currentStep.image_url)} />
                                         <AvatarFallback>{currentStep.icon || currentStep.name?.[0] || '🎯'}</AvatarFallback>
                                       </Avatar>
-                                      <div className="absolute -bottom-1 -right-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-300">
-                                        {agent.currentStepIndex + 1}/{agent.steps.length}
-                                      </div>
+                                   
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <div className="text-xs text-gray-500 mb-1">{agent.name}</div>
-                                      <h3 className="font-semibold text-gray-900 group-hover:text-[hsl(var(--brand-blue))] transition-colors mb-1">
+                                      <h3 className="font-medium text-gray-900 group-hover:text-[hsl(var(--brand-blue))] transition-colors mb-0">
                                         {currentStep.name}
                                       </h3>
                                       <p className="text-sm text-gray-500 line-clamp-2">
@@ -1080,7 +1090,7 @@ export default function AIChatHome() {
                                     </div>
                                     <div className="w-full bg-gray-200 rounded-full h-2">
                                       <div
-                                        className="bg-gradient-to-r from-blue-500 to-purple-500 h-full rounded-full transition-all duration-300"
+                                        className="bg-[HSL(var(--brand-blue))] h-full rounded-full transition-all duration-300"
                                         style={{ width: `${(completedSteps / agent.steps.length) * 100}%` }}
                                       />
                                     </div>
