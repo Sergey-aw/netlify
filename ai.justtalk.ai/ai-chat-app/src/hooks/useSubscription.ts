@@ -18,6 +18,8 @@ export interface Subscription {
   stripe_customer_id: string | null;
   created_at: string;
   updated_at: string;
+  trial_days?: number | null;
+  trial_variant?: string | null;
   // Computed field - not from database
   messages_used_this_period?: number;
 }

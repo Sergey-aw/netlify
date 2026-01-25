@@ -133,7 +133,7 @@ export async function getConversationTranscript(conversationId: string) {
 /**
  * Create Stripe checkout session for subscription
  */
-export async function createCheckoutSession(priceId: string, coupon?: string) {
+export async function createCheckoutSession(priceId: string, coupon?: string, trialDays?: number, trialVariant?: string) {
   console.log('createCheckoutSession: Starting...');
   
   const { data: { session } } = await supabase.auth.getSession();
@@ -145,20 +145,30 @@ export async function createCheckoutSession(priceId: string, coupon?: string) {
     tokenPreview: accessToken ? `${accessToken.substring(0, 30)}...` : 'MISSING',
     userId: session?.user?.id,
     isAnonymous: session?.user?.is_anonymous,
-    coupon: coupon || 'none'
+    coupon: coupon || 'none',
+    trialDays: trialDays || 'none',
+    trialVariant: trialVariant || 'none'
   });
 
   if (!accessToken) {
     throw new Error('Not authenticated');
   }
 
-  const requestBody: { priceId: string; coupon?: string } = {
+  const requestBody: { priceId: string; coupon?: string; trialDays?: number; trialVariant?: string } = {
     priceId: priceId,
   };
   
   // Add coupon if provided
   if (coupon) {
     requestBody.coupon = coupon;
+  }
+  
+  // Add trial days if provided
+  if (trialDays && trialDays > 0) {
+    requestBody.trialDays = trialDays;
+    if (trialVariant) {
+      requestBody.trialVariant = trialVariant;
+    }
   }
 
   console.log('createCheckoutSession: Sending request', {

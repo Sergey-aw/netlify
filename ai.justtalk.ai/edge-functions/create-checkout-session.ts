@@ -164,9 +164,14 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { priceId, coupon } = await req.json()
+    const { priceId, coupon, trialDays, trialVariant } = await req.json()
     
-    console.log('Edge function: Request body parsed', { priceId, coupon: coupon || 'none' })
+    console.log('Edge function: Request body parsed', { 
+      priceId, 
+      coupon: coupon || 'none',
+      trialDays: trialDays || 'none',
+      trialVariant: trialVariant || 'none'
+    })
 
     if (!priceId) {
       return new Response(
@@ -311,6 +316,17 @@ serve(async (req) => {
       },
       // Allow customers to enter promotion codes during checkout
       allow_promotion_codes: true,
+    }
+
+    // Add trial period if provided
+    if (trialDays && trialDays > 0) {
+      console.log('Edge function: Adding trial period', { trialDays, trialVariant })
+      sessionParams.subscription_data!.trial_period_days = trialDays
+      // Store trial info in metadata
+      sessionParams.subscription_data!.metadata!.trial_days = trialDays.toString()
+      if (trialVariant) {
+        sessionParams.subscription_data!.metadata!.trial_variant = trialVariant
+      }
     }
 
     // If a coupon code was provided, apply it

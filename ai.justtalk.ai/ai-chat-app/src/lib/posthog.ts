@@ -325,4 +325,57 @@ export const trackEvent = (eventName: string, properties?: Record<string, any>) 
   }
 };
 
+// Trial Period Experiment
+export interface TrialConfig {
+  trial_days: number;
+  variant: string;
+}
+
+/**
+ * Get trial period configuration from PostHog feature flag experiment
+ * Returns null if experiment is not active or user is in control group
+ */
+export const getTrialConfig = (): TrialConfig | null => {
+  const ph = getPostHog();
+  if (!ph) return null;
+
+  const trialConfig = ph.getFeatureFlagPayload('trial-period-experiment') as TrialConfig | undefined;
+  
+  if (trialConfig) {
+    console.log('[Trial Experiment] Config loaded:', trialConfig);
+  }
+  
+  return trialConfig || null;
+};
+
+/**
+ * Track trial offer shown to user
+ */
+export const trackTrialOfferShown = (variant: string, trialDays: number, billingPeriod: string, planType: string) => {
+  const ph = getPostHog();
+  if (ph) {
+    ph.capture('trial_offer_shown', {
+      variant,
+      trial_days: trialDays,
+      billing_period: billingPeriod,
+      plan_type: planType,
+    });
+  }
+};
+
+/**
+ * Track trial started
+ */
+export const trackTrialStarted = (variant: string, trialDays: number, subscriptionType: string, billingPeriod: string) => {
+  const ph = getPostHog();
+  if (ph) {
+    ph.capture('trial_started', {
+      variant,
+      trial_days: trialDays,
+      subscription_type: subscriptionType,
+      billing_period: billingPeriod,
+    });
+  }
+};
+
 export { posthog };

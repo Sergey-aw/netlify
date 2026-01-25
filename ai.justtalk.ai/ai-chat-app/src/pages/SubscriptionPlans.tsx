@@ -12,7 +12,7 @@ import { supabase } from '@/lib/supabase';
 import { createCheckoutSession } from '@/lib/justai-api';
 import { useSession } from '@/hooks/useSession';
 import { updateOnboardingStep } from '@/lib/onboarding-state';
-import { trackPaywallViewed, trackPlanSelected, trackCheckoutStarted } from '@/lib/posthog';
+import { trackPaywallViewed, trackPlanSelected, trackCheckoutStarted, getTrialConfig, trackTrialOfferShown, type TrialConfig } from '@/lib/posthog';
 import type { SubscriptionPlan } from '@/lib/justai-types';
 import { AppSidebar } from '@/components/AppSidebar';
 import bgWelcome from '@/assets/bg_welcome.jpg';
@@ -27,6 +27,9 @@ export default function SubscriptionPlans() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  
+  // Trial period experiment state
+  const [trialConfig, setTrialConfig] = useState<TrialConfig | null>(null);
   
   // Track user's manual selections per billing cycle
   const [userSelections, setUserSelections] = useState<Record<'weekly' | 'monthly' | 'annual', string | null>>({
@@ -49,6 +52,16 @@ export default function SubscriptionPlans() {
   
   // Use session hook for better session management
   const { session, user, isAuthenticated, isAnonymous } = useSession();
+  
+  // Load trial configuration from PostHog feature flag
+  useEffect(() => {
+    const config = getTrialConfig();
+    setTrialConfig(config);
+    
+    if (config) {
+      console.log('[Trial Experiment] Loaded trial config:', config);
+    }
+  }, []);
   
   // PostHog feature flag for A/B test - get variant key
   const layoutVariant = useFeatureFlagVariant('subscription-plans-vertical-layout', 'false');
@@ -284,6 +297,25 @@ export default function SubscriptionPlans() {
         );
       }
       
+      // Check trial experiment eligibility: only for monthly billing
+      let trialDays: number | undefined;
+      let trialVariant: string | undefined;
+      
+      if (plan && plan.billing_period === 'monthly' && trialConfig && trialConfig.trial_days > 0) {
+        // Check if plan is Basic or Premium (exclude Unlimited or other tiers)
+        const eligiblePlanTypes = ['basic', 'premium'];
+        
+        if (eligiblePlanTypes.includes(plan.plan_type.toLowerCase())) {
+          trialDays = trialConfig.trial_days;
+          trialVariant = trialConfig.variant;
+          
+          console.log('[Trial Experiment] Applying trial:', { trialDays, trialVariant, planType: plan.plan_type });
+          
+          // Track trial offer shown
+          trackTrialOfferShown(trialVariant, trialDays, plan.billing_period, plan.plan_type);
+        }
+      }
+      
       // Check if authenticated
       // (!isAuthenticated) {
       //   alert('Please sign in to subscribe. Your session has expired.');
@@ -298,10 +330,10 @@ export default function SubscriptionPlans() {
       // Update onboarding state to track payment in progress
       updateOnboardingStep('subscription-payment');
       
-      console.log('Calling createCheckoutSession with priceId:', priceId);
+      console.log('Calling createCheckoutSession with priceId:', priceId, 'trialDays:', trialDays);
       
-      // Create checkout session
-      const checkoutUrl = await createCheckoutSession(priceId);
+      // Create checkout session with optional trial
+      const checkoutUrl = await createCheckoutSession(priceId, undefined, trialDays, trialVariant);
       
       console.log('Checkout URL received:', checkoutUrl);
       window.location.href = checkoutUrl;
@@ -701,6 +733,11 @@ export default function SubscriptionPlans() {
                 : plan.price_cents / 100; // For monthly, show the monthly price
               const isSelected = selectedPlan === plan.id;
               
+              // Check if trial applies to this plan
+              const eligibleForTrial = billingCycle === 'monthly' && 
+                ['basic', 'premium'].includes(plan.plan_type.toLowerCase()) &&
+                trialConfig && trialConfig.trial_days > 0;
+              
               // Get features list
               const features = plan.features;
               const isStructured = features && typeof features === 'object' && !Array.isArray(features) && 'items' in features;
@@ -771,9 +808,15 @@ export default function SubscriptionPlans() {
                               {billingCycle === 'weekly' ? 'wk' : 'mo'}
                             </span>
                           </div>
-                          <span className='text-[12px] font-normal text-gray-500'>
-                            {billingCycle === 'weekly' ? 'billed weekly' : billingCycle === 'annual' ? 'billed yearly' : 'billed monthly'}
-                          </span>
+                          {eligibleForTrial ? (
+                            <span className="text-[12px] font-medium text-blue-500">
+                              {trialConfig!.trial_days}-day free trial
+                            </span>
+                          ) : (
+                            <span className='text-[12px] font-normal text-gray-500'>
+                              {billingCycle === 'weekly' ? 'billed weekly' : billingCycle === 'annual' ? 'billed yearly' : 'billed monthly'}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </>
@@ -803,15 +846,23 @@ export default function SubscriptionPlans() {
                       
                       {/* Price and plan name at top */}
                       <div className="flex flex-col gap-3">
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-[20px] font-semibold text-black leading-none">
-                            ${billingCycle === 'annual' 
-                              ? (plan.price_cents / 100).toFixed(2)
-                              : monthlyPrice.toFixed(2)}
-                          </span>
-                          <span className="text-[14px] text-gray-600">
-                            / {billingCycle === 'weekly' ? 'week' : billingCycle === 'annual' ? 'year' : 'month'}
-                          </span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-[20px] font-semibold text-black leading-none">
+                              ${billingCycle === 'annual' 
+                                ? (plan.price_cents / 100).toFixed(2)
+                                : monthlyPrice.toFixed(2)}
+                            </span>
+                            <span className="text-[14px] text-gray-600">
+                              / {billingCycle === 'weekly' ? 'week' : billingCycle === 'annual' ? 'year' : 'month'}
+                            </span>
+                          </div>
+                          {eligibleForTrial && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 border border-green-200 rounded-md text-[12px] font-medium text-green-700">
+                              <Sparkles className="w-3 h-3 text-green-600" />
+                              {trialConfig!.trial_days}-day free trial
+                            </span>
+                          )}
                         </div>
                         {/* <p className="text-[14px] text-gray-700 font-normal">
                           {plan.plan_name} monthly usage
@@ -931,6 +982,15 @@ export default function SubscriptionPlans() {
               );
             })}
           </div>
+          
+          {/* Trial message - shown when any plan has trial */}
+          {billingCycle === 'monthly' && trialConfig && trialConfig.trial_days > 0 && (
+            <div className="flex justify-center -mt-2">
+              <p className="text-sm text-gray-400">
+                You won't be charged today
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Continue Button - Only shown in horizontal layout */}
