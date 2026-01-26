@@ -151,17 +151,25 @@ export function useFeatureFlagPayload<T = any>(
 
     // Function to update payload
     const updatePayload = () => {
-      const newPayload = posthog.getFeatureFlagPayload(flagKey) as T | undefined;
-      console.log('[PostHog Hook] Fetching feature flag payload:', { 
-        flagKey, 
-        newPayload,
-        type: typeof newPayload,
-        isObject: typeof newPayload === 'object',
-        keys: newPayload ? Object.keys(newPayload) : [],
-        stringified: JSON.stringify(newPayload),
-        timestamp: new Date().toISOString(),
-      });
-      setPayload(newPayload ?? null);
+      // CRITICAL: Must call getFeatureFlag FIRST to evaluate the flag
+      // This registers the flag check in PostHog activity
+      const variant = posthog.getFeatureFlag(flagKey);
+      
+      // Only get payload if flag is enabled (not false, not undefined)
+      if (variant && variant !== false) {
+        const newPayload = posthog.getFeatureFlagPayload(flagKey) as T | undefined;
+        console.log('[PostHog Hook] Feature flag evaluated:', { 
+          flagKey, 
+          variant,
+          newPayload,
+          type: typeof newPayload,
+          stringified: JSON.stringify(newPayload),
+        });
+        setPayload(newPayload ?? null);
+      } else {
+        console.log('[PostHog Hook] Feature flag not enabled:', { flagKey, variant });
+        setPayload(null);
+      }
     };
 
     // Get initial payload value
@@ -174,28 +182,10 @@ export function useFeatureFlagPayload<T = any>(
       updatePayload();
     });
 
-    // IMPORTANT: Also poll for changes to catch dev toolbar overrides
-    // Dev toolbar overrides might not trigger onFeatureFlags callback
-    const pollInterval = setInterval(() => {
-      const currentPayload = posthog.getFeatureFlagPayload(flagKey) as T | undefined;
-      const currentStringified = JSON.stringify(currentPayload);
-      const previousStringified = JSON.stringify(payload);
-      
-      if (currentStringified !== previousStringified) {
-        console.log('[PostHog Hook] Detected payload change via polling:', {
-          flagKey,
-          previous: previousStringified,
-          current: currentStringified,
-        });
-        updatePayload();
-      }
-    }, 1000); // Poll every second
-
     return () => {
       if (unsubscribe) {
         unsubscribe();
       }
-      clearInterval(pollInterval);
     };
   }, [flagKey]);
 
