@@ -38,6 +38,7 @@ export interface SubscriptionAccess {
   canStartVoiceSession: boolean;
   isLoading: boolean;
   error: Error | null;
+  refetch: () => void;
 }
 
 /**
@@ -47,7 +48,7 @@ export interface SubscriptionAccess {
 export function useSubscription(): SubscriptionAccess {
   const { user } = useSession();
 
-  const { data: subscriptionData, isLoading, error } = useQuery({
+  const { data: subscriptionData, isLoading, error, refetch } = useQuery({
     queryKey: ['subscription', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
@@ -102,8 +103,8 @@ export function useSubscription(): SubscriptionAccess {
       } as Subscription;
     },
     enabled: !!user?.id,
-    staleTime: 30000, // Consider fresh for 30 seconds (shorter for real-time updates)
-    refetchInterval: 60000, // Refetch every 1 minute to keep usage current
+    staleTime: 30000, // Consider fresh for 30 seconds
+    refetchInterval: 60000, // Refetch every minute to keep usage current
   });
 
   const subscription = subscriptionData ?? null;
@@ -141,5 +142,6 @@ export function useSubscription(): SubscriptionAccess {
     canStartVoiceSession,
     isLoading,
     error: error as Error | null,
+    refetch,
   };
 }

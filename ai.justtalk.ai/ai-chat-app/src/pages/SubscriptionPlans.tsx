@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
-import { createCheckoutSession } from '@/lib/justai-api';
 import { useSession } from '@/hooks/useSession';
 import { updateOnboardingStep } from '@/lib/onboarding-state';
 import { trackPaywallViewed, trackPlanSelected, trackCheckoutStarted, trackTrialOfferShown, type TrialConfig } from '@/lib/posthog';
@@ -402,11 +401,22 @@ export default function SubscriptionPlans() {
       
       console.log('Calling createCheckoutSession with priceId:', priceId, 'trialDays:', trialDays);
       
-      // Create checkout session with optional trial
-      const checkoutUrl = await createCheckoutSession(priceId, undefined, trialDays, trialVariant);
+      // Navigate to embedded checkout page with plan details
+      const checkoutParams = new URLSearchParams({
+        priceId,
+        planName: plan?.plan_name || 'Selected Plan',
+        planPrice: plan?.price_cents.toString() || '0',
+        billingPeriod: plan?.billing_period || 'monthly',
+      });
       
-      console.log('Checkout URL received:', checkoutUrl);
-      window.location.href = checkoutUrl;
+      if (trialDays) {
+        checkoutParams.set('trialDays', trialDays.toString());
+      }
+      if (trialVariant) {
+        checkoutParams.set('trialVariant', trialVariant);
+      }
+      
+      navigate(`/checkout?${checkoutParams.toString()}`);
     } catch (error) {
       console.error('Subscription error caught:', error);
       

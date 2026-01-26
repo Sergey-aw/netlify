@@ -28,6 +28,7 @@ import ContactSupport from './pages/ContactSupport'
 import SubscriptionPlans from './pages/SubscriptionPlans'
 import SubscriptionStatus from './pages/SubscriptionStatus'
 import SubscriptionManagement from './pages/SubscriptionManagement'
+import CheckoutPage from './pages/CheckoutPage'
 import OnboardingGoals from './pages/onboarding/OnboardingGoals'
 import OnboardingInterests from './pages/onboarding/OnboardingInterests'
 import OnboardingPreferences from './pages/onboarding/OnboardingPreferences'
@@ -87,6 +88,7 @@ function App() {
             <Route path="/subscription-status" element={<ProtectedRoute><SubscriptionStatus /></ProtectedRoute>} />
             <Route path="/subscription/plans" element={<SubscriptionPlans />} />
             <Route path="/subscription/manage" element={<ProtectedRoute><SubscriptionManagement /></ProtectedRoute>} />
+            <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>

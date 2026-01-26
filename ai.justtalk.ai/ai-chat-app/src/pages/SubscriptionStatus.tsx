@@ -15,12 +15,37 @@ export default function SubscriptionStatus() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [hasTrackedActivation, setHasTrackedActivation] = useState(false);
-  const { subscription, voiceSecondsUsed, voiceSecondsRemaining, voiceMinutesLimit, isLoading } = useSubscription();
+  const { subscription, voiceSecondsUsed, voiceSecondsRemaining, voiceMinutesLimit, isLoading, refetch } = useSubscription();
   const { user, getEmail } = useSession();
 
-  // Handle success parameter
+  // Check if we're coming from checkout
+  const isPostCheckout = searchParams.get('success') === 'true' || !!searchParams.get('session_id');
+
+  // Poll for subscription after checkout (webhook may take a moment)
   useEffect(() => {
-    if (searchParams.get('success') === 'true') {
+    if (!isPostCheckout || subscription) return;
+    
+    // Refetch every 2 seconds until subscription appears (max 30 seconds)
+    let attempts = 0;
+    const maxAttempts = 15;
+    
+    const pollInterval = setInterval(() => {
+      attempts++;
+      console.log(`Polling for subscription... attempt ${attempts}/${maxAttempts}`);
+      refetch();
+      
+      if (attempts >= maxAttempts) {
+        clearInterval(pollInterval);
+        console.log('Max polling attempts reached');
+      }
+    }, 2000);
+    
+    return () => clearInterval(pollInterval);
+  }, [isPostCheckout, subscription, refetch]);
+
+  // Handle success parameter (from redirect checkout) or session_id (from embedded checkout)
+  useEffect(() => {
+    if (isPostCheckout) {
       setShowSuccessMessage(true);
       // Clear the parameter after showing message
       const timer = setTimeout(() => {
@@ -34,7 +59,7 @@ export default function SubscriptionStatus() {
   // Track subscription activation when subscription data loads after Stripe success
   useEffect(() => {
     const trackActivation = async () => {
-      if (searchParams.get('success') === 'true' && subscription && !hasTrackedActivation && user?.id) {
+      if (isPostCheckout && subscription && !hasTrackedActivation && user?.id) {
         // First, ensure PostHog has the user's email
         const email = await getEmail();
         
@@ -57,7 +82,7 @@ export default function SubscriptionStatus() {
     };
     
     trackActivation();
-  }, [searchParams, subscription, hasTrackedActivation, user, getEmail]);
+  }, [isPostCheckout, subscription, hasTrackedActivation, user, getEmail]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center p-8">Loading...</div>;

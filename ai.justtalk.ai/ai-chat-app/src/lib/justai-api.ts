@@ -132,8 +132,15 @@ export async function getConversationTranscript(conversationId: string) {
 
 /**
  * Create Stripe checkout session for subscription
+ * @param embedded - If true, returns clientSecret for embedded checkout; if false, returns redirect URL
  */
-export async function createCheckoutSession(priceId: string, coupon?: string, trialDays?: number, trialVariant?: string) {
+export async function createCheckoutSession(
+  priceId: string, 
+  coupon?: string, 
+  trialDays?: number, 
+  trialVariant?: string,
+  embedded?: boolean
+): Promise<{ url?: string; clientSecret?: string }> {
   console.log('createCheckoutSession: Starting...');
   
   const { data: { session } } = await supabase.auth.getSession();
@@ -147,14 +154,21 @@ export async function createCheckoutSession(priceId: string, coupon?: string, tr
     isAnonymous: session?.user?.is_anonymous,
     coupon: coupon || 'none',
     trialDays: trialDays || 'none',
-    trialVariant: trialVariant || 'none'
+    trialVariant: trialVariant || 'none',
+    embedded: embedded || false
   });
 
   if (!accessToken) {
     throw new Error('Not authenticated');
   }
 
-  const requestBody: { priceId: string; coupon?: string; trialDays?: number; trialVariant?: string } = {
+  const requestBody: { 
+    priceId: string; 
+    coupon?: string; 
+    trialDays?: number; 
+    trialVariant?: string;
+    embedded?: boolean;
+  } = {
     priceId: priceId,
   };
   
@@ -169,6 +183,11 @@ export async function createCheckoutSession(priceId: string, coupon?: string, tr
     if (trialVariant) {
       requestBody.trialVariant = trialVariant;
     }
+  }
+
+  // Add embedded flag if provided
+  if (embedded) {
+    requestBody.embedded = embedded;
   }
 
   console.log('createCheckoutSession: Sending request', {
@@ -204,8 +223,15 @@ export async function createCheckoutSession(priceId: string, coupon?: string, tr
   }
 
   const data = await response.json();
-  console.log('createCheckoutSession: Success', { hasUrl: !!data.url });
-  return data.url as string;
+  console.log('createCheckoutSession: Success', { 
+    hasUrl: !!data.url, 
+    hasClientSecret: !!data.clientSecret 
+  });
+  
+  return {
+    url: data.url,
+    clientSecret: data.clientSecret
+  };
 }
 
 /**
