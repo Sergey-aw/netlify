@@ -28,7 +28,7 @@ import AvatarCropModal from '@/components/AvatarCropModal';
 export default function Profile() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const { subscription, voiceSecondsRemaining } = useSubscription();
+  const { subscription } = useSubscription();
   const [showSidebar, setShowSidebar] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showCropModal, setShowCropModal] = useState(false);
@@ -255,18 +255,6 @@ export default function Profile() {
         fileInputRef.current.value = '';
       }
     }
-  };
-
-  // Format time remaining for display
-  const formatTimeRemaining = (seconds: number | null): string => {
-    if (seconds === null) return '∞';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes >= 60) {
-      const hours = Math.floor(minutes / 60);
-      const mins = minutes % 60;
-      return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-    }
-    return `${minutes}m`;
   };
 
   const stats = [
