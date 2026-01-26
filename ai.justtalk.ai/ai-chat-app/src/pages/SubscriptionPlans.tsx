@@ -53,6 +53,16 @@ export default function SubscriptionPlans() {
   // Use session hook for better session management
   const { session, user, isAuthenticated, isAnonymous } = useSession();
   
+  // Log trial config changes for debugging
+  useEffect(() => {
+    console.log('[Trial Experiment] Trial config updated:', {
+      trialConfig,
+      hasConfig: !!trialConfig,
+      trial_days: trialConfig?.trial_days,
+      variant: trialConfig?.variant,
+    });
+  }, [trialConfig]);
+  
   // PostHog feature flag for A/B test - get variant key
   const layoutVariant = useFeatureFlagVariant('subscription-plans-vertical-layout', 'false');
   
@@ -759,6 +769,19 @@ export default function SubscriptionPlans() {
               const eligibleForTrial = billingCycle === 'monthly' && 
                 ['basic', 'premium'].includes(plan.plan_type.toLowerCase()) &&
                 trialConfig && trialConfig.trial_days > 0;
+              
+              // Debug log for trial eligibility
+              if (billingCycle === 'monthly') {
+                console.log('[Trial Experiment] Plan eligibility check:', {
+                  plan_name: plan.plan_name,
+                  plan_type: plan.plan_type,
+                  billing_cycle: billingCycle,
+                  is_eligible_type: ['basic', 'premium'].includes(plan.plan_type.toLowerCase()),
+                  has_trial_config: !!trialConfig,
+                  trial_days: trialConfig?.trial_days,
+                  eligibleForTrial,
+                });
+              }
               
               // Get features list
               const features = plan.features;

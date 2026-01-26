@@ -155,6 +155,9 @@ export function useFeatureFlagPayload<T = any>(
       flagKey,
       initialPayload,
       type: typeof initialPayload,
+      isObject: typeof initialPayload === 'object',
+      keys: initialPayload ? Object.keys(initialPayload) : [],
+      stringified: JSON.stringify(initialPayload),
     });
     setPayload(initialPayload ?? null);
     setIsLoading(false);
@@ -162,7 +165,14 @@ export function useFeatureFlagPayload<T = any>(
     // Listen for flag changes
     const unsubscribe = posthog.onFeatureFlags(() => {
       const newPayload = posthog.getFeatureFlagPayload(flagKey) as T | undefined;
-      console.log('[PostHog Hook] Feature flag payload changed:', { flagKey, newPayload });
+      console.log('[PostHog Hook] Feature flag payload changed:', { 
+        flagKey, 
+        newPayload,
+        type: typeof newPayload,
+        isObject: typeof newPayload === 'object',
+        keys: newPayload ? Object.keys(newPayload) : [],
+        stringified: JSON.stringify(newPayload),
+      });
       setPayload(newPayload ?? null);
     });
 
