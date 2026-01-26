@@ -160,6 +160,38 @@ export default function SubscriptionPlans() {
     }
   }, [selectedPlanName, bannerDismissed]);
 
+  // Track trial offer shown when plans are loaded and trial config is available
+  useEffect(() => {
+    if (!plans || plans.length === 0) return;
+    if (!trialConfig || !trialConfig.trial_days) return;
+    if (billingCycle !== 'monthly') return; // Only track for monthly plans
+    
+    // Track trial offer shown for each eligible plan
+    const eligiblePlanTypes = ['basic', 'premium'];
+    const eligiblePlans = plans.filter(plan => 
+      eligiblePlanTypes.includes(plan.plan_type.toLowerCase())
+    );
+    
+    if (eligiblePlans.length > 0) {
+      console.log('[Trial Experiment] Trial offers visible on paywall:', {
+        variant: trialConfig.variant,
+        trial_days: trialConfig.trial_days,
+        eligible_plans: eligiblePlans.map(p => p.plan_type),
+        billing_cycle: billingCycle,
+      });
+      
+      // Track for each eligible plan
+      eligiblePlans.forEach(plan => {
+        trackTrialOfferShown(
+          trialConfig.variant,
+          trialConfig.trial_days,
+          plan.billing_period,
+          plan.plan_type
+        );
+      });
+    }
+  }, [plans, trialConfig, billingCycle]);
+
   // Fetch monthly plans
   const { data: monthlyPlans, isLoading: isLoadingMonthly } = useQuery({
     queryKey: ['subscription-plans', 'monthly'],
@@ -309,10 +341,10 @@ export default function SubscriptionPlans() {
           trialDays = trialConfig.trial_days;
           trialVariant = trialConfig.variant;
           
-          console.log('[Trial Experiment] Applying trial:', { trialDays, trialVariant, planType: plan.plan_type });
+          console.log('[Trial Experiment] Applying trial to checkout:', { trialDays, trialVariant, planType: plan.plan_type });
           
-          // Track trial offer shown
-          trackTrialOfferShown(trialVariant, trialDays, plan.billing_period, plan.plan_type);
+          // Note: Trial offer shown is tracked when paywall loads, not here
+          // This is just preparing the trial parameters for the checkout session
         }
       }
       
