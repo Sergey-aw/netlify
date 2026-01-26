@@ -160,38 +160,6 @@ export default function SubscriptionPlans() {
     }
   }, [selectedPlanName, bannerDismissed]);
 
-  // Track trial offer shown when plans are loaded and trial config is available
-  useEffect(() => {
-    if (!plans || plans.length === 0) return;
-    if (!trialConfig || !trialConfig.trial_days) return;
-    if (billingCycle !== 'monthly') return; // Only track for monthly plans
-    
-    // Track trial offer shown for each eligible plan
-    const eligiblePlanTypes = ['basic', 'premium'];
-    const eligiblePlans = plans.filter(plan => 
-      eligiblePlanTypes.includes(plan.plan_type.toLowerCase())
-    );
-    
-    if (eligiblePlans.length > 0) {
-      console.log('[Trial Experiment] Trial offers visible on paywall:', {
-        variant: trialConfig.variant,
-        trial_days: trialConfig.trial_days,
-        eligible_plans: eligiblePlans.map(p => p.plan_type),
-        billing_cycle: billingCycle,
-      });
-      
-      // Track for each eligible plan
-      eligiblePlans.forEach(plan => {
-        trackTrialOfferShown(
-          trialConfig.variant,
-          trialConfig.trial_days,
-          plan.billing_period,
-          plan.plan_type
-        );
-      });
-    }
-  }, [plans, trialConfig, billingCycle]);
-
   // Fetch monthly plans
   const { data: monthlyPlans, isLoading: isLoadingMonthly } = useQuery({
     queryKey: ['subscription-plans', 'monthly'],
@@ -244,6 +212,38 @@ export default function SubscriptionPlans() {
   // Select plans based on current billing cycle
   const plans = billingCycle === 'weekly' ? weeklyPlans : billingCycle === 'monthly' ? monthlyPlans : annualPlans;
   const isLoading = isLoadingMonthly || isLoadingAnnual || isLoadingWeekly;
+
+  // Track trial offer shown when plans are loaded and trial config is available
+  useEffect(() => {
+    if (!plans || plans.length === 0) return;
+    if (!trialConfig || !trialConfig.trial_days) return;
+    if (billingCycle !== 'monthly') return; // Only track for monthly plans
+    
+    // Track trial offer shown for each eligible plan
+    const eligiblePlanTypes = ['basic', 'premium'];
+    const eligiblePlans = plans.filter(plan => 
+      eligiblePlanTypes.includes(plan.plan_type.toLowerCase())
+    );
+    
+    if (eligiblePlans.length > 0) {
+      console.log('[Trial Experiment] Trial offers visible on paywall:', {
+        variant: trialConfig.variant,
+        trial_days: trialConfig.trial_days,
+        eligible_plans: eligiblePlans.map(p => p.plan_type),
+        billing_cycle: billingCycle,
+      });
+      
+      // Track for each eligible plan
+      eligiblePlans.forEach(plan => {
+        trackTrialOfferShown(
+          trialConfig.variant,
+          trialConfig.trial_days,
+          plan.billing_period,
+          plan.plan_type
+        );
+      });
+    }
+  }, [plans, trialConfig, billingCycle]);
 
   // Set Premium monthly plan as default selection when plans load
   useEffect(() => {
