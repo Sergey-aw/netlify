@@ -149,6 +149,10 @@ export function useFeatureFlagPayload<T = any>(
       return;
     }
 
+    // Force reload feature flags to get latest from server
+    console.log('[PostHog Hook] Reloading feature flags from server...');
+    posthog.reloadFeatureFlags();
+
     // Function to update payload
     const updatePayload = () => {
       // CRITICAL: Must call getFeatureFlag FIRST to evaluate the flag
