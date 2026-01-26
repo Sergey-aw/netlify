@@ -155,8 +155,8 @@ export function useFeatureFlagPayload<T = any>(
       // This registers the flag check in PostHog activity
       const variant = posthog.getFeatureFlag(flagKey);
       
-      // Only get payload if flag is enabled (not false, not undefined)
-      if (variant && variant !== false) {
+      // Only get payload if flag is enabled (variant exists and is not false)
+      if (variant !== undefined && variant !== false) {
         const newPayload = posthog.getFeatureFlagPayload(flagKey) as T | undefined;
         console.log('[PostHog Hook] Feature flag evaluated:', { 
           flagKey, 
