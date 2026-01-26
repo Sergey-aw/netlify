@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useFeatureFlagVariant, usePostHogTracking } from '@/hooks/usePostHog';
-import { useFeatureFlagVariantKey } from 'posthog-js/react';
+import { useFeatureFlagVariantKey, usePostHog } from 'posthog-js/react';
 import { Check, AlertCircle, Crown, ChessQueen, CreditCard, Infinity, Mic, MessageSquare, BookOpen, BarChart, Sparkles, Zap, Volume2, TrendingUp, Target, Brain, Users, Globe, Trophy, Star, CheckCircle2, Award, GraduationCap, Heart, Briefcase, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +13,7 @@ import { supabase } from '@/lib/supabase';
 import { createCheckoutSession } from '@/lib/justai-api';
 import { useSession } from '@/hooks/useSession';
 import { updateOnboardingStep } from '@/lib/onboarding-state';
-import { trackPaywallViewed, trackPlanSelected, trackCheckoutStarted, trackTrialOfferShown, type TrialConfig, getPostHog } from '@/lib/posthog';
+import { trackPaywallViewed, trackPlanSelected, trackCheckoutStarted, trackTrialOfferShown, type TrialConfig } from '@/lib/posthog';
 import type { SubscriptionPlan } from '@/lib/justai-types';
 import { AppSidebar } from '@/components/AppSidebar';
 import bgWelcome from '@/assets/bg_welcome.jpg';
@@ -67,10 +67,12 @@ export default function SubscriptionPlans() {
   // Use session hook for better session management
   const { session, user, isAuthenticated, isAnonymous } = useSession();
   
+  // Get PostHog instance from React context
+  const posthog = usePostHog();
+  
   // Explicitly evaluate trial experiment feature flag when paywall loads
   useEffect(() => {
-    const posthog = getPostHog();
-    if (posthog?.__loaded) {
+    if (posthog) {
       // Explicitly call getFeatureFlag to ensure it's tracked in PostHog activity
       const variant = posthog.getFeatureFlag('trial-period-experiment');
       console.log('[Trial Experiment] Feature flag explicitly evaluated on paywall load:', {
@@ -78,7 +80,7 @@ export default function SubscriptionPlans() {
         timestamp: new Date().toISOString(),
       });
     }
-  }, []); // Run once on mount
+  }, [posthog]); // Run once when posthog is available
   
   // Log trial config changes for debugging
   useEffect(() => {
