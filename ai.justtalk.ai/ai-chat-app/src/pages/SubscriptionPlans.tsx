@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useFeatureFlagVariant, usePostHogTracking } from '@/hooks/usePostHog';
-import { useFeatureFlagPayload } from 'posthog-js/react';
+import { useFeatureFlagVariantKey } from 'posthog-js/react';
 import { Check, AlertCircle, Crown, ChessQueen, CreditCard, Infinity, Mic, MessageSquare, BookOpen, BarChart, Sparkles, Zap, Volume2, TrendingUp, Target, Brain, Users, Globe, Trophy, Star, CheckCircle2, Award, GraduationCap, Heart, Briefcase, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,8 +29,21 @@ export default function SubscriptionPlans() {
   const [showBanner, setShowBanner] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   
-  // Trial period experiment - use hook to react to PostHog changes
-  const trialConfig = useFeatureFlagPayload('trial-period-experiment') as TrialConfig | null | undefined;
+  // Trial period experiment - use official PostHog hooks
+  const trialVariant = useFeatureFlagVariantKey('trial-period-experiment');
+  
+  // Compute trial config from variant (handle boolean variant edge case)
+  const trialConfig: TrialConfig | null = trialVariant && typeof trialVariant === 'string'
+    ? {
+        variant: trialVariant,
+        trial_days: 
+          trialVariant === 'control' ? 0 :
+          trialVariant === 'plan-a' ? 3 :
+          trialVariant === 'plan-b' ? 5 :
+          trialVariant === 'plan-c' ? 7 :
+          0
+      }
+    : null;
   
   // Track user's manual selections per billing cycle
   const [userSelections, setUserSelections] = useState<Record<'weekly' | 'monthly' | 'annual', string | null>>({
