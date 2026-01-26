@@ -30,7 +30,7 @@ export default function SubscriptionPlans() {
   const [bannerDismissed, setBannerDismissed] = useState(false);
   
   // Trial period experiment - use hook to react to PostHog changes
-  const trialConfig = useFeatureFlagPayload<TrialConfig>('trial-period-experiment');
+  const trialConfig = useFeatureFlagPayload('trial-period-experiment') as TrialConfig | null | undefined;
   
   // Track user's manual selections per billing cycle
   const [userSelections, setUserSelections] = useState<Record<'weekly' | 'monthly' | 'annual', string | null>>({
@@ -777,6 +777,7 @@ export default function SubscriptionPlans() {
               const eligibleForTrial = billingCycle === 'monthly' && 
                 ['basic', 'premium'].includes(plan.plan_type.toLowerCase()) &&
                 trialConfig !== null && 
+                trialConfig !== undefined &&
                 trialConfig.trial_days > 0;
               
               // Debug log for trial eligibility
