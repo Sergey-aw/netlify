@@ -158,13 +158,28 @@ export function useFeatureFlagPayload<T = any>(
       // Only get payload if flag is enabled (variant exists and is not false)
       if (variant !== undefined && variant !== false) {
         const newPayload = posthog.getFeatureFlagPayload(flagKey) as T | undefined;
+        
+        // Log detailed info including variant mismatch detection
+        const payloadVariant = (newPayload as any)?.variant;
+        const variantMismatch = payloadVariant && payloadVariant !== variant;
+        
         console.log('[PostHog Hook] Feature flag evaluated:', { 
           flagKey, 
-          variant,
-          newPayload,
-          type: typeof newPayload,
+          assignedVariant: variant,
+          payload: newPayload,
+          payloadVariant: payloadVariant,
+          MISMATCH: variantMismatch,
           stringified: JSON.stringify(newPayload),
         });
+        
+        if (variantMismatch) {
+          console.warn(
+            `[PostHog Hook] WARNING: Variant mismatch! Assigned to "${variant}" but payload says "${payloadVariant}".`,
+            'This suggests the payload for variant "' + variant + '" is not configured in PostHog.',
+            'Check PostHog experiment configuration to ensure each variant has its own payload.'
+          );
+        }
+        
         setPayload(newPayload ?? null);
       } else {
         console.log('[PostHog Hook] Feature flag not enabled:', { flagKey, variant });
