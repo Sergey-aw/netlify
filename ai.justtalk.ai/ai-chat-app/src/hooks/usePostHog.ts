@@ -149,37 +149,53 @@ export function useFeatureFlagPayload<T = any>(
       return;
     }
 
-    // Get initial payload value
-    const initialPayload = posthog.getFeatureFlagPayload(flagKey) as T | undefined;
-    console.log('[PostHog Hook] Feature flag payload from PostHog:', {
-      flagKey,
-      initialPayload,
-      type: typeof initialPayload,
-      isObject: typeof initialPayload === 'object',
-      keys: initialPayload ? Object.keys(initialPayload) : [],
-      stringified: JSON.stringify(initialPayload),
-    });
-    setPayload(initialPayload ?? null);
-    setIsLoading(false);
-
-    // Listen for flag changes
-    const unsubscribe = posthog.onFeatureFlags(() => {
+    // Function to update payload
+    const updatePayload = () => {
       const newPayload = posthog.getFeatureFlagPayload(flagKey) as T | undefined;
-      console.log('[PostHog Hook] Feature flag payload changed:', { 
+      console.log('[PostHog Hook] Fetching feature flag payload:', { 
         flagKey, 
         newPayload,
         type: typeof newPayload,
         isObject: typeof newPayload === 'object',
         keys: newPayload ? Object.keys(newPayload) : [],
         stringified: JSON.stringify(newPayload),
+        timestamp: new Date().toISOString(),
       });
       setPayload(newPayload ?? null);
+    };
+
+    // Get initial payload value
+    updatePayload();
+    setIsLoading(false);
+
+    // Listen for flag changes
+    const unsubscribe = posthog.onFeatureFlags(() => {
+      console.log('[PostHog Hook] onFeatureFlags callback triggered for:', flagKey);
+      updatePayload();
     });
+
+    // IMPORTANT: Also poll for changes to catch dev toolbar overrides
+    // Dev toolbar overrides might not trigger onFeatureFlags callback
+    const pollInterval = setInterval(() => {
+      const currentPayload = posthog.getFeatureFlagPayload(flagKey) as T | undefined;
+      const currentStringified = JSON.stringify(currentPayload);
+      const previousStringified = JSON.stringify(payload);
+      
+      if (currentStringified !== previousStringified) {
+        console.log('[PostHog Hook] Detected payload change via polling:', {
+          flagKey,
+          previous: previousStringified,
+          current: currentStringified,
+        });
+        updatePayload();
+      }
+    }, 1000); // Poll every second
 
     return () => {
       if (unsubscribe) {
         unsubscribe();
       }
+      clearInterval(pollInterval);
     };
   }, [flagKey]);
 
