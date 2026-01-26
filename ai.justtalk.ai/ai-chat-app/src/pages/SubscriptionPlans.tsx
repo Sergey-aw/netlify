@@ -60,8 +60,15 @@ export default function SubscriptionPlans() {
       hasConfig: !!trialConfig,
       trial_days: trialConfig?.trial_days,
       variant: trialConfig?.variant,
+      timestamp: new Date().toISOString(),
     });
-  }, [trialConfig]);
+    
+    // Force a small re-render to ensure UI updates
+    console.log('[Trial Experiment] Current billing cycle:', billingCycle);
+    console.log('[Trial Experiment] Will show trial badges:', 
+      billingCycle === 'monthly' && !!trialConfig && trialConfig.trial_days > 0
+    );
+  }, [trialConfig, billingCycle]);
   
   // PostHog feature flag for A/B test - get variant key
   const layoutVariant = useFeatureFlagVariant('subscription-plans-vertical-layout', 'false');
@@ -768,7 +775,8 @@ export default function SubscriptionPlans() {
               // Check if trial applies to this plan
               const eligibleForTrial = billingCycle === 'monthly' && 
                 ['basic', 'premium'].includes(plan.plan_type.toLowerCase()) &&
-                trialConfig && trialConfig.trial_days > 0;
+                trialConfig !== null && 
+                trialConfig.trial_days > 0;
               
               // Debug log for trial eligibility
               if (billingCycle === 'monthly') {
@@ -777,9 +785,11 @@ export default function SubscriptionPlans() {
                   plan_type: plan.plan_type,
                   billing_cycle: billingCycle,
                   is_eligible_type: ['basic', 'premium'].includes(plan.plan_type.toLowerCase()),
-                  has_trial_config: !!trialConfig,
+                  has_trial_config: trialConfig !== null,
+                  trial_config_value: trialConfig,
                   trial_days: trialConfig?.trial_days,
                   eligibleForTrial,
+                  render_time: new Date().toISOString(),
                 });
               }
               
