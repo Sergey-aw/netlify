@@ -122,6 +122,61 @@ export function useFeatureFlag<T = boolean>(
 }
 
 /**
+ * Hook to get a feature flag payload from PostHog
+ * @param flagKey - The feature flag key
+ * @returns The feature flag payload object or null
+ */
+export function useFeatureFlagPayload<T = any>(
+  flagKey: string
+): T | null {
+  const [payload, setPayload] = useState<T | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const posthog = getPostHog();
+    
+    console.log('[PostHog Hook] Initializing feature flag payload:', {
+      flagKey,
+      posthogAvailable: !!posthog,
+      posthogLoaded: posthog?.__loaded,
+    });
+    
+    // Check if PostHog is available and loaded
+    if (!posthog || !posthog.__loaded) {
+      console.log('[PostHog Hook] PostHog not loaded, payload is null');
+      setIsLoading(false);
+      setPayload(null);
+      return;
+    }
+
+    // Get initial payload value
+    const initialPayload = posthog.getFeatureFlagPayload(flagKey) as T | undefined;
+    console.log('[PostHog Hook] Feature flag payload from PostHog:', {
+      flagKey,
+      initialPayload,
+      type: typeof initialPayload,
+    });
+    setPayload(initialPayload ?? null);
+    setIsLoading(false);
+
+    // Listen for flag changes
+    const unsubscribe = posthog.onFeatureFlags(() => {
+      const newPayload = posthog.getFeatureFlagPayload(flagKey) as T | undefined;
+      console.log('[PostHog Hook] Feature flag payload changed:', { flagKey, newPayload });
+      setPayload(newPayload ?? null);
+    });
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [flagKey]);
+
+  return isLoading ? null : payload;
+}
+
+/**
  * Hook to track events with PostHog
  */
 export function usePostHogTracking() {

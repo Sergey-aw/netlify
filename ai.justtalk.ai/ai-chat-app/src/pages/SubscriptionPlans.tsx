@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
-import { useFeatureFlagVariant, usePostHogTracking } from '@/hooks/usePostHog';
+import { useFeatureFlagVariant, usePostHogTracking, useFeatureFlagPayload } from '@/hooks/usePostHog';
 import { Check, AlertCircle, Crown, ChessQueen, CreditCard, Infinity, Mic, MessageSquare, BookOpen, BarChart, Sparkles, Zap, Volume2, TrendingUp, Target, Brain, Users, Globe, Trophy, Star, CheckCircle2, Award, GraduationCap, Heart, Briefcase, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +12,7 @@ import { supabase } from '@/lib/supabase';
 import { createCheckoutSession } from '@/lib/justai-api';
 import { useSession } from '@/hooks/useSession';
 import { updateOnboardingStep } from '@/lib/onboarding-state';
-import { trackPaywallViewed, trackPlanSelected, trackCheckoutStarted, getTrialConfig, trackTrialOfferShown, type TrialConfig } from '@/lib/posthog';
+import { trackPaywallViewed, trackPlanSelected, trackCheckoutStarted, trackTrialOfferShown, type TrialConfig } from '@/lib/posthog';
 import type { SubscriptionPlan } from '@/lib/justai-types';
 import { AppSidebar } from '@/components/AppSidebar';
 import bgWelcome from '@/assets/bg_welcome.jpg';
@@ -28,8 +28,8 @@ export default function SubscriptionPlans() {
   const [showBanner, setShowBanner] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   
-  // Trial period experiment state
-  const [trialConfig, setTrialConfig] = useState<TrialConfig | null>(null);
+  // Trial period experiment - use hook to react to PostHog changes
+  const trialConfig = useFeatureFlagPayload<TrialConfig>('trial-period-experiment');
   
   // Track user's manual selections per billing cycle
   const [userSelections, setUserSelections] = useState<Record<'weekly' | 'monthly' | 'annual', string | null>>({
@@ -52,16 +52,6 @@ export default function SubscriptionPlans() {
   
   // Use session hook for better session management
   const { session, user, isAuthenticated, isAnonymous } = useSession();
-  
-  // Load trial configuration from PostHog feature flag
-  useEffect(() => {
-    const config = getTrialConfig();
-    setTrialConfig(config);
-    
-    if (config) {
-      console.log('[Trial Experiment] Loaded trial config:', config);
-    }
-  }, []);
   
   // PostHog feature flag for A/B test - get variant key
   const layoutVariant = useFeatureFlagVariant('subscription-plans-vertical-layout', 'false');
