@@ -373,7 +373,7 @@ export default function AIChatVoice() {
         // Check subscription status and limits using real-time count
         const { data: subscription, error: subError } = await supabase
           .from('justai_subscriptions')
-          .select('id, subscription_type, monthly_message_limit, current_period_start, current_period_end')
+          .select('id, subscription_type, voice_minutes_limit, current_period_start, current_period_end')
           .eq('student_id', user.id)
           .eq('status', 'active')
           .single();
@@ -384,16 +384,20 @@ export default function AIChatVoice() {
           return;
         }
 
-        // Check if user has exceeded their monthly limit using database function
-        if (subscription.monthly_message_limit) {
-          const { data: limitCheck } = await supabase.rpc('check_message_limit', {
+        // Check if user has exceeded their voice time limit using database function
+        if (subscription.voice_minutes_limit) {
+          const { data: limitCheck } = await supabase.rpc('check_voice_time_limit', {
             p_student_id: user.id,
             p_subscription_id: subscription.id,
           });
 
           if (limitCheck === false) {
+            const limitMinutes = subscription.voice_minutes_limit;
+            const limitDisplay = limitMinutes >= 60 
+              ? `${Math.floor(limitMinutes / 60)} hour${Math.floor(limitMinutes / 60) > 1 ? 's' : ''}` 
+              : `${limitMinutes} minutes`;
             alert(
-              `You've reached your monthly message limit (${subscription.monthly_message_limit} messages). Please upgrade your plan or wait until next billing cycle.`
+              `You've reached your voice conversation limit (${limitDisplay}). Please upgrade your plan or wait until next billing cycle.`
             );
             navigate('/subscription-plans');
             return;

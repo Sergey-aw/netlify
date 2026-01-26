@@ -34,10 +34,21 @@ interface SubscriptionPlan {
   discount_percentage?: number;
 }
 
+// Helper function to format seconds to human-readable time
+const formatTime = (seconds: number): string => {
+  const minutes = Math.floor(seconds / 60);
+  if (minutes >= 60) {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  }
+  return `${minutes}m`;
+};
+
 export default function SubscriptionManagement() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { subscription, hasActiveSubscription } = useSubscription();
+  const { subscription, hasActiveSubscription, voiceSecondsUsed, voiceSecondsRemaining, voiceMinutesLimit } = useSubscription();
   const { getAccessToken } = useSession();
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
@@ -284,13 +295,11 @@ export default function SubscriptionManagement() {
     );
   }
 
-  const percentage = subscription.monthly_message_limit
-    ? ((subscription.messages_used_this_period || 0) / subscription.monthly_message_limit) * 100
+  // Time-based usage calculation
+  const voiceLimitSeconds = voiceMinutesLimit ? voiceMinutesLimit * 60 : null;
+  const percentage = voiceLimitSeconds
+    ? (voiceSecondsUsed / voiceLimitSeconds) * 100
     : 0;
-
-  const messagesRemaining = subscription.monthly_message_limit
-    ? subscription.monthly_message_limit - (subscription.messages_used_this_period || 0)
-    : null;
 
   // Get current plan tier
   const planTiers: Record<'basic' | 'premium' | 'unlimited' | 'plus', number> = {
@@ -343,12 +352,12 @@ export default function SubscriptionManagement() {
             </div>
           </CardHeader>
           <CardContent>
-            {messagesRemaining !== null ? (
+            {voiceMinutesLimit !== null ? (
               <>
                 <div className="mb-4">
                   <div className="flex justify-between text-sm mb-2">
-                    <span>{subscription.messages_used_this_period || 0} used</span>
-                    <span>{messagesRemaining} left</span>
+                    <span>{formatTime(voiceSecondsUsed)} used</span>
+                    <span>{formatTime(voiceSecondsRemaining ?? 0)} left</span>
                   </div>
                   <Progress value={percentage} className="h-2 bg-white/20" />
                 </div>
@@ -360,7 +369,7 @@ export default function SubscriptionManagement() {
               </>
             ) : (
               <p className="text-sm opacity-90">
-                Unlimited messages · {subscription.messages_used_this_period || 0} this month
+                Unlimited voice time · {formatTime(voiceSecondsUsed)} this period
               </p>
             )}
           </CardContent>
@@ -375,7 +384,7 @@ export default function SubscriptionManagement() {
                 <CardTitle>Upgrade Options</CardTitle>
               </div>
               <CardDescription>
-                Get more messages and unlock additional features
+                Get more voice time and unlock additional features
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -388,9 +397,9 @@ export default function SubscriptionManagement() {
                     <div>
                       <h4 className="font-semibold capitalize">{plan.plan_type}</h4>
                       <p className="text-sm text-gray-600">
-                        {plan.monthly_message_limit
-                          ? `${plan.monthly_message_limit} messages/month`
-                          : 'Unlimited messages'}
+                        {(plan as any).voice_minutes_limit
+                          ? `${formatTime((plan as any).voice_minutes_limit * 60)} voice time/${plan.billing_period === 'weekly' ? 'week' : 'period'}`
+                          : 'Unlimited voice time'}
                       </p>
                     </div>
                     <div className="text-right">
@@ -512,12 +521,12 @@ export default function SubscriptionManagement() {
                 <AlertDescription>
                   <strong>How this works:</strong>
                   <ul className="mt-2 space-y-1 text-sm">
-                    <li>• Your messages used ({subscription.messages_used_this_period || 0}) will be preserved</li>
+                    <li>• Your voice time used ({formatTime(voiceSecondsUsed)}) will be preserved</li>
                     <li>
                       • You'll immediately get access to{' '}
-                      {selectedPlan.monthly_message_limit
-                        ? `${selectedPlan.monthly_message_limit - (subscription.messages_used_this_period || 0)} messages`
-                        : 'unlimited messages'}
+                      {(selectedPlan as any).voice_minutes_limit
+                        ? `${formatTime(((selectedPlan as any).voice_minutes_limit * 60) - voiceSecondsUsed)} additional voice time`
+                        : 'unlimited voice time'}
                     </li>
                     <li>• You'll be charged a prorated amount for the remaining billing period</li>
                     <li>• Your billing date stays the same</li>
@@ -554,10 +563,10 @@ export default function SubscriptionManagement() {
                   </div>
                 ) : null}
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Messages Available After Upgrade</span>
+                  <span className="text-sm text-gray-600">Voice Time After Upgrade</span>
                   <span className="text-sm font-medium">
-                    {selectedPlan.monthly_message_limit
-                      ? `${selectedPlan.monthly_message_limit - (subscription.messages_used_this_period || 0)}`
+                    {(selectedPlan as any).voice_minutes_limit
+                      ? formatTime(((selectedPlan as any).voice_minutes_limit * 60) - voiceSecondsUsed)
                       : 'Unlimited'}
                   </span>
                 </div>
@@ -597,7 +606,7 @@ export default function SubscriptionManagement() {
             <AlertDescription>
               Your subscription will remain active until{' '}
               {new Date(subscription.current_period_end).toLocaleDateString()}.
-              After that, you won't be able to send messages.
+              After that, you won't be able to start voice conversations.
             </AlertDescription>
           </Alert>
           <DialogFooter>

@@ -115,9 +115,11 @@ async function getPlanIdFromPriceId(priceId: string): Promise<string | null> {
 /**
  * Get billing period from Stripe subscription
  */
-function getBillingPeriod(subscription: any): 'monthly' | 'annual' {
+function getBillingPeriod(subscription: any): 'weekly' | 'monthly' | 'annual' {
   const interval = subscription.items.data[0]?.price?.recurring?.interval;
-  return interval === 'year' ? 'annual' : 'monthly';
+  if (interval === 'year') return 'annual';
+  if (interval === 'week') return 'weekly';
+  return 'monthly';
 }
 
 /**
@@ -220,6 +222,7 @@ async function handleSubscriptionCreated(
       student_id: studentId,
       subscription_type: plan.plan_type,
       monthly_message_limit: plan.monthly_message_limit,
+      voice_minutes_limit: plan.voice_minutes_limit,
       price_cents: plan.price_cents,
       currency: 'usd',
       billing_cycle: billingPeriod,
@@ -314,6 +317,7 @@ async function handleSubscriptionUpdated(
   if (plan) {
     updateData.subscription_type = plan.plan_type;
     updateData.monthly_message_limit = plan.monthly_message_limit;
+    updateData.voice_minutes_limit = plan.voice_minutes_limit;
     updateData.price_cents = plan.price_cents;
     updateData.stripe_price_id = priceId;
   }

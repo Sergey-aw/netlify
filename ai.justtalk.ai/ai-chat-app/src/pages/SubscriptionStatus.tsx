@@ -15,7 +15,7 @@ export default function SubscriptionStatus() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [hasTrackedActivation, setHasTrackedActivation] = useState(false);
-  const { subscription, messagesRemaining, isLoading } = useSubscription();
+  const { subscription, voiceSecondsUsed, voiceSecondsRemaining, voiceMinutesLimit, isLoading } = useSubscription();
   const { user, getEmail } = useSession();
 
   // Handle success parameter
@@ -95,8 +95,20 @@ export default function SubscriptionStatus() {
     );
   }
 
-  const usagePercentage = subscription.monthly_message_limit
-    ? ((subscription.messages_used_this_period || 0) / subscription.monthly_message_limit) * 100
+  // Format seconds to human-readable time
+  const formatTime = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    if (minutes >= 60) {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    }
+    return `${minutes}m`;
+  };
+
+  const voiceLimitSeconds = voiceMinutesLimit ? voiceMinutesLimit * 60 : null;
+  const usagePercentage = voiceLimitSeconds
+    ? (voiceSecondsUsed / voiceLimitSeconds) * 100
     : 0;
 
   const periodEnd = new Date(subscription.current_period_end);
@@ -185,15 +197,15 @@ export default function SubscriptionStatus() {
           </CardContent>
         </Card>
 
-        {/* Usage */}
-        {subscription.monthly_message_limit && (
+        {/* Voice Time Usage */}
+        {voiceMinutesLimit && (
           <Card>
             <CardHeader>
-              <CardTitle>Usage This Period</CardTitle>
+              <CardTitle>Voice Time This Period</CardTitle>
               <CardDescription>
                 {subscription.cancel_at_period_end 
-                  ? `Messages used: ${subscription.messages_used_this_period} of ${subscription.monthly_message_limit} (will not reset)`
-                  : `Messages used: ${subscription.messages_used_this_period} of ${subscription.monthly_message_limit}`
+                  ? `Time used: ${formatTime(voiceSecondsUsed)} of ${formatTime(voiceMinutesLimit * 60)} (will not reset)`
+                  : `Time used: ${formatTime(voiceSecondsUsed)} of ${formatTime(voiceMinutesLimit * 60)}`
                 }
               </CardDescription>
             </CardHeader>
@@ -202,7 +214,7 @@ export default function SubscriptionStatus() {
               
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">
-                  {messagesRemaining ?? 0} messages remaining
+                  {formatTime(voiceSecondsRemaining ?? 0)} remaining
                 </span>
                 <span className="font-medium">
                   {usagePercentage.toFixed(0)}% used
@@ -211,22 +223,22 @@ export default function SubscriptionStatus() {
 
               {usagePercentage > 80 && (
                 <div className="text-sm text-amber-600">
-                  You're running low on messages. Consider upgrading to get more.
+                  You're running low on voice time. Consider upgrading to get more.
                 </div>
               )}
             </CardContent>
           </Card>
         )}
 
-        {!subscription.monthly_message_limit && (
+        {!voiceMinutesLimit && (
           <Card>
             <CardContent className="py-6">
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600 mb-2">
-                  ♾️ Unlimited Messages
+                  ♾️ Unlimited Voice Time
                 </div>
                 <p className="text-muted-foreground">
-                  You have unlimited access to all JustAI features
+                  You have unlimited access to all JustAI voice features
                 </p>
               </div>
             </CardContent>
@@ -254,7 +266,7 @@ export default function SubscriptionStatus() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-green-600">✓</span>
-                <span className="text-sm">{subscription.monthly_message_limit ? `${subscription.monthly_message_limit} messages per month` : 'Unlimited messages'}</span>
+                <span className="text-sm">{voiceMinutesLimit ? `${formatTime(voiceMinutesLimit * 60)} voice time per ${subscription.billing_period === 'weekly' ? 'week' : subscription.billing_period === 'annual' ? 'month' : 'month'}` : 'Unlimited voice time'}</span>
               </li>
             </ul>
           </CardContent>
