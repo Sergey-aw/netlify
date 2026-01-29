@@ -127,6 +127,7 @@ export function useVocabularyBuilder({
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['vocabulary-builder', effectiveStudentId] });
+      queryClient.invalidateQueries({ queryKey: ['focus-set', effectiveStudentId] });
       queryClient.invalidateQueries({ queryKey: ['active-lesson-goals', effectiveStudentId] });
       toast({
         title: variables.isActive ? 'Goal activated' : 'Goal paused',

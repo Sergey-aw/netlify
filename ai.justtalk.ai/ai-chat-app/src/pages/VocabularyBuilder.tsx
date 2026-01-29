@@ -137,7 +137,7 @@ export default function VocabularyBuilder() {
       await toggleActive(goalId, false);
       toast({
         title: 'Removed from Focus Set',
-        description: 'Word moved to Goal Pool',
+        description: 'Word moved to Goal Pool. Progress preserved.',
       });
     } catch (error) {
       toast({

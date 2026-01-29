@@ -19,19 +19,19 @@ export function FocusSetCard({ word, onRemove }: FocusSetCardProps) {
   return (
     <Card
       className={cn(
-        "p-4 transition-all hover:shadow-md relative group",
+        "p-4 transition-all hover:shadow-md relative",
         word.is_stable && "border-green-500/50 bg-green-50/30 dark:bg-green-950/10"
       )}
     >
-      {/* Remove button - shows on hover */}
+      {/* Remove button - always visible, positioned at top-right corner */}
       {onRemove && (
         <Button
           size="icon"
           variant="ghost"
           onClick={() => onRemove(word.id)}
-          className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-gray-100 hover:bg-red-500 text-gray-500 hover:text-white z-10 p-0"
         >
-          <X className="h-3 w-3" />
+          <X className="h-3.5 w-3.5" />
         </Button>
       )}
 

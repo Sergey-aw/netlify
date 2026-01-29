@@ -51,6 +51,7 @@ export function FocusSetSection({
           <FocusSetCard
             key={word.id}
             word={word}
+            onRemove={onRemove}
           />
         ))}
         

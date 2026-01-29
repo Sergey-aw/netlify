@@ -313,7 +313,7 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
                     onClick={() => handleNavigate('/dictionary')}
                   >
                     <BookOpen className="w-4 h-4" />
-                    <span>Dictionary</span>
+                    <span>Vocabulary Builder</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
