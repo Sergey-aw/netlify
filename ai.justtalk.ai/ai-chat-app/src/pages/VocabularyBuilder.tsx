@@ -2,28 +2,36 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
-import { Search, BookOpen, TrendingUp, Check, PanelLeft } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { Search, PanelLeft, Sparkles, TrendingUp, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useVocabularyBuilder } from '@/hooks/useVocabularyBuilder';
 import { useVocabSets, useVocabSetWords } from '@/hooks/useVocabSets';
 import { useLexemeSearch } from '@/hooks/useLexemeSearch';
+import { useFocusSet } from '@/hooks/useFocusSet';
 import { cn } from '@/lib/utils';
 import { AppSidebar } from '@/components/AppSidebar';
 import { supabase } from '@/lib/supabase';
+import { FocusSummaryCards } from '@/components/vocabulary/FocusSummaryCards';
+import { FocusSetSection } from '@/components/vocabulary/FocusSetSection';
+import { GoalPoolSection } from '@/components/vocabulary/GoalPoolSection';
+import { SwapFocusDialog } from '@/components/vocabulary/SwapFocusDialog';
+import { getCefrLevelColor } from '@/lib/vocabulary-utils';
+import { toast } from '@/hooks/use-toast';
 
-type TabType = 'active' | 'discover';
+type TabType = 'focus' | 'discover';
 
 export default function VocabularyBuilder() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<TabType>('active');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedWords, setSelectedWords] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState<TabType>('focus');
+  const [searchQuery] = useState('');
   const [selectedDiscoverWords, setSelectedDiscoverWords] = useState<Set<string>>(new Set());
   const [currentSetId, setCurrentSetId] = useState<string | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [showSwapDialog, setShowSwapDialog] = useState(false);
+  const [wordToSwap, setWordToSwap] = useState<{ id: string; lemma: string; cefr_level: string | null } | null>(null);
 
   // Add swipe gesture to open sidebar
   useSwipeGesture({
@@ -54,36 +62,38 @@ export default function VocabularyBuilder() {
     },
   });
 
-  // Fetch active words
+  // Fetch Focus Set words (is_active_for_lessons = true, max 5)
   const {
-    words,
-    isLoading: isLoadingWords,
-    stats,
-    removeWord,
-    bulkArchive,
-    isBulkOperating,
-  } = useVocabularyBuilder({
+    words: focusWords,
+    isLoading: isFocusLoading,
+    isFull: isFocusSetFull,
+  } = useFocusSet();
+
+  // Fetch Goal Pool words (non-Focus Set, unlimited)
+  // Get all goals and filter out Focus Set words
+  const allGoalsQuery = useVocabularyBuilder({
     filters: {
       search: searchQuery,
-      status: 'active', // Only show active words
+      status: 'all', // Get all non-archived goals
     },
   });
 
+  // Filter out Focus Set words (those that are active)
+  const goalPoolWords = allGoalsQuery.words.filter(w => !w.is_active_for_lessons);
+  const isGoalPoolLoading = allGoalsQuery.isLoading;
+  const toggleActive = allGoalsQuery.toggleActive;
+  const isToggling = allGoalsQuery.isToggling;
+  const swapFocus = allGoalsQuery.swapFocus;
+  const isSwapping = allGoalsQuery.isSwapping;
+
+  // Calculate vocabulary capacity (stable words)
+  const vocabularyCapacity = focusWords.filter(w => w.is_stable).length;
+  
   // Fetch vocabulary sets for Discover tab
   const { sets, isLoading: isLoadingSets } = useVocabSets();
 
   // Lexeme search
   const lexemeSearch = useLexemeSearch();
-
-  const toggleWordSelection = (wordId: string) => {
-    const newSelection = new Set(selectedWords);
-    if (newSelection.has(wordId)) {
-      newSelection.delete(wordId);
-    } else {
-      newSelection.add(wordId);
-    }
-    setSelectedWords(newSelection);
-  };
 
   const toggleDiscoverWordSelection = (lexemeId: string) => {
     const newSelection = new Set(selectedDiscoverWords);
@@ -95,43 +105,76 @@ export default function VocabularyBuilder() {
     setSelectedDiscoverWords(newSelection);
   };
 
-  const selectAll = () => {
-    if (selectedWords.size === words.length) {
-      setSelectedWords(new Set());
-    } else {
-      setSelectedWords(new Set(words.map(w => w.id)));
-    }
-  };
-
-  const handleBulkArchive = async () => {
-    await bulkArchive(Array.from(selectedWords));
-    setSelectedWords(new Set());
-  };
-
   const clearDiscoverSelection = () => {
     setSelectedDiscoverWords(new Set());
   };
 
-  const getCefrBadgeColor = (level: string | null) => {
-    if (!level) return 'bg-gray-200 text-gray-700';
-    const colors: Record<string, string> = {
-      'A1': 'bg-green-100 text-green-700',
-      'A2': 'bg-green-200 text-green-800',
-      'B1': 'bg-blue-100 text-blue-700',
-      'B2': 'bg-blue-200 text-blue-800',
-      'C1': 'bg-purple-100 text-purple-700',
-      'C2': 'bg-purple-200 text-purple-800',
-    };
-    return colors[level] || 'bg-gray-200 text-gray-700';
+  const handleAddToFocus = async (goalId: string, lemma: string, cefrLevel: string | null) => {
+    if (isFocusSetFull) {
+      // Show swap dialog
+      setWordToSwap({ id: goalId, lemma, cefr_level: cefrLevel });
+      setShowSwapDialog(true);
+      return;
+    }
+
+    try {
+      await toggleActive(goalId, true);
+      toast({
+        title: 'Added to Focus Set',
+        description: 'Word will now earn progress during lessons',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to add word to Focus Set',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleRemoveFromFocus = async (goalId: string) => {
+    try {
+      await toggleActive(goalId, false);
+      toast({
+        title: 'Removed from Focus Set',
+        description: 'Word moved to Goal Pool',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to remove word from Focus Set',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleConfirmSwap = async (removeWordId: string) => {
+    if (!wordToSwap) return;
+
+    try {
+      await swapFocus(removeWordId, wordToSwap.id);
+      toast({
+        title: 'Words swapped',
+        description: `"${wordToSwap.lemma}" added to Focus Set`,
+      });
+      setShowSwapDialog(false);
+      setWordToSwap(null);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to swap words',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24 page-enter">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-24 page-enter">
       {/* Sidebar */}
       <AppSidebar open={showSidebar} onOpenChange={setShowSidebar} />
 
       {/* Header */}
-      <header className="bg-white px-4 py-6 border-b sticky top-0 z-10">
+      <header className="bg-white dark:bg-gray-900 px-4 py-6 border-b dark:border-gray-800 sticky top-0 z-10">
         <div className="flex items-center justify-between mb-4">
           <Button
             variant="ghost"
@@ -139,9 +182,11 @@ export default function VocabularyBuilder() {
             className="-ml-2"
             onClick={() => setShowSidebar(!showSidebar)}
           >
-            <PanelLeft className="w-6 h-6 text-gray-600" />
+            <PanelLeft className="w-6 h-6 text-gray-600 dark:text-gray-400" />
           </Button>
-          <h1 className="text-2xl font-bold flex-1 text-center">Vocabulary Builder</h1>
+          <h1 className="text-2xl font-bold flex-1 text-center text-gray-900 dark:text-gray-100">
+            Vocabulary Builder
+          </h1>
           <Avatar className="w-10 h-10 cursor-pointer" onClick={() => navigate('/profile')}>
             <AvatarImage src={user?.profile_photo_url} />
             <AvatarFallback>{user?.display_name?.[0] || 'U'}</AvatarFallback>
@@ -151,20 +196,17 @@ export default function VocabularyBuilder() {
         {/* Tabs */}
         <div className="flex gap-2 mb-4">
           <button
-            onClick={() => setActiveTab('active')}
+            onClick={() => setActiveTab('focus')}
             className={cn(
               'flex-1 py-2 px-4 rounded-lg font-medium transition-colors',
-              activeTab === 'active'
+              activeTab === 'focus'
                 ? 'bg-[hsl(var(--brand-blue))] text-white'
-                : 'bg-gray-100 text-gray-700'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
             )}
           >
             <div className="flex items-center justify-center gap-2">
-              <BookOpen className="w-4 h-4" />
-              <span>Active</span>
-              {stats && stats.activeWords > 0 && (
-                <Badge className="bg-white text-[hsl(var(--brand-blue))]">{stats.activeWords}</Badge>
-              )}
+              <Sparkles className="w-4 h-4" />
+              <span>Focus</span>
             </div>
           </button>
           <button
@@ -173,7 +215,7 @@ export default function VocabularyBuilder() {
               'flex-1 py-2 px-4 rounded-lg font-medium transition-colors',
               activeTab === 'discover'
                 ? 'bg-[hsl(var(--brand-blue))] text-white'
-                : 'bg-gray-100 text-gray-700'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
             )}
           >
             <div className="flex items-center justify-center gap-2">
@@ -183,36 +225,46 @@ export default function VocabularyBuilder() {
           </button>
         </div>
 
-        {/* Search Bar */}
-        <div className="flex items-center gap-2 bg-gray-100 rounded-full px-3 py-2">
-          <Search className="w-5 h-5 text-gray-500" />
-          <input
-            type="text"
-            placeholder={activeTab === 'active' ? 'Search words...' : 'Type to search words...'}
-            value={activeTab === 'active' ? searchQuery : lexemeSearch.searchTerm}
-            onChange={(e) => activeTab === 'active' ? setSearchQuery(e.target.value) : lexemeSearch.setSearchTerm(e.target.value)}
-            className="flex-1 bg-transparent outline-none text-gray-900 placeholder:text-gray-400"
-          />
-        </div>
-
+        {/* Search Bar - only show on Discover tab */}
+        {activeTab === 'discover' && (
+          <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-full px-3 py-2">
+            <Search className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+            <input
+              type="text"
+              placeholder="Type to search words..."
+              value={lexemeSearch.searchTerm}
+              onChange={(e) => lexemeSearch.setSearchTerm(e.target.value)}
+              className="flex-1 bg-transparent outline-none text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+            />
+          </div>
+        )}
       </header>
 
       <main className="px-4 py-6 max-w-4xl mx-auto">
-        {activeTab === 'active' ? (
-          <ActiveTab
-            words={words}
-            isLoading={isLoadingWords}
-            selectedWords={selectedWords}
-            toggleWordSelection={toggleWordSelection}
-            selectAll={selectAll}
-            removeWord={removeWord}
-            getCefrBadgeColor={getCefrBadgeColor}
-          />
+        {activeTab === 'focus' ? (
+          <div className="space-y-6">
+            {/* Summary Cards */}
+            <FocusSummaryCards vocabularyCapacity={vocabularyCapacity} />
+
+            {/* Focus Set Section */}
+            <FocusSetSection
+              words={focusWords}
+              isLoading={isFocusLoading}
+              onRemove={handleRemoveFromFocus}
+            />
+
+            {/* Goal Pool Section */}
+            <GoalPoolSection
+              words={goalPoolWords}
+              isLoading={isGoalPoolLoading}
+              onAddToFocus={handleAddToFocus}
+              isAdding={isToggling}
+            />
+          </div>
         ) : (
           <DiscoverTab
             sets={sets}
             isLoading={isLoadingSets}
-            getCefrBadgeColor={getCefrBadgeColor}
             lexemeSearch={lexemeSearch}
             selectedDiscoverWords={selectedDiscoverWords}
             toggleDiscoverWordSelection={toggleDiscoverWordSelection}
@@ -223,178 +275,41 @@ export default function VocabularyBuilder() {
         )}
       </main>
 
-      {/* Unified Bottom Bar for Active Tab */}
-      {activeTab === 'active' && selectedWords.size > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 shadow-lg z-20">
+      {/* Swap Focus Dialog */}
+      <SwapFocusDialog
+        open={showSwapDialog}
+        onOpenChange={setShowSwapDialog}
+        focusWords={focusWords}
+        wordToAdd={wordToSwap}
+        onConfirmSwap={handleConfirmSwap}
+        isSwapping={isSwapping}
+      />
+
+      {/* Bottom Bar for Discover Tab - Hidden for now */}
+      {/*activeTab === 'discover' && selectedDiscoverWords.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t dark:border-gray-800 px-4 py-3 shadow-lg z-20">
           <div className="max-w-4xl mx-auto flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700">
-              {selectedWords.size} word{selectedWords.size > 1 ? 's' : ''} selected
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {selectedDiscoverWords.size} word{selectedDiscoverWords.size > 1 ? 's' : ''} selected
             </span>
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setSelectedWords(new Set())}
+                onClick={clearDiscoverSelection}
               >
                 Cancel
               </Button>
               <Button
-                variant="destructive"
                 size="sm"
-                onClick={handleBulkArchive}
-                disabled={isBulkOperating}
+                className="bg-[hsl(var(--brand-blue))] hover:bg-[hsl(var(--brand-blue))]/90"
               >
-                Remove
+                Add to Builder
               </Button>
             </div>
           </div>
         </div>
-      )}
-
-      {/* Unified Bottom Bar for Discover Tab */}
-      {activeTab === 'discover' && selectedDiscoverWords.size > 0 && (
-        <DiscoverBottomBar
-          selectedCount={selectedDiscoverWords.size}
-          selectedWords={selectedDiscoverWords}
-          onCancel={clearDiscoverSelection}
-          setId={currentSetId}
-        />
-      )}
-    </div>
-  );
-}
-
-// Active Tab Component
-interface ActiveTabProps {
-  words: any[];
-  isLoading: boolean;
-  selectedWords: Set<string>;
-  toggleWordSelection: (id: string) => void;
-  selectAll: () => void;
-  removeWord: (id: string) => void;
-  getCefrBadgeColor: (level: string | null) => string;
-}
-
-function ActiveTab({
-  words,
-  isLoading,
-  selectedWords,
-  toggleWordSelection,
-  selectAll,
-  removeWord,
-  getCefrBadgeColor,
-}: ActiveTabProps) {
-  if (isLoading) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">Loading your vocabulary...</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Selection Controls */}
-      {words.length > 0 && (
-        <div className="flex items-center justify-between">
-          <button
-            onClick={selectAll}
-            className="flex items-center gap-2 text-sm font-medium text-gray-700"
-          >
-            <div
-              className={cn(
-                'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
-                selectedWords.size === words.length
-                  ? 'bg-[hsl(var(--brand-blue))] border-[hsl(var(--brand-blue))]'
-                  : 'border-gray-300'
-              )}
-            >
-              {selectedWords.size === words.length && (
-                <Check className="w-3 h-3 text-white" />
-              )}
-            </div>
-            <span>
-              Select all ({words.length})
-            </span>
-          </button>
-        </div>
-      )}
-
-      {/* Word Cards */}
-      <div className="space-y-3">
-        {words.map((word) => (
-          <Card 
-            key={word.id} 
-            className={cn(
-              "p-4 cursor-pointer transition-colors hover:bg-gray-50",
-              selectedWords.has(word.id) && "bg-[hsl(var(--brand-blue))]/10"
-            )}
-            onClick={() => toggleWordSelection(word.id)}
-          >
-            <div className="flex items-start gap-3">
-              {/* Checkbox */}
-              <div className="mt-1">
-                <div
-                  className={cn(
-                    'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
-                    selectedWords.has(word.id)
-                      ? 'bg-[hsl(var(--brand-blue))] border-[hsl(var(--brand-blue))]'
-                      : 'border-gray-300'
-                  )}
-                >
-                  {selectedWords.has(word.id) && (
-                    <Check className="w-3 h-3 text-white" />
-                  )}
-                </div>
-              </div>
-
-              {/* Word Content */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-lg font-semibold text-gray-900">{word.lemma}</h3>
-                  {word.cefr_level && (
-                    <Badge className={cn('text-xs', getCefrBadgeColor(word.cefr_level))}>
-                      {word.cefr_level}
-                    </Badge>
-                  )}
-                  <Badge variant="outline" className="text-xs">
-                    {word.pos}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-3 text-sm text-gray-600">
-                  <span>Used {word.usage_count}× in {word.lesson_count} lesson{word.lesson_count !== 1 ? 's' : ''}</span>
-                </div>
-              </div>
-
-              {/* Actions */}
-              {!selectedWords.has(word.id) && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeWord(word.id);
-                  }}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                >
-                  Remove
-                </Button>
-              )}
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      {/* Empty State */}
-      {words.length === 0 && (
-        <div className="text-center py-12">
-          <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No active words yet</h3>
-          <p className="text-sm text-gray-500 mb-4">
-            Start adding words from the Discover tab
-          </p>
-        </div>
-      )}
+      )*/}
     </div>
   );
 }
@@ -403,7 +318,6 @@ function ActiveTab({
 interface DiscoverTabProps {
   sets: any[];
   isLoading: boolean;
-  getCefrBadgeColor: (level: string | null) => string;
   lexemeSearch: any;
   selectedDiscoverWords: Set<string>;
   toggleDiscoverWordSelection: (lexemeId: string) => void;
@@ -415,7 +329,6 @@ interface DiscoverTabProps {
 function DiscoverTab({ 
   sets, 
   isLoading, 
-  getCefrBadgeColor, 
   lexemeSearch,
   selectedDiscoverWords,
   toggleDiscoverWordSelection,
@@ -434,12 +347,11 @@ function DiscoverTab({
       {/* Lexeme Search Section at the top */}
       <LexemeSearchSection
         lexemeSearch={lexemeSearch}
-        getCefrBadgeColor={getCefrBadgeColor}
       />
 
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">Curated Vocabulary Sets</h2>
-        <p className="text-sm text-gray-600">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Curated Vocabulary Sets</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
           Learn words organized by CEFR level and topic
         </p>
       </div>
@@ -448,7 +360,6 @@ function DiscoverTab({
         <VocabSetCard
           key={set.set_id}
           set={set}
-          getCefrBadgeColor={getCefrBadgeColor}
           selectedDiscoverWords={selectedDiscoverWords}
           toggleDiscoverWordSelection={toggleDiscoverWordSelection}
           setCurrentSetId={setCurrentSetId}
@@ -471,7 +382,6 @@ function DiscoverTab({
 // Vocab Set Card Component
 interface VocabSetCardProps {
   set: any;
-  getCefrBadgeColor: (level: string | null) => string;
   selectedDiscoverWords: Set<string>;
   toggleDiscoverWordSelection: (lexemeId: string) => void;
   setCurrentSetId: (setId: string | null) => void;
@@ -479,7 +389,6 @@ interface VocabSetCardProps {
 
 function VocabSetCard({ 
   set, 
-  getCefrBadgeColor,
   selectedDiscoverWords,
   toggleDiscoverWordSelection,
   setCurrentSetId
@@ -491,8 +400,8 @@ function VocabSetCard({
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
-            <h3 className="text-lg font-semibold text-gray-900">{set.set_name}</h3>
-            <Badge className={cn('text-xs', getCefrBadgeColor(set.set_type))}>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{set.set_name}</h3>
+            <Badge className={cn('text-xs', getCefrLevelColor(set.set_type))}>
               {set.set_type}
             </Badge>
           </div>
@@ -523,7 +432,6 @@ function VocabSetCard({
         <div className="mt-4 pt-4 border-t">
           <VocabSetDetails 
             setId={set.set_id} 
-            getCefrBadgeColor={getCefrBadgeColor}
             selectedWords={selectedDiscoverWords}
             toggleWord={toggleDiscoverWordSelection}
             setCurrentSetId={() => setCurrentSetId(set.set_id)}
@@ -537,7 +445,6 @@ function VocabSetCard({
 // Vocab Set Details Component
 interface VocabSetDetailsProps {
   setId: string;
-  getCefrBadgeColor: (level: string | null) => string;
   selectedWords: Set<string>;
   toggleWord: (lexemeId: string) => void;
   setCurrentSetId: () => void;
@@ -545,7 +452,6 @@ interface VocabSetDetailsProps {
 
 function VocabSetDetails({ 
   setId, 
-  getCefrBadgeColor,
   selectedWords,
   toggleWord,
   setCurrentSetId
@@ -637,9 +543,9 @@ function VocabSetDetails({
             )}
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <span className="font-medium text-gray-900">{word.display_form}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{word.display_form}</span>
                 {word.cefr_level && (
-                  <Badge className={cn('text-xs', getCefrBadgeColor(word.cefr_level))}>
+                  <Badge className={cn('text-xs', getCefrLevelColor(word.cefr_level))}>
                     {word.cefr_level}
                   </Badge>
                 )}
@@ -668,34 +574,32 @@ function VocabSetDetails({
 // Lexeme Search Section
 interface LexemeSearchSectionProps {
   lexemeSearch: any;
-  getCefrBadgeColor: (level: string | null) => string;
 }
 
-function LexemeSearchSection({ lexemeSearch, getCefrBadgeColor }: LexemeSearchSectionProps) {
+function LexemeSearchSection({ lexemeSearch }: LexemeSearchSectionProps) {
   const { searchTerm, results, isLoading, isSearching } = lexemeSearch;
 
   return (
     <div className="mb-6">
       {searchTerm.length > 0 && searchTerm.length < 2 && (
-        <p className="text-sm text-gray-500 mb-4">Type at least 2 characters to search</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Type at least 2 characters to search</p>
       )}
 
       {isLoading && isSearching && (
-        <p className="text-sm text-gray-500 mb-4">Searching...</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Searching...</p>
       )}
 
       {isSearching && !isLoading && results.length === 0 && (
-        <p className="text-sm text-gray-500 mb-4">No words found</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">No words found</p>
       )}
 
       {isSearching && results.length > 0 && (
         <div className="space-y-2 mb-6">
-          <h3 className="text-lg font-semibold mb-4">Search Results</h3>
+          <h3 className="text-lg font-semibold mb-4 dark:text-gray-100">Search Results</h3>
           {results.map((result: any) => (
             <LexemeSearchResult
               key={result.lexeme_id}
               result={result}
-              getCefrBadgeColor={getCefrBadgeColor}
             />
           ))}
         </div>
@@ -707,10 +611,9 @@ function LexemeSearchSection({ lexemeSearch, getCefrBadgeColor }: LexemeSearchSe
 // Lexeme Search Result Component
 interface LexemeSearchResultProps {
   result: any;
-  getCefrBadgeColor: (level: string | null) => string;
 }
 
-function LexemeSearchResult({ result, getCefrBadgeColor }: LexemeSearchResultProps) {
+function LexemeSearchResult({ result }: LexemeSearchResultProps) {
   const { addWord, removeWord, isAdding } = useVocabularyBuilder();
 
   const handleAdd = () => {
@@ -724,12 +627,12 @@ function LexemeSearchResult({ result, getCefrBadgeColor }: LexemeSearchResultPro
   };
 
   return (
-    <div className="flex items-center justify-between p-3 rounded-lg border bg-white">
+    <div className="flex items-center justify-between p-3 rounded-lg border bg-white dark:bg-gray-800 dark:border-gray-700">
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-1">
-          <span className="font-medium text-gray-900">{result.lemma}</span>
+          <span className="font-medium text-gray-900 dark:text-gray-100">{result.lemma}</span>
           {result.cefr_level && (
-            <Badge className={cn('text-xs', getCefrBadgeColor(result.cefr_level))}>
+            <Badge className={cn('text-xs', getCefrLevelColor(result.cefr_level))}>
               {result.cefr_level}
             </Badge>
           )}
@@ -774,56 +677,3 @@ function LexemeSearchResult({ result, getCefrBadgeColor }: LexemeSearchResultPro
   );
 }
 
-// Discover Bottom Bar Component
-interface DiscoverBottomBarProps {
-  selectedCount: number;
-  selectedWords: Set<string>;
-  onCancel: () => void;
-  setId: string | null;
-}
-
-function DiscoverBottomBar({ 
-  selectedCount, 
-  selectedWords,
-  onCancel,
-  setId
-}: DiscoverBottomBarProps) {
-  const { bulkAddWords, isAdding } = useVocabSetWords({
-    setId: setId || '',
-    enabled: !!setId,
-  });
-
-  const handleAddToActive = async () => {
-    if (selectedWords.size > 0 && setId) {
-      await bulkAddWords(Array.from(selectedWords), true);
-      onCancel(); // Clear selection after adding
-    }
-  };
-
-  return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 shadow-lg z-20">
-      <div className="max-w-4xl mx-auto flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700">
-          {selectedCount} word{selectedCount > 1 ? 's' : ''} selected
-        </span>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onCancel}
-          >
-            Cancel
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleAddToActive}
-            disabled={isAdding}
-            className="bg-[hsl(var(--brand-blue))] hover:bg-[hsl(var(--brand-blue))]/90 text-white"
-          >
-            Add to Active
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}

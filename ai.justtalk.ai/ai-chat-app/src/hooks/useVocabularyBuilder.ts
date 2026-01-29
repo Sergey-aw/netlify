@@ -8,6 +8,7 @@ import {
   archiveVocabGoal,
   unarchiveVocabGoal,
   toggleVocabActiveStatus,
+  swapFocusWords,
   bulkAddVocabGoals,
   type VocabularyBuilderFilters
 } from '@/lib/goals';
@@ -139,6 +140,26 @@ export function useVocabularyBuilder({
       toast({
         title: 'Error',
         description: 'Failed to update goal status',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Swap focus words (remove one, add another atomically)
+  const swapFocusMutation = useMutation({
+    mutationFn: async ({ removeGoalId, addGoalId }: { removeGoalId: string; addGoalId: string }) => {
+      return swapFocusWords(removeGoalId, addGoalId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vocabulary-builder', effectiveStudentId] });
+      queryClient.invalidateQueries({ queryKey: ['focus-set', effectiveStudentId] });
+      queryClient.invalidateQueries({ queryKey: ['active-lesson-goals', effectiveStudentId] });
+    },
+    onError: (error: any) => {
+      console.error('Error swapping focus words:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to swap focus words',
         variant: 'destructive',
       });
     },
@@ -278,6 +299,8 @@ export function useVocabularyBuilder({
     unarchiveWord: (goalId: string) => unarchiveWordMutation.mutate(goalId),
     toggleActive: (goalId: string, isActive: boolean) => 
       toggleActiveMutation.mutate({ goalId, isActive }),
+    swapFocus: (removeGoalId: string, addGoalId: string) =>
+      swapFocusMutation.mutate({ removeGoalId, addGoalId }),
     bulkToggleActive: (goalIds: string[], isActive: boolean) =>
       bulkToggleActiveMutation.mutate({ goalIds, isActive }),
     bulkArchive: (goalIds: string[]) => bulkArchiveMutation.mutate(goalIds),
@@ -288,6 +311,7 @@ export function useVocabularyBuilder({
     isRemoving: removeWordMutation.isPending,
     isUnarchiving: unarchiveWordMutation.isPending,
     isToggling: toggleActiveMutation.isPending,
+    isSwapping: swapFocusMutation.isPending,
     isBulkOperating: bulkToggleActiveMutation.isPending || 
                      bulkArchiveMutation.isPending || 
                      bulkUnarchiveMutation.isPending ||

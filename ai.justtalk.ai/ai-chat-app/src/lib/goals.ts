@@ -34,6 +34,8 @@ export interface VocabularyBuilderWord {
   archived_at: string | null;
   usage_count: number;
   lesson_count: number;
+  focus_lesson_count: number;
+  is_stable: boolean;
   evidence_preview: Array<{
     lesson_id: string;
     created_at: string;
@@ -339,6 +341,19 @@ export async function toggleVocabActiveStatus(
   }
 
   return data;
+}
+
+/**
+ * Swap focus words - remove one from focus and add another atomically
+ */
+export async function swapFocusWords(
+  removeGoalId: string,
+  addGoalId: string
+): Promise<void> {
+  // Deactivate the word to remove first
+  await toggleVocabActiveStatus(removeGoalId, false);
+  // Then activate the word to add
+  await toggleVocabActiveStatus(addGoalId, true);
 }
 
 /**
