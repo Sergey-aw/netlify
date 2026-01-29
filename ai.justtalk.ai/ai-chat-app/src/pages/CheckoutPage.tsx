@@ -16,6 +16,24 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Set theme color for mobile browsers (iOS Safari requires hex color)
+  useEffect(() => {
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    const brandBlue = '#0080ff'; // hsl(211 100% 50%) converted to hex
+    
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute('content', brandBlue);
+    }
+
+    // Cleanup: restore default theme color on unmount
+    return () => {
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+      if (metaThemeColor) {
+        metaThemeColor.setAttribute('content', '#efefef');
+      }
+    };
+  }, []);
+
   // Get plan details from URL params
   const priceId = searchParams.get('priceId');
   const trialDays = searchParams.get('trialDays');

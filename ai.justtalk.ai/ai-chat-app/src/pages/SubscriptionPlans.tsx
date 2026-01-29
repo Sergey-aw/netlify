@@ -577,7 +577,7 @@ export default function SubscriptionPlans() {
       </AnimatePresence>
 
       {/* Main Content Container */}
-      <div className="relative flex flex-col min-h-screen px-6 py-0 pb-12">
+      <div className="relative flex flex-col min-h-screen px-6 py-0 pb-12 max-w-xl mx-auto">
         {/* Header Section */}
         <div className="flex flex-col items-center text-center pt-8 pb-0 px-8 gap-[21px] mb-8">
           <h1 className="text-[32px] font-bold text-[#39597d] leading-[1.076]">
