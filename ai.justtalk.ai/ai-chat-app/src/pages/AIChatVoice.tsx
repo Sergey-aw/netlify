@@ -11,6 +11,7 @@ import {
   Volume2,
   CircleStop,
   Languages,
+  Sparkles,
 } from 'lucide-react';
 import { useConversation } from '@elevenlabs/react';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ import { useSession } from '@/hooks/useSession';
 import { FeedbackDrawer, type FeedbackData } from '@/components/FeedbackDrawer';
 import { VoiceBars } from '@/components/VoiceBars';
 import { CenteredAgentIntro } from '@/components/CenteredAgentIntro';
+import { RealtimeGoalsPanel } from '@/components/RealtimeGoalsPanel';
 import bgWelcome from '@/assets/bg_welcome.jpg';
 import {
   Drawer,
@@ -45,6 +47,132 @@ function stripVoiceTags(text: string): string {
   return text.replace(/<[^>]+>/g, '');
 }
 
+// Helper function for async vocabulary processing (fire-and-forget)
+const AI_TEACHER_ID = '00000000-0000-0000-0000-000000000001';
+
+async function processVocabularyInRealtime(
+  lessonId: string,
+  text: string,
+  studentId: string,
+  speaker: 'student' | 'teacher'
+): Promise<void> {
+  try {
+    console.log(`🔍 Processing vocabulary in real-time for ${speaker} message...`);
+    
+    // Create transcription segment - matching actual schema
+    const now = new Date();
+    const { data: segment, error: segmentError } = await supabase
+      .from('lesson_transcription_segments')
+      .insert({
+        lesson_id: lessonId,
+        speaker_id: speaker === 'teacher' ? AI_TEACHER_ID : studentId, // Use AI teacher ID for teacher messages
+        speaker_role: speaker, // Use role to distinguish speaker type
+        transcript: text,
+        formatted_text: text, // Use same text for formatted_text field
+        start_time: now.toISOString(),
+        end_time: now.toISOString(),
+        final_sentence_transcription: true,
+        realtime_processed: true,
+      })
+      .select()
+      .single();
+
+    if (segmentError) {
+      console.error('❌ Failed to create segment:', segmentError);
+      return;
+    }
+
+    console.log(`✅ Segment created: ${segment.id}`);
+
+    // Only process vocabulary and mistakes for student messages
+    if (speaker !== 'student') {
+      console.log('ℹ️ Skipping vocab/mistake processing for AI message');
+      return;
+    }
+
+    const session = await supabase.auth.getSession();
+    const authToken = session.data.session?.access_token;
+
+    // Process vocabulary (call vocab-ingest-segment)
+    const vocabPromise = fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/vocab-ingest-segment`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          lessonId: lessonId,
+          segmentId: segment.id,
+          studentId: studentId,
+        }),
+      }
+    );
+
+    // Process mistakes in parallel (call process-segment-mistakes)
+    const mistakesPromise = fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-segment-mistakes`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          lessonId: lessonId,
+          segmentId: segment.id,
+        }),
+      }
+    );
+
+    // Wait for both to complete
+    const [vocabResponse, mistakesResponse] = await Promise.all([vocabPromise, mistakesPromise]);
+
+    // Handle vocabulary response
+    if (!vocabResponse.ok) {
+      const error = await vocabResponse.text();
+      console.error('❌ Vocab processing failed:', error);
+    } else {
+      const vocabResult = await vocabResponse.json();
+      console.log('✅ Vocabulary processed:', vocabResult);
+
+      // Dispatch custom event for UI updates
+      window.dispatchEvent(new CustomEvent('vocab-realtime-completed', {
+        detail: {
+          lessonId,
+          segmentId: segment.id,
+          wordsInserted: vocabResult.wordsInserted,
+          evidenceInserted: vocabResult.evidenceInserted,
+        }
+      }));
+    }
+
+    // Handle mistakes response
+    if (!mistakesResponse.ok) {
+      const error = await mistakesResponse.text();
+      console.error('❌ Mistake processing failed:', error);
+    } else {
+      const mistakesResult = await mistakesResponse.json();
+      console.log('✅ Mistakes processed:', mistakesResult);
+
+      // Dispatch custom event for UI updates
+      window.dispatchEvent(new CustomEvent('mistakes-realtime-completed', {
+        detail: {
+          lessonId,
+          segmentId: segment.id,
+          mistakesCount: mistakesResult.mistakesCount || 0,
+          mistakes: mistakesResult.mistakes || [],
+        }
+      }));
+    }
+    
+  } catch (error) {
+    console.error('❌ Exception in vocabulary/mistake processing:', error);
+    // Don't throw - this is fire-and-forget
+  }
+}
+
 export default function AIChatVoice() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -61,9 +189,15 @@ export default function AIChatVoice() {
   const animationFrameRef = useRef<number | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const conversationIdRef = useRef<string | null>(null); // Ref to avoid stale closure
   const [elevenLabsConvId, setElevenLabsConvId] = useState<string | null>(null);
+  const [virtualLessonId, setVirtualLessonId] = useState<string | null>(null);
+  const virtualLessonIdRef = useRef<string | null>(null); // Ref to avoid stale closure
+  const [voiceSessionId, setVoiceSessionId] = useState<string | null>(null);
+  const [showGoalsPanel, setShowGoalsPanel] = useState(false);
   const sessionStartTime = useRef<Date | null>(null);
   const sessionSaved = useRef(false);
+  const initializationStarted = useRef(false); // Prevent duplicate initialization
   const [showFeedbackDrawer, setShowFeedbackDrawer] = useState(false);
   const [feedbackData, setFeedbackData] = useState<FeedbackData | null>(null);
   const [isFetchingFeedback, setIsFetchingFeedback] = useState(false);
@@ -268,10 +402,18 @@ export default function AIChatVoice() {
       console.log('Disconnected from ElevenLabs');
     },
     onMessage: async (message) => {
-      console.log('Message received:', message);
+      console.log('📨 Message received:', message);
+      console.log('🔍 State check:', {
+        conversationId,
+        conversationIdRef: conversationIdRef.current,
+        virtualLessonId,
+        virtualLessonIdRef: virtualLessonIdRef.current,
+        userId: user?.id
+      });
       
       // Add message to transcript based on role
       if (message.source === 'user' && message.message) {
+        console.log('👤 Processing user message...');
         const segment: TranscriptSegment = {
           speaker: 'student',
           text: stripVoiceTags(message.message),
@@ -280,7 +422,10 @@ export default function AIChatVoice() {
         setTranscript((prev) => [...prev, segment]);
         
         // Save to database
-        if (conversationId && user?.id) {
+        const currentConversationId = conversationIdRef.current;
+        console.log('💾 Attempting to save user message, conversationId:', currentConversationId);
+        
+        if (currentConversationId && user?.id) {
           // Check subscription limit before saving using database function
           const { data: subscription } = await supabase
             .from('justai_subscriptions')
@@ -310,16 +455,46 @@ export default function AIChatVoice() {
           }
 
           // Save user message (usage is automatically tracked via justai_usage_log_view)
-          await supabase
+          console.log('📝 Inserting user message to database...');
+          const { error: userMessageError } = await supabase
             .from('justai_messages')
             .insert({
-              conversation_id: conversationId,
+              conversation_id: currentConversationId,
               role: 'user',
               content: stripVoiceTags(message.message),
               is_voice_message: true,
             });
+          
+          if (userMessageError) {
+            console.error('❌ Failed to save user message:', userMessageError);
+          } else {
+            console.log('✅ User message saved to database');
+          }
+          
+          // 🆕 NEW: Real-time vocabulary processing
+          const currentLessonId = virtualLessonIdRef.current; // Use ref to get current value
+          console.log('🔍 Current virtualLessonId from ref:', currentLessonId);
+          if (currentLessonId && segment.text.trim().length > 0) {
+            processVocabularyInRealtime(
+              currentLessonId,
+              segment.text,
+              user.id,
+              'student'
+            ).catch((error) => {
+              console.error('❌ Real-time vocab processing failed:', error);
+              // Don't block the conversation on vocab processing errors
+            });
+          } else {
+            console.warn('⚠️ Skipping real-time processing - virtualLessonId not available');
+          }
+        } else {
+          console.warn('⚠️ Skipping user message save - conversationId or userId missing:', {
+            currentConversationId,
+            userId: user?.id
+          });
         }
       } else if (message.source === 'ai' && message.message) {
+        console.log('🤖 Processing AI message...');
         const segment: TranscriptSegment = {
           speaker: 'ai',
           text: stripVoiceTags(message.message),
@@ -328,13 +503,44 @@ export default function AIChatVoice() {
         setTranscript((prev) => [...prev, segment]);
         
         // Save to database (AI messages don't count toward user's limit)
-        if (conversationId) {
-          await supabase.from('justai_messages').insert({
-            conversation_id: conversationId,
+        const currentConversationId = conversationIdRef.current;
+        console.log('💾 Attempting to save AI message, conversationId:', currentConversationId);
+        
+        if (currentConversationId) {
+          console.log('📝 Inserting AI message to database...');
+          const { error: aiMessageError } = await supabase.from('justai_messages').insert({
+            conversation_id: currentConversationId,
             role: 'assistant',
             content: stripVoiceTags(message.message),
             is_voice_message: true,
           });
+          
+          if (aiMessageError) {
+            console.error('❌ Failed to save AI message:', aiMessageError);
+          } else {
+            console.log('✅ AI message saved to database');
+          }
+          
+          // 🆕 NEW: Real-time transcription segment for AI messages too
+          const currentLessonId = virtualLessonIdRef.current; // Use ref to get current value
+          console.log('🔍 Current virtualLessonId from ref (AI):', currentLessonId);
+          if (currentLessonId && user?.id && segment.text.trim().length > 0) {
+            console.log('✅ Calling processVocabularyInRealtime for AI message');
+            processVocabularyInRealtime(
+              currentLessonId,
+              segment.text,
+              user.id,
+              'teacher'
+            ).catch((error) => {
+              console.error('❌ Real-time AI transcript processing failed:', error);
+            });
+          } else {
+            console.warn('⚠️ Skipping real-time AI processing - missing data:', {
+              currentLessonId,
+              userId: user?.id,
+              textLength: segment.text.trim().length
+            });
+          }
         }
       }
     },
@@ -358,7 +564,14 @@ export default function AIChatVoice() {
   // Initialize ElevenLabs connection
   useEffect(() => {
     const initConversation = async () => {
+      // Prevent duplicate initialization (React strict mode, remounting, etc.)
+      if (initializationStarted.current) {
+        console.log('⚠️ Initialization already started, skipping duplicate call');
+        return;
+      }
+      
       try {
+        initializationStarted.current = true;
         setIsConnecting(true);
         
         if (!user?.id) {
@@ -421,6 +634,73 @@ export default function AIChatVoice() {
 
         if (convError) throw convError;
         setConversationId(convData.id);
+        conversationIdRef.current = convData.id; // Update ref immediately for callbacks
+        console.log('✅ Conversation created, ID:', convData.id);
+        
+        // 🆕 NEW: Create virtual lesson immediately for real-time vocab tracking
+        console.log('📚 Creating virtual lesson for real-time vocab tracking...');
+
+        const AI_TEACHER_ID = '00000000-0000-0000-0000-000000000001';
+
+        // Helper function to round time to nearest half hour
+        const roundToHalfHour = (date: Date) => {
+          const rounded = new Date(date);
+          const minutes = rounded.getMinutes();
+          if (minutes < 15) {
+            rounded.setMinutes(0, 0, 0);
+          } else if (minutes < 45) {
+            rounded.setMinutes(30, 0, 0);
+          } else {
+            rounded.setMinutes(0, 0, 0);
+            rounded.setHours(rounded.getHours() + 1);
+          }
+          return rounded;
+        };
+
+        const lessonStartTime = new Date();
+        const roundedStartTime = roundToHalfHour(lessonStartTime);
+        let roundedEndTime = new Date(roundedStartTime.getTime() + 30 * 60 * 1000);
+
+        // Ensure end time is after start time
+        if (roundedEndTime <= roundedStartTime) {
+          roundedEndTime = new Date(roundedStartTime.getTime() + 30 * 60 * 1000);
+        }
+
+        const { data: virtualLesson, error: lessonError } = await supabase
+          .from('lessons')
+          .insert({
+            teacher_id: AI_TEACHER_ID,
+            student_id: user.id,
+            starts_at: roundedStartTime.toISOString(),
+            ends_at: roundedEndTime.toISOString(),
+            status: 'in_progress', // CRITICAL: This triggers lesson_active_goals_snapshot
+            is_ai_session: true,
+          })
+          .select()
+          .single();
+
+        if (lessonError) {
+          console.error('❌ Failed to create virtual lesson:', lessonError);
+          throw lessonError;
+        }
+
+        console.log('✅ Virtual lesson created:', virtualLesson.id);
+        setVirtualLessonId(virtualLesson.id);
+        virtualLessonIdRef.current = virtualLesson.id; // Update ref immediately for callbacks
+
+        // Note: Voice session record will be created after we get ElevenLabs conversation ID
+
+        // Wait a moment for snapshot trigger to complete
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Verify snapshot was created
+        const { data: snapshotCheck } = await supabase
+          .from('lesson_active_goals_snapshot')
+          .select('lexeme_id')
+          .eq('lesson_id', virtualLesson.id)
+          .eq('student_id', user.id);
+
+        console.log(`✅ Active Goals snapshot created: ${snapshotCheck?.length || 0} words`);
         
         // Fetch agent's recommended duration for feedback
         if (agentDatabaseId) {
@@ -585,6 +865,46 @@ export default function AIChatVoice() {
         if (sessionInfo && typeof sessionInfo === 'string') {
           setElevenLabsConvId(sessionInfo);
           console.log('✅ Stored ElevenLabs conversation ID:', sessionInfo);
+          
+          // Check if voice session already exists for this ElevenLabs conversation ID
+          const { data: existingSession, error: checkError } = await supabase
+            .from('justai_voice_sessions')
+            .select('id')
+            .eq('elevenlabs_conversation_id', sessionInfo)
+            .maybeSingle(); // Use maybeSingle() to avoid 406 error when no record found
+
+          if (checkError) {
+            console.error('❌ Error checking existing voice session:', checkError);
+          }
+
+          if (existingSession) {
+            // Voice session already exists (e.g., page refresh or retry)
+            console.log('ℹ️ Voice session already exists:', existingSession.id);
+            setVoiceSessionId(existingSession.id);
+          } else {
+            // Create new voice session record
+            // Use virtualLesson.id directly (not state) to avoid race condition
+            const { data: voiceSessionRecord, error: voiceSessionError } = await supabase
+              .from('justai_voice_sessions')
+              .insert({
+                conversation_id: convData.id,
+                student_id: user.id,
+                virtual_lesson_id: virtualLesson.id, // Use direct value, not state
+                elevenlabs_conversation_id: sessionInfo,
+                total_duration_seconds: 0,
+                started_at: lessonStartTime.toISOString(),
+                ended_at: null,
+              })
+              .select()
+              .single();
+
+            if (voiceSessionError) {
+              console.error('❌ Failed to create voice session record:', voiceSessionError);
+            } else {
+              console.log('✅ Voice session record created:', voiceSessionRecord.id);
+              setVoiceSessionId(voiceSessionRecord.id);
+            }
+          }
         }
 
         sessionStartTime.current = new Date();
@@ -611,6 +931,7 @@ export default function AIChatVoice() {
       } catch (error) {
         console.error('Failed to initialize conversation:', error);
         setIsConnecting(false);
+        initializationStarted.current = false; // Reset on error to allow retry
         alert('Failed to connect to voice chat. Please try again.');
       }
     };
@@ -928,18 +1249,37 @@ export default function AIChatVoice() {
           endTime,
         });
 
-        const { data: voiceSessionData } = await supabase
-          .from('justai_voice_sessions')
-          .insert({
-            conversation_id: conversationId,
-            student_id: user.id,
-            elevenlabs_conversation_id: elevenLabsConvId,
-            total_duration_seconds: durationSeconds,
-            started_at: sessionStartTime.current.toISOString(),
-            ended_at: endTime.toISOString(),
-          })
-          .select()
-          .single();
+        // Update existing voice session record (created at start)
+        if (voiceSessionId) {
+          const { error: updateError } = await supabase
+            .from('justai_voice_sessions')
+            .update({
+              elevenlabs_conversation_id: elevenLabsConvId,
+              total_duration_seconds: durationSeconds,
+              ended_at: endTime.toISOString(),
+            })
+            .eq('id', voiceSessionId);
+
+          if (updateError) {
+            console.error('❌ Failed to update voice session:', updateError);
+          } else {
+            console.log('✅ Voice session updated:', voiceSessionId);
+          }
+        }
+
+        // Update lesson status to completed
+        if (virtualLessonId) {
+          const { error: lessonError } = await supabase
+            .from('lessons')
+            .update({ status: 'completed' })
+            .eq('id', virtualLessonId);
+
+          if (lessonError) {
+            console.error('❌ Failed to update lesson status:', lessonError);
+          } else {
+            console.log('✅ Lesson marked as completed:', virtualLessonId);
+          }
+        }
 
         // Update conversation with final message time
         await supabase
@@ -950,10 +1290,10 @@ export default function AIChatVoice() {
           })
           .eq('id', conversationId);
 
-        // Trigger background processing (transcript, vocab, grammar, costs)
+        // Trigger background processing for metadata only (vocab already processed)
         // This is non-blocking - we don't wait for it to complete
-        if (voiceSessionData) {
-          console.log('🚀 Triggering process-voice-session for:', voiceSessionData.id);
+        if (voiceSessionId) {
+          console.log('🚀 Triggering process-voice-session for metadata (skip vocab):', voiceSessionId);
           const session = await supabase.auth.getSession();
           fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-voice-session`,
@@ -964,7 +1304,9 @@ export default function AIChatVoice() {
                 Authorization: `Bearer ${session.data.session?.access_token}`,
               },
               body: JSON.stringify({
-                voiceSessionId: voiceSessionData.id,
+                voiceSessionId: voiceSessionId,
+                skipVocabProcessing: true, // 🆕 Skip vocab - already processed in real-time
+                skipSegmentCreation: true, // 🆕 Skip segments - already created in real-time
               }),
             }
           ).then(async (response) => {
@@ -974,52 +1316,7 @@ export default function AIChatVoice() {
             }
             return response.json();
           }).then(async (result) => {
-            console.log('✅ Process function result:', result);
-            console.log('🔍 result.studentSegmentIds:', result.studentSegmentIds);
-            console.log('🔍 studentSegmentIds length:', result.studentSegmentIds?.length);
-            
-            // Process vocabulary for student segments
-            if (result.success && result.studentSegmentIds && result.studentSegmentIds.length > 0) {
-              console.log(`🎯 Processing vocabulary for ${result.studentSegmentIds.length} student segments`);
-              
-              // Process each segment in parallel
-              const vocabPromises = result.studentSegmentIds.map(async (segmentId: string) => {
-                try {
-                  const vocabResponse = await fetch(
-                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/vocab-ingest-segment`,
-                    {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${session.data.session?.access_token}`,
-                      },
-                      body: JSON.stringify({
-                        lessonId: result.lessonId,
-                        segmentId: segmentId,
-                        studentId: user.id,
-                      }),
-                    }
-                  );
-                  
-                  if (!vocabResponse.ok) {
-                    const error = await vocabResponse.text();
-                    console.error(`❌ Vocab processing failed for segment ${segmentId}:`, error);
-                    return { segmentId, success: false, error };
-                  }
-                  
-                  const vocabResult = await vocabResponse.json();
-                  console.log(`✅ Vocab processed for segment ${segmentId}:`, vocabResult);
-                  return { segmentId, success: true, ...vocabResult };
-                } catch (error) {
-                  console.error(`❌ Error processing vocab for segment ${segmentId}:`, error);
-                  return { segmentId, success: false, error };
-                }
-              });
-              
-              const vocabResults = await Promise.all(vocabPromises);
-              const successCount = vocabResults.filter(r => r.success).length;
-              console.log(`✅ Vocabulary processing complete: ${successCount}/${result.studentSegmentIds.length} successful`);
-            }
+            console.log('✅ Process function result (metadata only):', result);
           }).catch((error) => {
             console.error('❌ Failed to trigger voice session processing:', error);
           });
@@ -1252,8 +1549,21 @@ export default function AIChatVoice() {
                 </div>
               </div>
 
-              {/* Right Side: Voice Bars + Timer */}
+              {/* Right Side: Voice Bars + Timer + Goals Toggle */}
               <div className="flex items-center gap-3">
+                {/* Goals Panel Toggle */}
+                {virtualLessonId && user?.id && (
+                  <Button
+                    variant={showGoalsPanel ? "default" : "ghost"}
+                    size="icon"
+                    onClick={() => setShowGoalsPanel(!showGoalsPanel)}
+                    className="rounded-full h-10 w-10"
+                    title={showGoalsPanel ? "Hide Goals" : "Show Goals"}
+                  >
+                    <Sparkles className="w-5 h-5" />
+                  </Button>
+                )}
+                
                 {/* Live Voice Bars */}
                 {(isRecording || isAISpeaking) && (
                   <motion.div
@@ -1286,15 +1596,17 @@ export default function AIChatVoice() {
               </div>
             </motion.header>
 
-            {/* Main Content Area with Rounded Container - matching AIChatHome */}
-            <div className="flex-1 bg-gray-100 rounded-[40px] m-2 flex flex-col overflow-hidden">
-              {/* Chat Messages Area (Scrollable) */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.5 }}
-                className="flex-1 overflow-y-auto px-6 py-6 space-y-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-              >
+            {/* Main Content Area - Flex container with optional sidebar */}
+            <div className="flex-1 flex gap-2 mx-2 mb-2 overflow-hidden">
+              {/* Chat Area - Main content */}
+              <div className="flex-1 bg-gray-100 rounded-[40px] flex flex-col overflow-hidden">
+                {/* Chat Messages Area (Scrollable) */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.5 }}
+                  className="flex-1 overflow-y-auto px-6 py-6 space-y-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                >
                 {transcript.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center text-muted-foreground">
@@ -1477,6 +1789,24 @@ export default function AIChatVoice() {
                 {/* Scroll anchor */}
                 <div ref={messagesEndRef} />
               </motion.div>
+              </div>
+
+              {/* Goals Panel Sidebar - Conditional */}
+              {showGoalsPanel && virtualLessonId && user?.id && (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-80 bg-white rounded-[40px] overflow-hidden shadow-lg"
+                >
+                  <RealtimeGoalsPanel
+                    lessonId={virtualLessonId}
+                    studentId={user.id}
+                    isVisible={showGoalsPanel}
+                  />
+                </motion.div>
+              )}
             </div>
 
             {/* Bottom Bar - OUTSIDE the rounded container */}

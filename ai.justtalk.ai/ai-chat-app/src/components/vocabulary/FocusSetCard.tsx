@@ -29,7 +29,7 @@ export function FocusSetCard({ word, onRemove }: FocusSetCardProps) {
           size="icon"
           variant="ghost"
           onClick={() => onRemove(word.id)}
-          className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-gray-100 hover:bg-red-500 text-gray-500 hover:text-white z-10 p-0"
+          className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-gray-100 hover:bg-red-500 text-gray-500 hover:text-white z-[5] p-0"
         >
           <X className="h-3.5 w-3.5" />
         </Button>

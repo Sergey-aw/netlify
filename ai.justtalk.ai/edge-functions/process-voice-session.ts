@@ -45,8 +45,8 @@ serve(async (req) => {
     // Initialize Supabase client with service role key for admin access
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Get voice session ID from request body
-    const { voiceSessionId } = await req.json()
+    // Get voice session ID and skip flags from request body
+    const { voiceSessionId, skipVocabProcessing = false, skipSegmentCreation = false } = await req.json()
 
     if (!voiceSessionId) {
       return new Response(
@@ -57,6 +57,12 @@ serve(async (req) => {
         }
       )
     }
+
+    console.log('Processing voice session:', {
+      voiceSessionId,
+      skipVocabProcessing,
+      skipSegmentCreation,
+    })
 
     // Get voice session data
     const { data: voiceSession, error: sessionError } = await supabase
@@ -72,6 +78,120 @@ serve(async (req) => {
     if (!voiceSession.elevenlabs_conversation_id) {
       throw new Error('No ElevenLabs conversation ID found in voice session')
     }
+
+    // 🆕 NEW: If vocab was processed in real-time, skip duplicate processing
+    if (skipVocabProcessing && skipSegmentCreation) {
+      console.log('⏩ Skipping segment/vocab processing (already done in real-time)')
+      console.log('📊 Fetching metadata from ElevenLabs for finalization...')
+      
+      // Wait for ElevenLabs to process
+      await new Promise(resolve => setTimeout(resolve, 5000))
+      
+      const elevenLabsResponse = await fetch(
+        `https://api.elevenlabs.io/v1/convai/conversations/${voiceSession.elevenlabs_conversation_id}`,
+        {
+          method: 'GET',
+          headers: {
+            'xi-api-key': apiKey,
+          },
+        }
+      )
+      
+      if (!elevenLabsResponse.ok) {
+        const errorText = await elevenLabsResponse.text()
+        throw new Error(`ElevenLabs API error: ${elevenLabsResponse.status} - ${errorText}`)
+      }
+      
+      const elevenLabsData = await elevenLabsResponse.json()
+      const metadata = elevenLabsData.metadata || {}
+      const charging = metadata.charging || {}
+      
+      // Calculate costs
+      const totalCost = metadata.cost || 0
+      const callCharge = charging.call_charge || 0
+      const llmCharge = charging.llm_charge || 0
+      const callDurationSecs = metadata.call_duration_secs || 0
+      
+      // Extract dynamic variables for next conversation
+      const analysis = elevenLabsData.analysis || {}
+      const dynamicVariables = {
+        conversation_summary: analysis.conversation_summary || null,
+        emotional_notes: analysis.emotional_notes || null,
+        open_threads: analysis.open_threads || null,
+        unlock_next_scenario: analysis.unlock_next_scenario || false,
+        extracted_at: new Date().toISOString(),
+      }
+      
+      // Count characters from transcript
+      const transcript = elevenLabsData.transcript || []
+      let totalCharacters = 0
+      for (const entry of transcript) {
+        if (entry.role === 'agent') {
+          totalCharacters += stripVoiceTags(entry.message || '').length
+        }
+      }
+      
+      // Calculate speaking times
+      let userSpeakingTimeSecs = 0
+      let agentSpeakingTimeSecs = 0
+      for (let i = 0; i < transcript.length; i++) {
+        const entry = transcript[i]
+        const nextEntry = transcript[i + 1]
+        const startTime = entry.time_in_call_secs || 0
+        const endTime = nextEntry ? nextEntry.time_in_call_secs : callDurationSecs
+        const duration = Math.max(0, endTime - startTime)
+        
+        if (entry.role === 'user') {
+          userSpeakingTimeSecs += duration
+        } else if (entry.role === 'agent') {
+          agentSpeakingTimeSecs += duration
+        }
+      }
+      
+      // Update voice session with final metadata
+      await supabase
+        .from('justai_voice_sessions')
+        .update({
+          total_characters_agent: totalCharacters,
+          total_cost_credits: totalCost,
+          call_charge_credits: callCharge,
+          llm_charge_credits: llmCharge,
+          user_speaking_time_secs: userSpeakingTimeSecs,
+          agent_speaking_time_secs: agentSpeakingTimeSecs,
+          processed_at: new Date().toISOString(),
+        })
+        .eq('id', voiceSessionId)
+      
+      // Store dynamic variables in conversation
+      if (voiceSession.conversation_id) {
+        await supabase
+          .from('justai_conversations')
+          .update({
+            session_memory: dynamicVariables,
+          })
+          .eq('id', voiceSession.conversation_id)
+      }
+      
+      console.log('✅ Session finalized with metadata (vocab already processed)')
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Session metadata updated (vocab processed in real-time)',
+          voiceSessionId,
+          totalCharacters,
+          totalCost,
+          callDurationSecs,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
+    // 🔄 EXISTING: Fall through to normal processing if flags not set
+    console.log('📝 Processing session with full transcript extraction...')
 
     // Wait a few seconds for ElevenLabs to process the conversation
     // Conversations may not be immediately available after ending
