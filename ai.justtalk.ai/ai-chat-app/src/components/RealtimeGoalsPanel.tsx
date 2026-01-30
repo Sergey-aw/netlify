@@ -10,9 +10,12 @@ import { useFocusSet } from '@/hooks/useFocusSet';
 interface Mistake {
   id: string;
   mistake_type: string;
+  display_group: string;
   original_text: string;
   corrected_text: string;
   explanation: string;
+  start_pos?: number;
+  end_pos?: number;
 }
 
 interface RealtimeGoalsPanelProps {
@@ -115,17 +118,18 @@ export function RealtimeGoalsPanel({ lessonId, studentId, isVisible }: RealtimeG
     queryFn: async () => {
       const { data, error } = await supabase
         .from('lesson_mistakes_view')
-        .select('error_type, general_error_type, sentence, replacement')
+        .select('error_type, general_error_type, display_group, sentence, replacement, start_pos, end_pos')
         .eq('lesson_id', lessonId)
+        .eq('ai_validated', true)
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (error) throw error;
 
-      // Group by error type
+      // Group by display_group
       const grouped: Record<string, number> = {};
       data.forEach(mistake => {
-        const type = mistake.general_error_type || mistake.error_type || 'other';
+        const type = mistake.display_group || mistake.general_error_type || mistake.error_type || 'other';
         grouped[type] = (grouped[type] || 0) + 1;
       });
 
@@ -134,9 +138,12 @@ export function RealtimeGoalsPanel({ lessonId, studentId, isVisible }: RealtimeG
         byType: grouped,
         recent: data.map(m => ({
           mistake_type: m.general_error_type || m.error_type,
+          display_group: m.display_group || m.general_error_type || m.error_type,
           original_text: m.sentence,
           corrected_text: m.replacement,
           explanation: m.general_error_type ? `${m.error_type}` : undefined,
+          start_pos: m.start_pos,
+          end_pos: m.end_pos,
         })),
       };
     },
@@ -149,22 +156,13 @@ export function RealtimeGoalsPanel({ lessonId, studentId, isVisible }: RealtimeG
   return (
     <div className="h-full overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-950">
       {/* Header */}
-      <div className="flex items-center gap-2 pb-2 border-b">
-        <Sparkles className="w-5 h-5 text-purple-500" />
-        <h3 className="font-semibold text-lg">Real-Time Goals</h3>
-      </div>
-
+     
       {/* Focus Set Section */}
       <Card className="p-4">
         <div className="flex items-center gap-2 mb-3">
           <Target className="w-4 h-4 text-blue-500" />
           <h4 className="font-medium">Focus Set</h4>
-          {isSnapshot && (
-            <Badge variant="secondary" className="ml-auto flex items-center gap-1">
-              <Lock className="w-3 h-3" />
-              Frozen
-            </Badge>
-          )}
+         
           {!isSnapshot && (
             <Badge variant="outline" className="ml-auto">
               {focusSnapshot.length} / 5
@@ -236,17 +234,7 @@ export function RealtimeGoalsPanel({ lessonId, studentId, isVisible }: RealtimeG
               );
             })}
             
-            {/* Empty slots */}
-            {emptySlots > 0 && Array.from({ length: emptySlots }).map((_, i) => (
-              <div 
-                key={`empty-${i}`}
-                className="border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-lg p-3 text-center"
-              >
-                <span className="text-sm text-gray-400 dark:text-gray-600">
-                  Empty slot
-                </span>
-              </div>
-            ))}
+          
           </div>
         ) : (
           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -308,31 +296,60 @@ export function RealtimeGoalsPanel({ lessonId, studentId, isVisible }: RealtimeG
             
             {/* Recent mistakes */}
             {(recentMistakes.length > 0 || mistakeStats.recent.length > 0) && (
-              <div className="pt-2 border-t">
-                <p className="text-xs font-medium mb-2 text-gray-500">Recent:</p>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {(recentMistakes.length > 0 ? recentMistakes : mistakeStats.recent).map((mistake, idx) => (
-                    <div key={idx} className="text-xs p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-800">
-                      {/* Mistake type badge */}
-                      {mistake.mistake_type && (
-                        <Badge variant="outline" className="mb-2 text-xs">
-                          {mistake.mistake_type.replace(/_/g, ' ')}
-                        </Badge>
-                      )}
-                      
-                      {/* Original → Correction */}
-                      <div className="flex items-start gap-1 mb-1">
-                        <span className="text-red-500 line-through font-medium">{mistake.original_text}</span>
-                        <span className="text-gray-400">→</span>
-                        <span className="text-green-600 font-medium">{mistake.corrected_text}</span>
+              <div className="pt-2 ">
+                
+                <div className="space-y-2">
+                  {(recentMistakes.length > 0 ? recentMistakes : mistakeStats.recent).map((mistake, idx) => {
+                    // Highlight the mistake in the sentence
+                    const renderSentence = () => {
+                      if (mistake.start_pos !== undefined && mistake.end_pos !== undefined) {
+                        const before = mistake.original_text.slice(0, mistake.start_pos);
+                        const highlighted = mistake.original_text.slice(mistake.start_pos, mistake.end_pos);
+                        const after = mistake.original_text.slice(mistake.end_pos);
+                        
+                        return (
+                          <>
+                            {before}
+                            <span className="bg-yellow-200 dark:bg-yellow-900/50 text-gray-900 dark:text-gray-100 px-0.5 rounded">
+                              {highlighted}
+                            </span>
+                            {after}
+                          </>
+                        );
+                      }
+                      return mistake.original_text;
+                    };
+
+                    return (
+                      <div key={idx} className="text-xs p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 space-y-2">
+                        {/* Category */}
+                        <div className="flex items-center gap-2">
+                          
+                          {mistake.display_group && (
+                            <Badge variant="outline" className="text-xs font-medium bg-white dark:bg-gray-800">
+                              {mistake.display_group}
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        {/* Sentence */}
+                        <div className="space-y-1">
+                          <span className="text-gray-500 dark:text-gray-400 text-xs block">Sentence:</span>
+                          <p className="text-gray-900 dark:text-gray-100">
+                            {renderSentence()}
+                          </p>
+                        </div>
+                        
+                        {/* Suggestion */}
+                        <div className="space-y-1">
+                          <span className="text-gray-500 dark:text-gray-400 text-xs block">Suggestion:</span>
+                          <p className="text-green-600 dark:text-green-400 font-medium">
+                            {mistake.corrected_text}
+                          </p>
+                        </div>
                       </div>
-                      
-                      {/* Explanation */}
-                      {mistake.explanation && (
-                        <p className="text-gray-500 mt-1 italic">{mistake.explanation}</p>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
