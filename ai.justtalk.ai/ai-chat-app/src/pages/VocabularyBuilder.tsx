@@ -19,6 +19,7 @@ import { FocusSummaryCards } from '@/components/vocabulary/FocusSummaryCards';
 import { FocusSetSection } from '@/components/vocabulary/FocusSetSection';
 import { GoalPoolSection } from '@/components/vocabulary/GoalPoolSection';
 import { SwapFocusDialog } from '@/components/vocabulary/SwapFocusDialog';
+import { DiscoverBottomBar } from '@/components/vocabulary/DiscoverBottomBar';
 import { getCefrLevelColor } from '@/lib/vocabulary-utils';
 import { toast } from '@/hooks/use-toast';
 
@@ -289,31 +290,15 @@ export default function VocabularyBuilder() {
         isSwapping={isSwapping}
       />
 
-      {/* Bottom Bar for Discover Tab - Hidden for now */}
-      {/*activeTab === 'discover' && selectedDiscoverWords.size > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t dark:border-gray-800 px-4 py-3 shadow-lg z-20">
-          <div className="max-w-4xl mx-auto flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {selectedDiscoverWords.size} word{selectedDiscoverWords.size > 1 ? 's' : ''} selected
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={clearDiscoverSelection}
-              >
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                className="bg-[hsl(var(--brand-blue))] hover:bg-[hsl(var(--brand-blue))]/90"
-              >
-                Add to Builder
-              </Button>
-            </div>
-          </div>
-        </div>
-      )*/}
+      {/* Bottom Bar for Discover Tab */}
+      {activeTab === 'discover' && selectedDiscoverWords.size > 0 && (
+        <DiscoverBottomBar
+          selectedCount={selectedDiscoverWords.size}
+          selectedWords={selectedDiscoverWords}
+          onCancel={clearDiscoverSelection}
+          setId={currentSetId}
+        />
+      )}
     </div>
   );
 }
