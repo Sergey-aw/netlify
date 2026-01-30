@@ -11,6 +11,7 @@ import { useVocabularyBuilder } from '@/hooks/useVocabularyBuilder';
 import { useVocabSets, useVocabSetWords } from '@/hooks/useVocabSets';
 import { useLexemeSearch } from '@/hooks/useLexemeSearch';
 import { useFocusSet } from '@/hooks/useFocusSet';
+import { useStudentVocabularyOverview } from '@/hooks/useStudentVocabularyOverview';
 import { cn } from '@/lib/utils';
 import { AppSidebar } from '@/components/AppSidebar';
 import { supabase } from '@/lib/supabase';
@@ -86,8 +87,11 @@ export default function VocabularyBuilder() {
   const swapFocus = allGoalsQuery.swapFocus;
   const isSwapping = allGoalsQuery.isSwapping;
 
-  // Calculate vocabulary capacity (stable words)
-  const vocabularyCapacity = focusWords.filter(w => w.is_stable).length;
+  // Fetch vocabulary overview (including capacity)
+  const { data: vocabOverview } = useStudentVocabularyOverview(user?.id);
+  
+  // Calculate vocabulary capacity (stable words count from student_lexeme_history)
+  const vocabularyCapacity = vocabOverview?.acquired_count ?? 0;
   
   // Fetch vocabulary sets for Discover tab
   const { sets, isLoading: isLoadingSets } = useVocabSets();

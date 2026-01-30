@@ -3,16 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Target, AlertCircle, TrendingUp } from 'lucide-react';
+import { Sparkles, Target, AlertCircle, TrendingUp, Lock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-
-interface FocusWord {
-  lexeme_id: string;
-  lemma: string;
-  activation_count: number;
-  points: number;
-  is_active: boolean;
-}
+import { useFocusSet } from '@/hooks/useFocusSet';
 
 interface Mistake {
   id: string;
@@ -60,34 +53,29 @@ export function RealtimeGoalsPanel({ lessonId, studentId, isVisible }: RealtimeG
     return () => window.removeEventListener('mistakes-realtime-completed', handleMistakeUpdate as EventListener);
   }, []);
 
-  // Fetch Focus Set snapshot (frozen at lesson start)
-  const { data: focusSnapshot, isLoading: loadingSnapshot } = useQuery({
-    queryKey: ['focus-snapshot', lessonId, studentId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('lesson_focus_snapshots')
-        .select(`
-          lexeme_id,
-          snapshot_data,
-          lexemes (
-            lemma
-          )
-        `)
-        .eq('lesson_id', lessonId)
-        .eq('student_id', studentId);
-
-      if (error) throw error;
-
-      return data.map(item => ({
-        lexeme_id: item.lexeme_id,
-        lemma: (item.lexemes as any)?.lemma || 'Unknown',
-        activation_count: (item.snapshot_data as any)?.activation_count || 0,
-        points: (item.snapshot_data as any)?.points || 0,
-        is_active: (item.snapshot_data as any)?.is_active || false,
-      })) as FocusWord[];
-    },
+  // Fetch Focus Set snapshot (frozen at lesson start) using unified hook
+  const { 
+    words: focusSnapshot, 
+    isLoading: loadingSnapshot,
+    isSnapshot,
+    emptySlots,
+  } = useFocusSet({
+    studentId,
+    lessonId,
+    lessonStatus: 'in_progress', // This triggers snapshot mode
     enabled: isVisible && !!lessonId && !!studentId,
   });
+
+  // Log snapshot status for debugging
+  useEffect(() => {
+    if (focusSnapshot.length > 0) {
+      console.log('📊 Focus Set snapshot loaded:', {
+        words: focusSnapshot.map(w => w.lemma),
+        isSnapshot,
+        lessonId,
+      });
+    }
+  }, [focusSnapshot, isSnapshot, lessonId]);
 
   // Fetch current vocab progress (updates in real-time)
   const { data: vocabProgress, isLoading: loadingProgress } = useQuery({
@@ -126,24 +114,30 @@ export function RealtimeGoalsPanel({ lessonId, studentId, isVisible }: RealtimeG
     queryKey: ['mistake-stats', lessonId, mistakeUpdateTrigger],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lesson_segment_mistakes')
-        .select('mistake_type, original_text, corrected_text, explanation')
+        .from('lesson_mistakes_view')
+        .select('error_type, general_error_type, sentence, replacement')
         .eq('lesson_id', lessonId)
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (error) throw error;
 
-      // Group by mistake type
+      // Group by error type
       const grouped: Record<string, number> = {};
       data.forEach(mistake => {
-        grouped[mistake.mistake_type] = (grouped[mistake.mistake_type] || 0) + 1;
+        const type = mistake.general_error_type || mistake.error_type || 'other';
+        grouped[type] = (grouped[type] || 0) + 1;
       });
 
       return {
         total: data.length,
         byType: grouped,
-        recent: data,
+        recent: data.map(m => ({
+          mistake_type: m.general_error_type || m.error_type,
+          original_text: m.sentence,
+          corrected_text: m.replacement,
+          explanation: m.general_error_type ? `${m.error_type}` : undefined,
+        })),
       };
     },
     enabled: isVisible && !!lessonId,
@@ -165,9 +159,17 @@ export function RealtimeGoalsPanel({ lessonId, studentId, isVisible }: RealtimeG
         <div className="flex items-center gap-2 mb-3">
           <Target className="w-4 h-4 text-blue-500" />
           <h4 className="font-medium">Focus Set</h4>
-          <Badge variant="secondary" className="ml-auto">
-            Frozen
-          </Badge>
+          {isSnapshot && (
+            <Badge variant="secondary" className="ml-auto flex items-center gap-1">
+              <Lock className="w-3 h-3" />
+              Frozen
+            </Badge>
+          )}
+          {!isSnapshot && (
+            <Badge variant="outline" className="ml-auto">
+              {focusSnapshot.length} / 5
+            </Badge>
+          )}
         </div>
 
         {loadingSnapshot ? (
@@ -182,44 +184,69 @@ export function RealtimeGoalsPanel({ lessonId, studentId, isVisible }: RealtimeG
               const progress = vocabProgress?.[word.lexeme_id];
               const currentActivations = progress?.focus || 0;
               const isActivated = currentActivations > 0;
+              const totalActivations = word.lesson_count || 0; // From snapshot
+              const focusPoints = word.focus_lesson_count || 0; // From snapshot
 
               return (
                 <div
                   key={word.lexeme_id}
-                  className={`p-3 rounded-lg border ${
+                  className={`p-2 rounded-lg border ${
                     isActivated
                       ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'
                       : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium">{word.lemma}</span>
-                    {isActivated && (
-                      <Badge variant="default" className="bg-green-500">
-                        +{currentActivations}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="font-medium text-sm">{word.lemma}</span>
+                      
+                      {/* Activation dots showing current progress */}
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-1">
+                          {[...Array(3)].map((_, i) => (
+                            <div
+                              key={i}
+                              className={`w-2 h-2 rounded-full ${
+                                i < totalActivations + currentActivations
+                                  ? 'bg-blue-500'
+                                  : 'bg-gray-300 dark:bg-gray-700'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs text-gray-500">
+                          {totalActivations + currentActivations}/3
+                        </span>
+                      </div>
+
+                      {isActivated && (
+                        <Badge variant="default" className="bg-green-500 text-xs">
+                          +{currentActivations} pts
+                        </Badge>
+                      )}
+                    </div>
+                    
+                    {word.cefr_level && (
+                      <Badge variant="outline" className="text-xs">
+                        {word.cefr_level}
                       </Badge>
                     )}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                    <div className="flex gap-1">
-                      {[...Array(5)].map((_, i) => (
-                        <div
-                          key={i}
-                          className={`w-2 h-2 rounded-full ${
-                            i < currentActivations
-                              ? 'bg-green-500'
-                              : 'bg-gray-300 dark:bg-gray-700'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <span className="text-xs">
-                      {currentActivations}/5 activations
-                    </span>
                   </div>
                 </div>
               );
             })}
+            
+            {/* Empty slots */}
+            {emptySlots > 0 && Array.from({ length: emptySlots }).map((_, i) => (
+              <div 
+                key={`empty-${i}`}
+                className="border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-lg p-3 text-center"
+              >
+                <span className="text-sm text-gray-400 dark:text-gray-600">
+                  Empty slot
+                </span>
+              </div>
+            ))}
           </div>
         ) : (
           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -285,14 +312,24 @@ export function RealtimeGoalsPanel({ lessonId, studentId, isVisible }: RealtimeG
                 <p className="text-xs font-medium mb-2 text-gray-500">Recent:</p>
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {(recentMistakes.length > 0 ? recentMistakes : mistakeStats.recent).map((mistake, idx) => (
-                    <div key={idx} className="text-xs p-2 bg-gray-50 dark:bg-gray-900 rounded">
-                      <div className="flex items-start gap-1">
-                        <span className="text-red-500 line-through">{mistake.original_text}</span>
+                    <div key={idx} className="text-xs p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-800">
+                      {/* Mistake type badge */}
+                      {mistake.mistake_type && (
+                        <Badge variant="outline" className="mb-2 text-xs">
+                          {mistake.mistake_type.replace(/_/g, ' ')}
+                        </Badge>
+                      )}
+                      
+                      {/* Original → Correction */}
+                      <div className="flex items-start gap-1 mb-1">
+                        <span className="text-red-500 line-through font-medium">{mistake.original_text}</span>
                         <span className="text-gray-400">→</span>
-                        <span className="text-green-600">{mistake.corrected_text}</span>
+                        <span className="text-green-600 font-medium">{mistake.corrected_text}</span>
                       </div>
+                      
+                      {/* Explanation */}
                       {mistake.explanation && (
-                        <p className="text-gray-500 mt-1">{mistake.explanation}</p>
+                        <p className="text-gray-500 mt-1 italic">{mistake.explanation}</p>
                       )}
                     </div>
                   ))}

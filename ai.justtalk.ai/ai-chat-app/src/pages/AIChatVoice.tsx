@@ -110,9 +110,9 @@ async function processVocabularyInRealtime(
       }
     );
 
-    // Process mistakes in parallel (call process-segment-mistakes)
+    // Process mistakes in parallel (call process-segment-mistakes-db)
     const mistakesPromise = fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-segment-mistakes`,
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-segment-mistakes-db`,
       {
         method: 'POST',
         headers: {
