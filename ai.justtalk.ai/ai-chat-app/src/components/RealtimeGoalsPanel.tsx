@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Target, AlertCircle, TrendingUp, Lock } from 'lucide-react';
+import { Target, AlertCircle, TrendingUp } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFocusSet } from '@/hooks/useFocusSet';
 
@@ -61,7 +61,6 @@ export function RealtimeGoalsPanel({ lessonId, studentId, isVisible }: RealtimeG
     words: focusSnapshot, 
     isLoading: loadingSnapshot,
     isSnapshot,
-    emptySlots,
   } = useFocusSet({
     studentId,
     lessonId,
@@ -183,7 +182,6 @@ export function RealtimeGoalsPanel({ lessonId, studentId, isVisible }: RealtimeG
               const currentActivations = progress?.focus || 0;
               const isActivated = currentActivations > 0;
               const totalActivations = word.lesson_count || 0; // From snapshot
-              const focusPoints = word.focus_lesson_count || 0; // From snapshot
 
               return (
                 <div

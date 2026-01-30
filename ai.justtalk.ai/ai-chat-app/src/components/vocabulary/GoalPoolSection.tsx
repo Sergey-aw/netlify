@@ -1,5 +1,5 @@
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+
 import { Badge } from '@/components/ui/badge';
 import { List } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,7 +17,6 @@ export function GoalPoolSection({
   words,
   isLoading,
   onAddToFocus,
-  isAdding,
 }: GoalPoolSectionProps) {
   if (isLoading) {
     return (

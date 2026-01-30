@@ -13,7 +13,6 @@ export function DiscoverBottomBar({
   selectedCount,
   selectedWords,
   onCancel,
-  setId,
 }: DiscoverBottomBarProps) {
   const { bulkAddWords, isAdding } = useVocabularyBuilder();
 

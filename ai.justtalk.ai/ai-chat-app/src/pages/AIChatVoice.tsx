@@ -11,7 +11,7 @@ import {
   Volume2,
   CircleStop,
   Languages,
-  Sparkles,
+
 } from 'lucide-react';
 import { useConversation } from '@elevenlabs/react';
 import { Button } from '@/components/ui/button';
@@ -24,7 +24,7 @@ import { useSession } from '@/hooks/useSession';
 import { FeedbackDrawer, type FeedbackData } from '@/components/FeedbackDrawer';
 import { VoiceBars } from '@/components/VoiceBars';
 import { CenteredAgentIntro } from '@/components/CenteredAgentIntro';
-import { RealtimeGoalsPanel } from '@/components/RealtimeGoalsPanel';
+import { RealtimeGoalsSidebar } from '@/components/RealtimeGoalsSidebar';
 import bgWelcome from '@/assets/bg_welcome.jpg';
 import {
   Drawer,
@@ -1549,21 +1549,8 @@ export default function AIChatVoice() {
                 </div>
               </div>
 
-              {/* Right Side: Voice Bars + Timer + Goals Toggle */}
+              {/* Right Side: Voice Bars + Timer + Sidebar Toggle */}
               <div className="flex items-center gap-3">
-                {/* Goals Panel Toggle */}
-                {virtualLessonId && user?.id && (
-                  <Button
-                    variant={showGoalsPanel ? "default" : "ghost"}
-                    size="icon"
-                    onClick={() => setShowGoalsPanel(!showGoalsPanel)}
-                    className="rounded-full h-10 w-10"
-                    title={showGoalsPanel ? "Hide Goals" : "Show Goals"}
-                  >
-                    <Sparkles className="w-5 h-5" />
-                  </Button>
-                )}
-                
                 {/* Live Voice Bars */}
                 {(isRecording || isAISpeaking) && (
                   <motion.div
@@ -1596,10 +1583,10 @@ export default function AIChatVoice() {
               </div>
             </motion.header>
 
-            {/* Main Content Area - Flex container with optional sidebar */}
-            <div className="flex-1 flex gap-2 mx-2 mb-2 overflow-hidden">
+            {/* Main Content Area - Chat window takes full width */}
+            <div className="flex-1 mx-2 mb-2 overflow-hidden">
               {/* Chat Area - Main content */}
-              <div className="flex-1 bg-gray-100 rounded-[40px] flex flex-col overflow-hidden">
+              <div className="h-full bg-gray-100 rounded-[40px] flex flex-col overflow-hidden">
                 {/* Chat Messages Area (Scrollable) */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -1790,24 +1777,17 @@ export default function AIChatVoice() {
                 <div ref={messagesEndRef} />
               </motion.div>
               </div>
-
-              {/* Goals Panel Sidebar - Conditional */}
-              {showGoalsPanel && virtualLessonId && user?.id && (
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.3 }}
-                  className="w-80 bg-white rounded-[40px] overflow-hidden shadow-lg"
-                >
-                  <RealtimeGoalsPanel
-                    lessonId={virtualLessonId}
-                    studentId={user.id}
-                    isVisible={showGoalsPanel}
-                  />
-                </motion.div>
-              )}
             </div>
+
+            {/* Goals Sidebar - Floating overlay on the right */}
+            {virtualLessonId && user?.id && (
+              <RealtimeGoalsSidebar
+                lessonId={virtualLessonId}
+                studentId={user.id}
+                isOpen={showGoalsPanel}
+                onToggle={() => setShowGoalsPanel(!showGoalsPanel)}
+              />
+            )}
 
             {/* Bottom Bar - OUTSIDE the rounded container */}
             <motion.div

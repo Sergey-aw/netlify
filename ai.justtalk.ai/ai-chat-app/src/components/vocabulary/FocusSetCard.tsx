@@ -13,9 +13,6 @@ interface FocusSetCardProps {
 }
 
 export function FocusSetCard({ word, onRemove }: FocusSetCardProps) {
-  const points = word.focus_lesson_count || 0;
-  const showPoints = points > 0;
-
   return (
     <Card
       className={cn(
