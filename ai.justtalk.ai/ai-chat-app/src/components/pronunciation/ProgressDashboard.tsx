@@ -98,24 +98,7 @@ export function ProgressDashboard({ studentId, onStartPractice }: ProgressDashbo
         </Alert>
       )}
 
-      {/* Targeted Practice Starter */}
-      {isValidBaseline && practiceCandidates && practiceCandidates.length > 0 && (
-        <TargetedPracticeStarter 
-          practiceCandidates={practiceCandidates}
-          onStartPractice={handleStartTargetedPractice}
-        />
-      )}
-      {!isValidBaseline && (
-        <Alert className="border-red-200 bg-red-50">
-          <AlertCircle className="h-4 w-4 text-red-600" />
-          <AlertTitle className="text-red-900">Baseline Assessment Incomplete</AlertTitle>
-          <AlertDescription className="text-red-800">
-            Your baseline assessment had fewer than 6 valid sentences (integrity score ≥60). 
-            Please retake the baseline assessment for more accurate results.
-          </AlertDescription>
-        </Alert>
-      )}
-
+    
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>

@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Target, TrendingUp, Mic, Loader2 } from 'lucide-react';
+import { Target, TrendingUp, PanelLeft, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AppSidebar } from '@/components/AppSidebar';
 import { BaselineIntro } from '@/components/pronunciation/BaselineIntro';
 import { PracticeSession } from '@/components/pronunciation/PracticeSession';
 import { ProgressDashboard } from '@/components/pronunciation/ProgressDashboard';
 import { ActiveSessionsList } from '@/components/pronunciation/ActiveSessionsList';
-import { checkBaselineStatus, generatePracticeSession, getPracticeItems, getPracticeItemsWithResults } from '@/services/pronunciationApi';
+import { TargetedPracticeStarter } from '@/components/pronunciation/TargetedPracticeStarter';
+import { checkBaselineStatus, generatePracticeSession, getPracticeItems, getPracticeItemsWithResults, getPracticeCandidates, getBaselineSummary } from '@/services/pronunciationApi';
 import { supabase } from '@/lib/supabase';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { toast } from '@/hooks/use-toast';
@@ -65,6 +68,20 @@ export default function PronunciationPractice() {
     queryKey: ['baseline-status', user?.id],
     queryFn: () => checkBaselineStatus(user!.id),
     enabled: !!user?.id,
+  });
+
+  // Fetch baseline summary for isValidBaseline
+  const { data: baselineSummary } = useQuery({
+    queryKey: ['baseline-summary', user?.id],
+    queryFn: () => getBaselineSummary(user!.id),
+    enabled: !!user?.id && !!baselineStatus?.hasBaseline,
+  });
+
+  // Fetch practice candidates for targeted practice
+  const { data: practiceCandidates } = useQuery({
+    queryKey: ['pronunciation-practice-candidates', user?.id],
+    queryFn: () => getPracticeCandidates(user!.id),
+    enabled: !!user?.id && !!baselineStatus?.hasBaseline,
   });
 
   // Check for active practice sessions
@@ -273,48 +290,32 @@ export default function PronunciationPractice() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-50 pb-24 page-enter">
       <AppSidebar
         open={showSidebar}
         onOpenChange={setShowSidebar}
       />
 
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-background border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowSidebar(true)}
-                className="md:hidden"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
-                </svg>
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold flex items-center gap-2">
-                  <Mic className="w-6 h-6" />
-                  Pronunciation Practice
-                </h1>
-          
-              </div>
-            </div>
+      <header className="bg-white px-4 py-4 border-b sticky top-0 z-10">
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="-ml-2"
+            onClick={() => setShowSidebar(!showSidebar)}
+          >
+            <PanelLeft className="w-6 h-6 text-gray-600" />
+          </Button>
+          <div className="flex-1 text-center">
+            <h1 className="text-xl font-semibold">Pronunciation Practice</h1>
           </div>
+          <Avatar className="w-10 h-10 cursor-pointer" onClick={() => navigate('/profile')}>
+            <AvatarImage src={user?.profile_photo_url} />
+            <AvatarFallback>{user?.display_name?.[0] || 'U'}</AvatarFallback>
+          </Avatar>
         </div>
-      </div>
+      </header>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-6">
@@ -341,10 +342,32 @@ export default function PronunciationPractice() {
               </Card>
             ) : /* Show active sessions list if multiple sessions available */
             activeSessions && activeSessions.length > 1 && !currentSessionId ? (
-              <ActiveSessionsList
-                sessions={activeSessions}
-                onSelectSession={handleSelectSession}
-              />
+              <div className="space-y-6">
+                <ActiveSessionsList
+                  sessions={activeSessions}
+                  onSelectSession={handleSelectSession}
+                />
+                {/* Show TargetedPracticeStarter below active sessions */}
+                {baselineStatus?.hasBaseline && (
+                  <>
+                    {baselineSummary?.is_valid_baseline && practiceCandidates && practiceCandidates.length > 0 ? (
+                      <TargetedPracticeStarter 
+                        practiceCandidates={practiceCandidates}
+                        onStartPractice={handleStartTargetedPractice}
+                      />
+                    ) : !baselineSummary?.is_valid_baseline ? (
+                      <Alert className="border-red-200 bg-red-50">
+                        <AlertCircle className="h-4 w-4 text-red-600" />
+                        <AlertTitle className="text-red-900">Baseline Assessment Incomplete</AlertTitle>
+                        <AlertDescription className="text-red-800">
+                          Your baseline assessment had fewer than 6 valid sentences (integrity score ≥60). 
+                          Please retake the baseline assessment for more accurate results.
+                        </AlertDescription>
+                      </Alert>
+                    ) : null}
+                  </>
+                )}
+              </div>
             ) : /* Show baseline intro if no baseline and no active session */
             !currentSessionId && !baselineStatus?.hasBaseline ? (
               <BaselineIntro
@@ -371,19 +394,32 @@ export default function PronunciationPractice() {
                   <p className="text-muted-foreground">Loading practice session...</p>
                 </CardContent>
               </Card>
-            ) : /* If baseline exists, show continue/new session UI */
+            ) : /* If baseline exists, show targeted practice starter */
             baselineStatus?.hasBaseline ? (
-              <Card>
-                <CardContent className="pt-6 text-center space-y-4">
-                  <p className="text-muted-foreground">Ready to practice!</p>
-                  <p className="text-sm text-muted-foreground">
-                    Check the Progress tab to see your stats and recommended phonemes.
-                  </p>
-                  <Button onClick={() => setActiveTab('progress')}>
-                    View Progress
-                  </Button>
-                </CardContent>
-              </Card>
+              <>
+                {baselineSummary?.is_valid_baseline && practiceCandidates && practiceCandidates.length > 0 ? (
+                  <TargetedPracticeStarter 
+                    practiceCandidates={practiceCandidates}
+                    onStartPractice={handleStartTargetedPractice}
+                  />
+                ) : !baselineSummary?.is_valid_baseline ? (
+                  <Alert className="border-red-200 bg-red-50">
+                    <AlertCircle className="h-4 w-4 text-red-600" />
+                    <AlertTitle className="text-red-900">Baseline Assessment Incomplete</AlertTitle>
+                    <AlertDescription className="text-red-800">
+                      Your baseline assessment had fewer than 6 valid sentences (integrity score ≥60). 
+                      Please retake the baseline assessment for more accurate results.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <Card>
+                    <CardContent className="pt-6 text-center">
+                      <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+                      <p className="text-muted-foreground">Loading practice options...</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
             ) : null}
           </TabsContent>
 
