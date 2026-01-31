@@ -54,7 +54,7 @@ export function ActiveSessionsList({ sessions, onSelectSession }: ActiveSessions
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div>
-                  <CardTitle className="text-lg">Practice Session</CardTitle>
+                  <CardTitle className="text-base">Practice Session</CardTitle>
                   <CardDescription className="flex items-center gap-2 mt-1">
                     <Clock className="h-3 w-3" />
                     Started {formatDate(session.created_at)}
@@ -71,8 +71,8 @@ export function ActiveSessionsList({ sessions, onSelectSession }: ActiveSessions
                 <span className="text-sm text-muted-foreground">Target sounds:</span>
                 <div className="flex gap-1 flex-wrap">
                   {session.target_phonemes.map((phoneme, idx) => (
-                    <Badge key={idx} variant="outline" className="font-mono">
-                      /{phoneme}/
+                    <Badge key={idx} variant="outline" className="font-mono text-base font-medium px-2 py-0.5 bg-slate-100">
+                      {phoneme}
                     </Badge>
                   ))}
                 </div>

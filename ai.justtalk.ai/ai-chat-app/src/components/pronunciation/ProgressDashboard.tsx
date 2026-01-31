@@ -85,7 +85,7 @@ export function ProgressDashboard({ studentId, onStartPractice }: ProgressDashbo
   }
 
   return (
-    <div className="p-4 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 space-y-6 max-w-4xl mx-auto">
       {/* Baseline Validity Alert */}
       {!isValidBaseline && (
         <Alert variant="destructive">
