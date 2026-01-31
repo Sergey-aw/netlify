@@ -59,8 +59,8 @@ export function TargetedPracticeStarter({ practiceCandidates, onStartPractice }:
 
   const getPhonemeColor = (severity: string) => {
     switch (severity) {
-      case 'critical': return 'bg-red-100 border-red-300';
-      case 'warning': return 'bg-yellow-100 border-yellow-300';
+      case 'critical': return 'bg-red-200/30 border-red-300';
+      case 'warning': return 'bg-amber-300/20 border-yellow-300';
       default: return 'bg-green-100 border-green-300';
     }
   };
@@ -131,22 +131,7 @@ export function TargetedPracticeStarter({ practiceCandidates, onStartPractice }:
               {/* Selection controls */}
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm text-muted-foreground">Choose up to 2 sounds</p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={selectAll}
-                  >
-                    Select All
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={deselectAll}
-                  >
-                    Deselect All
-                  </Button>
-                </div>
+             
               </div>
 
               {/* Phonemes list - scrollable */}
@@ -167,23 +152,24 @@ export function TargetedPracticeStarter({ practiceCandidates, onStartPractice }:
                     >
                       <Checkbox
                         checked={isSelected}
+                        className="border-slate-500 data-[state=checked]:bg-blue-400 data-[state=checked]:border-blue-400"
                         onCheckedChange={() => canSelect && togglePhoneme(phoneme.ipa_symbol)}
                         onClick={(e) => e.stopPropagation()}
                         disabled={!canSelect}
                       />
                       <div className="flex items-center gap-3 flex-1">
                         <div className={cn(
-                          "w-12 h-12 rounded-full flex items-center justify-center",
+                          "w-10 h-10 rounded-xl flex items-center justify-center",
                           getPhonemeColor(phoneme.severity_bucket)
                         )}>
-                          <span className="text-xl font-mono font-bold">
-                            /{phoneme.ipa_symbol}/
+                          <span className="text-large font-mono font-semibold">
+                            {phoneme.ipa_symbol}
                           </span>
                         </div>
                         <div className="flex-1">
                           <p className="font-medium">{getPhonemeExample(phoneme.ipa_symbol)}</p>
                           <p className="text-sm text-muted-foreground">
-                            {phoneme.total_occurrences} attempts • Avg: {(phoneme.avg_score || 0).toFixed(0)}/100
+                            {phoneme.total_occurrences} attempts • Avg: {(phoneme.avg_score || 0).toFixed(0)}
                           </p>
                         </div>
                       </div>
@@ -193,12 +179,12 @@ export function TargetedPracticeStarter({ practiceCandidates, onStartPractice }:
               </div>
 
               {/* Info box */}
-              <div className="bg-blue-100 border border-blue-200 rounded-lg p-4">
+              {/* <div className="bg-blue-100 border border-blue-200 rounded-lg p-4">
                 <p className="text-sm text-blue-900">
                   <strong>What to expect:</strong> You'll practice words and sentences 
                   containing these sounds with instant feedback on each attempt.
                 </p>
-              </div>
+              </div> */}
             </div>
 
             {/* Fixed footer with start button */}
