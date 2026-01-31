@@ -161,13 +161,10 @@ export function ProgressDashboard({ studentId }: ProgressDashboardProps) {
           {practiceCandidates && practiceCandidates.length > 0 ? (
             <div className="space-y-4">
               {practiceCandidates.slice(0, 15).map((stat) => {
-                const getSeverityColor = (bucket: string) => {
-                  switch (bucket) {
-                    case 'critical': return 'bg-red-100 text-red-800 border-red-200';
-                    case 'warning': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-                    case 'stable': return 'bg-green-100 text-green-800 border-green-200';
-                    default: return 'bg-gray-100 text-gray-800 border-gray-200';
-                  }
+                const getScoreColor = (score: number) => {
+                  if (score >= 80) return 'text-green-600';
+                  if (score >= 60) return 'text-amber-400';
+                  return 'text-red-500';
                 };
 
                 return (
@@ -178,23 +175,17 @@ export function ProgressDashboard({ studentId }: ProgressDashboardProps) {
                         <div className="text-sm">
                           <div className="font-medium">{stat.total_occurrences} attempts</div>
                           <div className="text-muted-foreground text-xs">
-                            {stat.error_count} errors ({Math.round(stat.error_rate)}% error rate)
+                            {stat.error_count} errors
                           </div>
                         </div>
                       </div>
-                      <Badge
-                        variant="outline"
-                        className={cn(getSeverityColor(stat.severity_bucket))}
-                      >
-                        {stat.severity_bucket}
-                      </Badge>
                     </div>
                     <div className="flex items-center gap-3">
                       <Progress 
                         value={stat.avg_score || 0} 
                         className="flex-1"
                       />
-                      <span className="text-sm font-medium w-12 text-right">
+                      <span className={cn("text-sm font-base w-12 text-right", getScoreColor(stat.avg_score || 0))}>
                         {Math.round(stat.avg_score || 0)}
                       </span>
                     </div>
