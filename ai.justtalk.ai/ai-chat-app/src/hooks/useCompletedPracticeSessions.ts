@@ -1,18 +1,5 @@
-/**
- * Phase 8.5: Completed Practice Sessions Hook
- * Fetches completed practice sessions for the past sessions list
- */
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-
-export interface PhonemeScoreSummary {
-  target_ipa_symbol: string;
-  word_avg_score: number | null;
-  sentence_avg_score: number | null;
-  word_item_count: number;
-  sentence_item_count: number;
-}
 
 export interface PracticeItemWithResult {
   id: string;
@@ -31,29 +18,30 @@ export interface CompletedPracticeSession {
   total_items: number;
   created_at: string;
   completed_at: string;
-  phoneme_scores_json: PhonemeScoreSummary[] | null;
   overall_avg_score: number | null;
-  items?: PracticeItemWithResult[];
+  items: PracticeItemWithResult[];
 }
 
 /**
  * Fetch completed practice sessions for a student with detailed items
- * Returns most recent sessions first
  */
 export function useCompletedPracticeSessions(
   studentId: string | undefined,
   limit = 10
 ) {
   return useQuery({
-    queryKey: ['pronunciation-completed-sessions', studentId, limit],
+    queryKey: ['pronunciation-completed-sessions-with-items', studentId, limit],
     queryFn: async () => {
       if (!studentId) return [];
 
-      // First, get the sessions
+      // First, get the completed sessions
       const { data: sessions, error: sessionsError } = await supabase
-        .from('pronunciation_completed_practice_sessions')
-        .select('*')
+        .from('pronunciation_practice_sessions')
+        .select('id, student_id, target_phonemes, total_items, created_at, completed_at')
         .eq('student_id', studentId)
+        .eq('status', 'completed')
+        .not('completed_at', 'is', null)
+        .order('completed_at', { ascending: false })
         .limit(limit);
 
       if (sessionsError) {
@@ -68,21 +56,25 @@ export function useCompletedPracticeSessions(
       // For each session, fetch its items with results
       const sessionsWithItems = await Promise.all(
         sessions.map(async (session) => {
+          // Fetch items for this session
           const { data: items, error: itemsError } = await supabase
             .from('pronunciation_practice_items')
-            .select(`
-              id,
-              word_text,
-              reference_sentence,
-              practice_type,
-              target_ipa_symbol
-            `)
-            .eq('practice_session_id', session.session_id)
+            .select('id, word_text, reference_sentence, practice_type, target_ipa_symbol')
+            .eq('practice_session_id', session.id)
             .order('created_at', { ascending: true });
 
           if (itemsError) {
             console.error('Error fetching items:', itemsError);
-            return { ...session, items: [] };
+            return {
+              session_id: session.id,
+              student_id: session.student_id,
+              target_phonemes: session.target_phonemes,
+              total_items: session.total_items,
+              created_at: session.created_at,
+              completed_at: session.completed_at,
+              overall_avg_score: null,
+              items: [],
+            };
           }
 
           // For each item, get its latest result
@@ -104,8 +96,23 @@ export function useCompletedPracticeSessions(
             })
           );
 
+          // Calculate overall average score
+          const scores = itemsWithResults
+            .map(item => item.pronunciation_score)
+            .filter((score): score is number => score !== null);
+          
+          const overall_avg_score = scores.length > 0
+            ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+            : null;
+
           return {
-            ...session,
+            session_id: session.id,
+            student_id: session.student_id,
+            target_phonemes: session.target_phonemes,
+            total_items: session.total_items,
+            created_at: session.created_at,
+            completed_at: session.completed_at,
+            overall_avg_score,
             items: itemsWithResults,
           };
         })
@@ -115,32 +122,5 @@ export function useCompletedPracticeSessions(
     },
     enabled: !!studentId,
     staleTime: 30000,
-  });
-}
-
-/**
- * Fetch details for a specific completed session
- */
-export function usePracticeSessionDetails(sessionId: string | undefined) {
-  return useQuery({
-    queryKey: ['pronunciation-session-details', sessionId],
-    queryFn: async () => {
-      if (!sessionId) return null;
-
-      const { data, error } = await supabase
-        .from('pronunciation_completed_practice_sessions')
-        .select('*')
-        .eq('session_id', sessionId)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error fetching session details:', error);
-        throw error;
-      }
-
-      return data as CompletedPracticeSession | null;
-    },
-    enabled: !!sessionId,
-    staleTime: 60000,
   });
 }

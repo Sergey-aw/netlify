@@ -13,6 +13,7 @@ import { PracticeSession } from '@/components/pronunciation/PracticeSession';
 import { ProgressDashboard } from '@/components/pronunciation/ProgressDashboard';
 import { ActiveSessionsList } from '@/components/pronunciation/ActiveSessionsList';
 import { TargetedPracticeStarter } from '@/components/pronunciation/TargetedPracticeStarter';
+import { PastSessionsList } from '@/components/pronunciation/PastSessionsList';
 import { checkBaselineStatus, generatePracticeSession, getPracticeItems, getPracticeItemsWithResults, getPracticeCandidates, getBaselineSummary } from '@/services/pronunciationApi';
 import { supabase } from '@/lib/supabase';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
@@ -367,6 +368,7 @@ export default function PronunciationPractice() {
                   sessions={activeSessions}
                   onSelectSession={handleSelectSession}
                 />
+                <PastSessionsList studentId={user.id} limit={10} />
               </div>
             ) : /* Show baseline intro if no baseline and no active session */
             !currentSessionId && !baselineStatus?.hasBaseline ? (

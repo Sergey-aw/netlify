@@ -5,7 +5,7 @@
 
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { ChevronDown, ChevronRight, Volume2, MessageSquare } from 'lucide-react';
+import { ChevronDown, ChevronRight, CheckCircle, XCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -22,44 +22,6 @@ const getScoreColor = (score: number | null) => {
   if (score >= 60) return 'text-amber-600';
   return 'text-red-600';
 };
-
-const getScoreBadgeVariant = (score: number | null): 'default' | 'secondary' | 'destructive' | 'outline' => {
-  if (score === null) return 'outline';
-  if (score >= 80) return 'default';
-  if (score >= 60) return 'secondary';
-  return 'destructive';
-};
-
-function PhonemeScoreRow({ summary }: { summary: PhonemeScoreSummary }) {
-  return (
-    <div className="flex items-center justify-between py-2 border-b last:border-b-0">
-      <div className="flex items-center gap-3">
-        <span className="font-mono text-lg font-medium">
-          {summary.target_ipa_symbol}
-        </span>
-      </div>
-      <div className="flex items-center gap-4 text-sm">
-        {/* Word score */}
-        <div className="flex items-center gap-1.5">
-          <Volume2 className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className={cn("font-medium", getScoreColor(summary.word_avg_score))}>
-            {summary.word_avg_score !== null ? Math.round(summary.word_avg_score) : '—'}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            ({summary.word_item_count})
-          </span>
-        </div>
-        {/* Sentence score */}
-        <div className="flex items-center gap-1.5">
-          <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className={cn("font-medium", getScoreColor(summary.sentence_avg_score))}>
-            {summary.sentence_avg_score !== null ? Math.round(summary.sentence_avg_score) : '—'}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export function PastSessionCard({ session }: PastSessionCardProps) {
   const [isOpen, setIsOpen] = useState(false);
