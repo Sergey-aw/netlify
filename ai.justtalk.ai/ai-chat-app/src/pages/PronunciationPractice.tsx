@@ -343,11 +343,7 @@ export default function PronunciationPractice() {
             ) : /* Show active sessions list if multiple sessions available */
             activeSessions && activeSessions.length > 1 && !currentSessionId ? (
               <div className="space-y-6">
-                <ActiveSessionsList
-                  sessions={activeSessions}
-                  onSelectSession={handleSelectSession}
-                />
-                {/* Show TargetedPracticeStarter below active sessions */}
+                {/* Show TargetedPracticeStarter FIRST */}
                 {baselineStatus?.hasBaseline && (
                   <>
                     {baselineSummary?.is_valid_baseline && practiceCandidates && practiceCandidates.length > 0 ? (
@@ -367,6 +363,10 @@ export default function PronunciationPractice() {
                     ) : null}
                   </>
                 )}
+                <ActiveSessionsList
+                  sessions={activeSessions}
+                  onSelectSession={handleSelectSession}
+                />
               </div>
             ) : /* Show baseline intro if no baseline and no active session */
             !currentSessionId && !baselineStatus?.hasBaseline ? (

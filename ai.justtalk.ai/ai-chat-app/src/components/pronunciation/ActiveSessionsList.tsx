@@ -60,7 +60,7 @@ export function ActiveSessionsList({ sessions, onSelectSession }: ActiveSessions
                     Started {formatDate(session.created_at)}
                   </CardDescription>
                 </div>
-                <Badge variant={session.status === 'in_progress' ? 'default' : 'secondary'}>
+                <Badge variant={session.status === 'in_progress' ? 'default' : 'secondary'} className='bg-gray-900'>
                   {session.status === 'in_progress' ? 'In Progress' : 'Pending'}
                 </Badge>
               </div>
@@ -82,7 +82,10 @@ export function ActiveSessionsList({ sessions, onSelectSession }: ActiveSessions
                 <span className="text-sm text-muted-foreground">
                   {session.total_items} items total
                 </span>
-                <Button onClick={() => onSelectSession(session.id)}>
+                <Button 
+                  onClick={() => onSelectSession(session.id)}
+                  variant="outline"
+                >
                   Continue Practice
                 </Button>
               </div>
