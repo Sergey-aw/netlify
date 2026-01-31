@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ChevronDown, ChevronRight, CheckCircle, XCircle, History } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -84,8 +85,17 @@ function PastSessionCard({ session }: { session: CompletedPracticeSession }) {
           </CardContent>
         </CollapsibleTrigger>
 
-        <CollapsibleContent>
-          <CardContent className="pt-0 pb-3 space-y-4">
+        <CollapsibleContent forceMount>
+          <AnimatePresence initial={false}>
+            {isOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                style={{ overflow: "hidden" }}
+              >
+                <CardContent className="pt-0 pb-3 space-y-4">
             {Object.entries(itemsByPhoneme).map(([phoneme, phoneItems]) => (
               <div key={phoneme} className="space-y-2">
                 <div className="flex items-center gap-2 pt-2">
@@ -136,7 +146,10 @@ function PastSessionCard({ session }: { session: CompletedPracticeSession }) {
                 </div>
               </div>
             ))}
-          </CardContent>
+                </CardContent>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </CollapsibleContent>
       </Card>
     </Collapsible>
