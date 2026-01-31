@@ -60,8 +60,8 @@ export function ActiveSessionsList({ sessions, onSelectSession }: ActiveSessions
                     Started {formatDate(session.created_at)}
                   </CardDescription>
                 </div>
-                <Badge variant={session.status === 'in_progress' ? 'default' : 'secondary'} className='bg-gray-900'>
-                  {session.status === 'in_progress' ? 'In Progress' : 'Pending'}
+                <Badge variant={session.status === 'in_progress' ? 'default' : 'secondary'} className={`${session.status === 'in_progress' ? 'bg-gray-900' : 'bg-gray-100'}`}>
+                  {session.status === 'in_progress' ? 'In Progress' : 'Ready'}
                 </Badge>
               </div>
             </CardHeader>

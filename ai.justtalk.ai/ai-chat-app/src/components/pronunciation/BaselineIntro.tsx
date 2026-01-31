@@ -77,14 +77,10 @@ export function BaselineIntro({ studentId, onSessionCreated }: BaselineIntroProp
     <div className="flex items-center justify-center min-h-[60vh] p-4">
       <Card className="max-w-2xl w-full">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="bg-blue-100 p-4 rounded-full">
-              <Mic className="w-12 h-12 text-blue-600" />
-            </div>
-          </div>
-          <CardTitle className="text-2xl">Welcome to Pronunciation Practice</CardTitle>
-          <CardDescription className="text-base mt-2">
-            Improve your English pronunciation with personalized practice using SpeechSuper AI technology
+         
+          <CardTitle className="text-xl">Start Pronunciation Practice</CardTitle>
+          <CardDescription className="text-sm mt-2">
+            Improve your English pronunciation with personalized practice using JustTalk AI
           </CardDescription>
         </CardHeader>
 
@@ -111,7 +107,7 @@ export function BaselineIntro({ studentId, onSessionCreated }: BaselineIntroProp
               <div>
                 <h4 className="font-medium">2. Targeted Practice</h4>
                 <p className="text-sm text-muted-foreground">
-                  Practice specific phonemes with instant feedback from AI analysis
+                  Practice specific phonemes with instant feedback
                 </p>
               </div>
             </div>
@@ -129,18 +125,18 @@ export function BaselineIntro({ studentId, onSessionCreated }: BaselineIntroProp
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          {/* <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm text-blue-900">
               <strong>Tip:</strong> Find a quiet place and speak clearly into your microphone. 
               The assessment takes about 5-10 minutes.
             </p>
-          </div>
+          </div> */}
 
           <Button
             onClick={handleStartBaseline}
             disabled={isStarting}
             size="lg"
-            className="w-full"
+            className="w-full bg-[hsl(var(--brand-blue))] hover:bg-[hsl(var(--brand-blue))]/90 text-white"
           >
             {isStarting ? (
               <>
@@ -150,7 +146,7 @@ export function BaselineIntro({ studentId, onSessionCreated }: BaselineIntroProp
             ) : (
               <>
                 <Mic className="w-4 h-4 mr-2" />
-                Start Baseline Assessment
+                Start Assessment
               </>
             )}
           </Button>
