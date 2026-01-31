@@ -6,7 +6,6 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { getBaselineSummary, getPracticeCandidates } from '@/services/pronunciationApi';
-import { TargetedPracticeStarter } from './TargetedPracticeStarter';
 import { cn } from '@/lib/utils';
 
 interface ProgressDashboardProps {
@@ -14,7 +13,7 @@ interface ProgressDashboardProps {
   onStartPractice?: (targetPhonemes: string[]) => void | Promise<void>;
 }
 
-export function ProgressDashboard({ studentId, onStartPractice }: ProgressDashboardProps) {
+export function ProgressDashboard({ studentId }: ProgressDashboardProps) {
   // Fetch baseline summary
   const { data: baselineSummary, isLoading: summaryLoading } = useQuery({
     queryKey: ['baseline-summary', studentId],
@@ -27,13 +26,6 @@ export function ProgressDashboard({ studentId, onStartPractice }: ProgressDashbo
     queryFn: () => getPracticeCandidates(studentId),
     enabled: !!baselineSummary, // Only fetch if baseline exists
   });
-
-  const handleStartTargetedPractice = async (targetPhonemes: string[]) => {
-    console.log('🎯 ProgressDashboard: Starting targeted practice for phonemes:', targetPhonemes);
-    if (onStartPractice) {
-      await onStartPractice(targetPhonemes);
-    }
-  };
 
   const isLoading = summaryLoading || statsLoading;
   const hasBaseline = !!baselineSummary;
@@ -88,10 +80,10 @@ export function ProgressDashboard({ studentId, onStartPractice }: ProgressDashbo
     <div className="p-4 space-y-6 max-w-4xl mx-auto">
       {/* Baseline Validity Alert */}
       {!isValidBaseline && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 h-4" />
-          <AlertTitle>Baseline Incomplete</AlertTitle>
-          <AlertDescription>
+        <Alert className="border-red-200 bg-red-50">
+          <AlertCircle className="h-4 w-4 text-red-600" />
+          <AlertTitle className="text-red-900">Baseline Incomplete</AlertTitle>
+          <AlertDescription className="text-red-800">
             Your baseline assessment needs more valid recordings (minimum 6 of 10 sentences). 
             Please complete it in the Practice tab to unlock targeted practice.
           </AlertDescription>

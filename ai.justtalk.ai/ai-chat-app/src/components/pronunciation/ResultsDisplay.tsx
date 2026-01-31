@@ -7,7 +7,7 @@ import type {
   SubmitSentencePracticeResponse,
   PhonemeResult 
 } from '@/types/pronunciation';
-import { getScoreColor, getScoreCategory, ReadTypeLabels } from '@/types/pronunciation';
+import { getScoreCategory, ReadTypeLabels } from '@/types/pronunciation';
 import { cn } from '@/lib/utils';
 
 interface ResultsDisplayProps {
@@ -141,9 +141,9 @@ export function ResultsDisplay({
           <CardTitle>Phoneme Analysis</CardTitle>
         </CardHeader>
         <CardContent>
-          {practiceType === 'word' && (
+          {practiceType === 'word' && 'phonemes' in result && result.phonemes && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {result.phonemes.map((phoneme, index) => renderPhonemeCard(phoneme, index))}
+              {result.phonemes.map((phoneme: any, index: number) => renderPhonemeCard(phoneme, index))}
             </div>
           )}
 

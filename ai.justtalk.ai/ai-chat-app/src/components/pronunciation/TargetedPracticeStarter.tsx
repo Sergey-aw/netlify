@@ -48,15 +48,6 @@ export function TargetedPracticeStarter({ practiceCandidates, onStartPractice }:
     });
   };
 
-  const selectAll = () => {
-    // Select first 2 phonemes
-    setSelectedPhonemes(new Set(practiceCandidates.slice(0, 2).map(p => p.ipa_symbol)));
-  };
-
-  const deselectAll = () => {
-    setSelectedPhonemes(new Set());
-  };
-
   const getPhonemeColor = (severity: string) => {
     switch (severity) {
       case 'critical': return 'bg-red-200/30 border-red-300';

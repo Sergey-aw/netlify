@@ -14,7 +14,7 @@ import { ProgressDashboard } from '@/components/pronunciation/ProgressDashboard'
 import { ActiveSessionsList } from '@/components/pronunciation/ActiveSessionsList';
 import { TargetedPracticeStarter } from '@/components/pronunciation/TargetedPracticeStarter';
 import { PastSessionsList } from '@/components/pronunciation/PastSessionsList';
-import { checkBaselineStatus, generatePracticeSession, getPracticeItems, getPracticeItemsWithResults, getPracticeCandidates, getBaselineSummary } from '@/services/pronunciationApi';
+import { checkBaselineStatus, generatePracticeSession, getPracticeItemsWithResults, getPracticeCandidates, getBaselineSummary } from '@/services/pronunciationApi';
 import { supabase } from '@/lib/supabase';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { toast } from '@/hooks/use-toast';
@@ -363,7 +363,7 @@ export default function PronunciationPractice() {
                 </CardContent>
               </Card>
             ) : /* Show active sessions list if multiple sessions available */
-            activeSessions && activeSessions.length > 1 && !currentSessionId ? (
+            activeSessions && activeSessions.length >= 1 && !currentSessionId ? (
               <div className="space-y-6">
                 {/* Show TargetedPracticeStarter FIRST */}
                 {baselineStatus?.hasBaseline && (

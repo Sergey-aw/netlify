@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { Mic, Square, Loader2, Volume2, Target, Check, X, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Square, Loader2, Check, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { AudioRecorder } from '@/lib/audioRecorder';
 import { submitWordPractice, submitSentencePractice } from '@/services/pronunciationApi';
-import type { PracticeItem, PracticeResult, SubmitWordPracticeResponse, SubmitSentencePracticeResponse, PhonemeResult } from '@/types/pronunciation';
+import type { PracticeItem, PracticeResult, SubmitWordPracticeResponse, SubmitSentencePracticeResponse } from '@/types/pronunciation';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useCompletePracticeSession } from '@/hooks/useCompletePracticeSession';
@@ -34,11 +34,11 @@ export function PracticeSession({ items, currentIndex, sessionId, existingResult
     if (existingResults) {
       existingResults.forEach((result, itemId) => {
         // Convert PracticeResult to ResultType format
-        const resultData: Partial<SubmitWordPracticeResponse> = {
-          pronunciation_score: result.pronunciation_score,
-          overall_score: result.overall_score,
-          fluency_score: result.fluency_score,
-          integrity_score: result.integrity_score,
+        const resultData: any = {
+          pronunciationScore: result.pronunciation_score,
+          overallScore: result.overall_score,
+          fluencyScore: result.fluency_score,
+          integrityScore: result.integrity_score,
         };
         map.set(itemId, resultData as ResultType);
       });
@@ -274,32 +274,33 @@ export function PracticeSession({ items, currentIndex, sessionId, existingResult
     }
   };
 
-  const getScoreColor = (score: number) => {
-    if (score >= 85) return 'text-green-600';
-    if (score >= 70) return 'text-blue-600';
-    if (score >= 60) return 'text-yellow-600';
-    return 'text-red-600';
-  };
+  // Utility functions for potential future use
+  // const getScoreColor = (score: number) => {
+  //   if (score >= 85) return 'text-green-600';
+  //   if (score >= 70) return 'text-blue-600';
+  //   if (score >= 60) return 'text-yellow-600';
+  //   return 'text-red-600';
+  // };
 
-  const getScoreBgColor = (score: number) => {
-    if (score >= 85) return 'bg-green-50 border-green-200';
-    if (score >= 70) return 'bg-blue-50 border-blue-200';
-    if (score >= 60) return 'bg-yellow-50 border-yellow-200';
-    return 'bg-red-50 border-red-200';
-  };
+  // const getScoreBgColor = (score: number) => {
+  //   if (score >= 85) return 'bg-green-50 border-green-200';
+  //   if (score >= 70) return 'bg-blue-50 border-blue-200';
+  //   if (score >= 60) return 'bg-yellow-50 border-yellow-200';
+  //   return 'bg-red-50 border-red-200';
+  // };
 
-  const getPhonemeIcon = (phoneme: PhonemeResult) => {
-    if (phoneme.readType === 0) return <Check className="w-4 h-4 text-green-600" />;
-    if (phoneme.readType === 2) return <X className="w-4 h-4 text-red-600" />;
-    return <AlertCircle className="w-4 h-4 text-yellow-600" />;
-  };
+  // const getPhonemeIcon = (phoneme: PhonemeResult) => {
+  //   if (phoneme.readType === 0) return <Check className="w-4 h-4 text-green-600" />;
+  //   if (phoneme.readType === 2) return <X className="w-4 h-4 text-red-600" />;
+  //   return <AlertCircle className="w-4 h-4 text-yellow-600" />;
+  // };
 
-  const getPhonemeLabel = (phoneme: PhonemeResult) => {
-    if (phoneme.readType === 0) return 'Correct';
-    if (phoneme.readType === 1) return phoneme.soundLike ? `→ ${phoneme.soundLike}` : 'Mispronounced';
-    if (phoneme.readType === 2) return 'Omitted';
-    return 'Added';
-  };
+  // const getPhonemeLabel = (phoneme: PhonemeResult) => {
+  //   if (phoneme.readType === 0) return 'Correct';
+  //   if (phoneme.readType === 1) return phoneme.soundLike ? `→ ${phoneme.soundLike}` : 'Mispronounced';
+  //   if (phoneme.readType === 2) return 'Omitted';
+  //   return 'Added';
+  // };
 
   return (
     <div className="max-w-4xl mx-auto px-4 space-y-6">

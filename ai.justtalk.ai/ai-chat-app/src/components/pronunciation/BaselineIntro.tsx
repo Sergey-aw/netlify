@@ -38,7 +38,7 @@ export function BaselineIntro({ studentId, onSessionCreated }: BaselineIntroProp
         const actualId = item.id || (item as any).item_id;
         
         console.log(`Item ${index + 1}: id ${hasId ? '✅' : '❌'} (${actualId}), sentence ${hasSentence ? '✅' : '❌'}, type ${hasType ? '✅' : '❌'}`, 
-          hasSentence ? `"${item.reference_sentence.substring(0, 50)}..."` : 'MISSING');
+          hasSentence ? `"${item.reference_sentence?.substring(0, 50)}..."` : 'MISSING');
         
         return {
           ...item,
