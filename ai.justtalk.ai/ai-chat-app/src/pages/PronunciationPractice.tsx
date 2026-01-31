@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Target, TrendingUp, PanelLeft, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
 import { AppSidebar } from '@/components/AppSidebar';
 import { BaselineIntro } from '@/components/pronunciation/BaselineIntro';
 import { PracticeSession } from '@/components/pronunciation/PracticeSession';
@@ -319,20 +319,41 @@ export default function PronunciationPractice() {
       </header>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'practice' | 'progress')}>
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-6">
-            <TabsTrigger value="practice" className="gap-2">
+      <div className="max-w-3xl mx-auto px-4 py-6">
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setActiveTab('practice')}
+            className={cn(
+              'flex-1 py-2 px-4 rounded-lg font-medium transition-colors',
+              activeTab === 'practice'
+                ? 'bg-[hsl(var(--brand-blue))] text-white'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+            )}
+          >
+            <div className="flex items-center justify-center gap-2">
               <Target className="w-4 h-4" />
-              Practice
-            </TabsTrigger>
-            <TabsTrigger value="progress" className="gap-2">
+              <span>Practice</span>
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('progress')}
+            className={cn(
+              'flex-1 py-2 px-4 rounded-lg font-medium transition-colors',
+              activeTab === 'progress'
+                ? 'bg-[hsl(var(--brand-blue))] text-white'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+            )}
+          >
+            <div className="flex items-center justify-center gap-2">
               <TrendingUp className="w-4 h-4" />
-              Progress
-            </TabsTrigger>
-          </TabsList>
+              <span>Progress</span>
+            </div>
+          </button>
+        </div>
 
-          <TabsContent value="practice">
+        {activeTab === 'practice' ? (
+          <>
             {/* Show generating state */}
             {isGeneratingPractice ? (
               <Card>
@@ -423,15 +444,13 @@ export default function PronunciationPractice() {
                 )}
               </>
             ) : null}
-          </TabsContent>
-
-          <TabsContent value="progress">
-            <ProgressDashboard 
-              studentId={user.id}
-              onStartPractice={handleStartTargetedPractice}
-            />
-          </TabsContent>
-        </Tabs>
+          </>
+        ) : (
+          <ProgressDashboard 
+            studentId={user.id}
+            onStartPractice={handleStartTargetedPractice}
+          />
+        )}
       </div>
     </div>
   );
