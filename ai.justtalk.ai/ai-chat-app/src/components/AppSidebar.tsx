@@ -323,6 +323,7 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
                   >
                     <Mic className="w-4 h-4" />
                     <span>Pronunciation</span>
+                    <Badge className="ml-1 bg-slate-800 text-white text-[10px] px-1.5 py-0 h-4 ">new</Badge>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
