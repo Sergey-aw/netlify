@@ -36,6 +36,7 @@ import PronunciationAssessment from './pages/onboarding/PronunciationAssessment'
 import WelcomeProgress from './pages/onboarding/WelcomeProgress'
 import WelcomeFeatures from './pages/onboarding/WelcomeFeatures'
 import WelcomeSync from './pages/onboarding/WelcomeSync'
+import PronunciationPractice from './pages/PronunciationPractice'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -81,6 +82,7 @@ function App() {
             <Route path="/role-plays" element={<ProtectedRoute><RolePlaysV2 /></ProtectedRoute>} />
             <Route path="/role-plays-v1" element={<ProtectedRoute><RolePlays /></ProtectedRoute>} />
             <Route path="/dictionary" element={<ProtectedRoute><VocabularyBuilder /></ProtectedRoute>} />
+            <Route path="/pronunciation-practice" element={<ProtectedRoute><PronunciationPractice /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/contact-support" element={<ProtectedRoute><ContactSupport /></ProtectedRoute>} />

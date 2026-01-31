@@ -9,6 +9,7 @@ import {
   Home,
   Loader2,
   HeadphonesIcon,
+  Mic,
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -314,6 +315,14 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
                   >
                     <BookOpen className="w-4 h-4" />
                     <span>Vocabulary Builder</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => handleNavigate('/pronunciation-practice')}
+                  >
+                    <Mic className="w-4 h-4" />
+                    <span>Pronunciation</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
