@@ -327,7 +327,7 @@ export default function AIChatHome() {
   });
 
   // Get recent agent interactions for home screen
-  const { data: recentAgents } = useQuery({
+  const { data: recentAgents, isLoading: agentsLoading } = useQuery({
     queryKey: ['recent-agents', user?.id],
     queryFn: async () => {
       if (!user?.id) return { personal: [], multiStep: [], singleStep: [] };
@@ -500,6 +500,7 @@ export default function AIChatHome() {
       return result;
     },
     enabled: !!user?.id,
+    placeholderData: (previousData) => previousData, // Keep previous data while refetching
   });
 
   // Check subscription status
@@ -1003,7 +1004,20 @@ export default function AIChatHome() {
                 <img src={Logo} alt="JustTalk AI" className="h-8" />
               </div> */}
               <main className="flex-1 flex flex-col max-w-2xl mx-auto w-full px-4 overflow-y-auto">
-                {recentAgents && (recentAgents.personal?.length > 0 || recentAgents.multiStep?.length > 0 || recentAgents.singleStep?.length > 0) ? (
+                {agentsLoading || userLoading ? (
+                  // Loading skeleton
+                  <div className="py-8 space-y-6">
+                    <div className="space-y-3">
+                      <Skeleton className="h-6 w-48 mx-auto" />
+                      <Skeleton className="h-8 w-64 mx-auto" />
+                    </div>
+                    <div className="space-y-3">
+                      <Skeleton className="h-40 w-full rounded-3xl" />
+                      <Skeleton className="h-40 w-full rounded-3xl" />
+                      <Skeleton className="h-40 w-full rounded-3xl" />
+                    </div>
+                  </div>
+                ) : recentAgents && (recentAgents.personal?.length > 0 || recentAgents.multiStep?.length > 0 || recentAgents.singleStep?.length > 0) ? (
                   // Recent Agents View - Categorized
                   <div className="py-8 space-y-4">
                     {/* Welcome Header */}
@@ -1262,26 +1276,20 @@ export default function AIChatHome() {
                 ) : (
                   // Empty State - No Recent Conversations
                   <div className="text-center flex-1 flex flex-col justify-center px-0 pb-16">
-                    {userLoading ? (
-                      <div className="text-gray-400">Loading...</div>
-                    ) : (
-                      <>
-                        <h1 className="text-lg font-semibold text-gray-700">
-                          Good to see you,
-                        </h1>
-                        <h2 className="text-2xl font-semibold text-gray-400 mb-2">
-                          {user?.display_name || 'Student'}
-                        </h2>
-                        {/* <p className="text-gray-500 text-base">
-                          JustTalk AI your personal AI Teacher.
-                        </p> */}
+                    <h1 className="text-lg font-semibold text-gray-700">
+                      Good to see you,
+                    </h1>
+                    <h2 className="text-2xl font-semibold text-gray-400 mb-2">
+                      {user?.display_name || 'Student'}
+                    </h2>
+                    {/* <p className="text-gray-500 text-base">
+                      JustTalk AI your personal AI Teacher.
+                    </p> */}
 
-                        {/* Feature Card Gallery */}
-                        <div className="mt-12 -mx-4">
-                          <FeatureCardGallery onNavigate={(route) => navigate(route)} />
-                        </div>
-                      </>
-                    )}
+                    {/* Feature Card Gallery */}
+                    <div className="mt-12 -mx-4">
+                      <FeatureCardGallery onNavigate={(route) => navigate(route)} />
+                    </div>
                   </div>
                 )}
               </main>

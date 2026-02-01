@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSession } from '@/hooks/useSession';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -13,10 +13,14 @@ export function OnboardingResumeHandler() {
   const navigate = useNavigate();
   const { user, isAuthenticated, isAnonymous, loading: authLoading } = useSession();
   const { hasActiveSubscription, isLoading: subLoading } = useSubscription();
+  const [_isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
     // Wait for auth and subscription to load
-    if (authLoading || subLoading) return;
+    if (authLoading || subLoading) {
+      setIsChecking(true);
+      return;
+    }
 
     // Don't redirect if user is on auth pages (setup password, callback, etc.)
     const currentPath = window.location.pathname;
@@ -26,6 +30,7 @@ export function OnboardingResumeHandler() {
     
     if (isAuthPage) {
       console.log('[OnboardingResume] Skipping redirect - user is on auth page:', currentPath);
+      setIsChecking(false);
       return;
     }
 
@@ -34,6 +39,7 @@ export function OnboardingResumeHandler() {
     
     // Skip check if already checked AND not on root path
     if (hasChecked && currentPath !== '/') {
+      setIsChecking(false);
       return;
     }
 
@@ -48,6 +54,7 @@ export function OnboardingResumeHandler() {
         // If on root path and no user, show welcome screen
         if (currentPath === '/') {
           console.log('[OnboardingResume] Redirecting to welcome screen');
+          setIsChecking(false);
           navigate('/welcome');
           return;
         }
@@ -55,7 +62,10 @@ export function OnboardingResumeHandler() {
         const { shouldResume } = shouldResumeOnboarding();
         if (shouldResume) {
           console.log('[OnboardingResume] User needs to sign in');
+          setIsChecking(false);
           navigate('/login');
+        } else {
+          setIsChecking(false);
         }
         return;
       }
@@ -71,7 +81,8 @@ export function OnboardingResumeHandler() {
 
           if (profile?.justai_onboarding_completed) {
             console.log('[OnboardingResume] User completed onboarding - redirecting to /ai-chat');
-            navigate('/ai-chat');
+            navigate('/ai-chat', { replace: true });
+            setIsChecking(false);
             return;
           }
         } catch (error) {
@@ -88,6 +99,7 @@ export function OnboardingResumeHandler() {
         console.log('[OnboardingResume] User needs to sign in');
         navigate('/login');
       }
+      setIsChecking(false);
     };
 
     checkOnboardingAndRedirect();
