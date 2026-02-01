@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Mic, Square, Loader2, Volume2, ChevronDown, CheckCircle2 } from 'lucide-react';
+import { Mic, Square, Loader2, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { getRandomPronunciationText } from '@/data/pronunciation-texts';
-import { scorePronunciation, type PronunciationResult } from '@/lib/speechace-api';
+import { scorePronunciation, type PronunciationResult } from '@/lib/speechsuper-api';
 import { updateOnboardingStep } from '@/lib/onboarding-state';
 import { trackOnboardingStep, trackPronunciationAssessment } from '@/lib/posthog';
+import { AudioRecorder } from '@/lib/audioRecorder';
 import Logo from '@/assets/logo.svg';
 
 export default function PronunciationAssessment() {
@@ -22,29 +23,16 @@ export default function PronunciationAssessment() {
     trackOnboardingStep('pronunciation', 'started');
   }, []);
   
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
+  const audioRecorderRef = useRef<AudioRecorder | null>(null);
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
+      // Initialize audio recorder (creates proper WAV format)
+      const recorder = new AudioRecorder();
+      await recorder.initialize();
+      audioRecorderRef.current = recorder;
 
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-        setAudioBlob(audioBlob);
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      mediaRecorder.start();
+      recorder.startRecording();
       setIsRecording(true);
       setError('');
     } catch (err) {
@@ -53,9 +41,20 @@ export default function PronunciationAssessment() {
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
+  const stopRecording = async () => {
+    if (audioRecorderRef.current && isRecording) {
+      try {
+        // Stop recording and get WAV blob (16kHz, mono, PCM16)
+        const wavBlob = await audioRecorderRef.current.stopRecording();
+        setAudioBlob(wavBlob);
+        
+        // Clean up
+        audioRecorderRef.current.cleanup();
+        audioRecorderRef.current = null;
+      } catch (err) {
+        console.error('Error stopping recording:', err);
+        setError('Failed to process recording. Please try again.');
+      }
       setIsRecording(false);
     }
   };
@@ -66,6 +65,11 @@ export default function PronunciationAssessment() {
     setIsAnalyzing(true);
     setError('');
 
+    console.log('Analyzing audio:', {
+      size: audioBlob.size,
+      type: audioBlob.type,
+    });
+
     // Simulate 5 second loading time
     const minLoadTime = new Promise(resolve => setTimeout(resolve, 5000));
 
@@ -75,6 +79,7 @@ export default function PronunciationAssessment() {
         minLoadTime
       ]);
       
+      console.log('Analysis result:', analysisResult);
       setResult(analysisResult);
     } catch (err) {
       setError('Failed to analyze pronunciation. Please try again.');
@@ -131,7 +136,7 @@ export default function PronunciationAssessment() {
               </div>
               
               {/* Subtitle */}
-              <div className="relative overflow-hidden" style={{ height: '60px' }}>
+              <div className="relative overflow-hidden" style={{ height: '30px' }}>
                 <p className="font-medium text-[#5983B3] text-[clamp(1rem,4vw,1.125rem)]">
                   Your pronunciation analysis is complete
                 </p>
@@ -139,14 +144,14 @@ export default function PronunciationAssessment() {
             </div>
 
             {/* Top Scores */}
-            <div className="grid grid-cols-2 gap-4 px-2 mb-6">
+            <div className="grid grid-cols-2 gap-4 px-2 mb-6 mt-4">
               {/* CEFR Level */}
               <div className="bg-white rounded-3xl p-6 text-center shadow-md">
                 <div className="text-purple-600 font-semibold text-sm mb-2">
                   CEFR Level
                 </div>
                 <div className="bg-gradient-to-br from-purple-100 to-purple-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-2">
-                  <span className="text-3xl font-bold text-purple-700">{result.cefrLevel}</span>
+                  <span className="text-2xl font-bold text-purple-700">{result.cefrLevel}</span>
                 </div>
                 <p className="text-xs text-gray-600">
                   Pronunciation level
@@ -159,31 +164,11 @@ export default function PronunciationAssessment() {
                   Overall Score
                 </div>
                 <div className="bg-gradient-to-br from-blue-100 to-blue-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-2">
-                  <span className="text-3xl font-bold text-blue-700">{result.overallScore}</span>
+                  <span className="text-2xl font-bold text-blue-700">{result.overallScore}</span>
                 </div>
                 <p className="text-xs text-gray-600">
                   Out of 100 points
                 </p>
-              </div>
-            </div>
-
-            {/* Accuracy Summary */}
-            <div className="px-2 mb-6">
-              <div className="bg-white rounded-3xl p-6 shadow-md">
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="h-6 w-6 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-900 mb-1">
-                      {result.correctWords} of {result.totalWords} words correct
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {result.accuracy}% accuracy
-                    </p>
-                  </div>
-                  <div className="text-2xl font-bold text-blue-600">
-                    {result.accuracy}%
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -217,8 +202,8 @@ export default function PronunciationAssessment() {
                       : result.wordsToImprove.slice(0, 3)
                     ).map((word, idx) => (
                       <div key={idx} className="flex justify-between items-center py-2 border-b last:border-b-0">
-                        <span className="text-gray-900">{word.word}</span>
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getScoreBadgeColor(word.score)}`}>
+                        <span className="text-gray-900 text-sm">{word.word}</span>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getScoreBadgeColor(word.score)}`}>
                           {word.score}
                         </span>
                       </div>
