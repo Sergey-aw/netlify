@@ -41,7 +41,7 @@ export function FeatureCardGrid({ cards, onNavigate }: FeatureCardGridProps) {
           <div className="relative h-full flex flex-col justify-between p-6 lg:p-4">
             {/* Icon */}
             <div className="flex justify-center pt-14 lg:justify-start lg:pt-0 lg:mb-auto">
-              <div className="w-[52px] h-[52px] lg:w-8 lg:h-8 flex items-center justify-center">
+              <div className="w-[40px] h-[40px] lg:w-8 lg:h-8 flex items-center justify-center">
                 <card.icon 
                   className="w-full h-full text-gray-900 group-hover:text-white transition-colors duration-300" 
                   strokeWidth={1.5} 
@@ -51,7 +51,7 @@ export function FeatureCardGrid({ cards, onNavigate }: FeatureCardGridProps) {
 
             {/* Text Content */}
             <div>
-              <h3 className="text-xl lg:text-base font-medium text-gray-900 group-hover:text-white mb-3 lg:mb-1.5 text-left transition-colors duration-300">
+              <h3 className="text-lg lg:text-base font-medium text-gray-900 group-hover:text-white mb-3 lg:mb-1.5 text-left transition-colors duration-300">
                 {card.title}
               </h3>
               <p className="text-base lg:text-sm text-slate-500 group-hover:text-white/85 leading-snug mb-6 lg:mb-0 text-left transition-colors duration-300">

@@ -105,7 +105,7 @@ export function FeatureCardGallery({ onNavigate }: FeatureCardGalleryProps) {
               return (
                 <CarouselItem key={card.id} className="pl-2 basis-[85%]">
                   <motion.div
-                    className="relative w-full aspect-[4/5] rounded-2xl overflow-hidden cursor-pointer"
+                    className="relative w-full aspect-square rounded-2xl overflow-hidden cursor-pointer"
                     onClick={() => onNavigate(card.route)}
                     whileTap={{ scale: 0.98 }}
                     animate={{
@@ -130,8 +130,8 @@ export function FeatureCardGallery({ onNavigate }: FeatureCardGalleryProps) {
                     {/* Content */}
                     <div className="relative h-full flex flex-col justify-between p-6">
                       {/* Icon */}
-                      <div className="flex justify-center pt-14">
-                        <div className="w-[52px] h-[52px] flex items-center justify-center">
+                      <div className="flex justify-center h-full items-center mb-auto">
+                        <div className="w-[40px] h-[40px] flex items-center justify-center">
                           <card.icon className="w-full h-full text-white" strokeWidth={1.5} />
                         </div>
                       </div>
