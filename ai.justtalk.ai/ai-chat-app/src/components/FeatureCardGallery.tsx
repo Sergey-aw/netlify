@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Mic, MessageSquareHeart, BookOpen, AudioLines, UserCircle, MessageCircle } from 'lucide-react';
+import { Mic, MessageSquareHeart, BookOpen, AudioLines, UserCircle } from 'lucide-react';
 import Cover1 from '../assets/Cover-7.jpg';
 import Cover2 from '../assets/Cover-2.png';
-import Cover3 from '../assets/Cover-3.png';
 import Cover4 from '../assets/Cover-4.png';
 import Cover5 from '../assets/Cover-5.jpg';
 import Cover6 from '../assets/Cover-6.jpg';
