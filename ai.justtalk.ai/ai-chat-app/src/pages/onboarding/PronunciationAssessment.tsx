@@ -122,13 +122,20 @@ export default function PronunciationAssessment() {
 
           {/* Main Content */}
           <div className="flex-1 flex flex-col justify-center overflow-y-auto">
-            <div className="text-center px-4 mb-8">
-              <h1 className="font-semibold text-[#39597D] leading-tight mb-4 font-din text-[clamp(1.75rem,7vw,2.25rem)]">
-                Assessment Results
-              </h1>
-              <p className="font-medium text-[#5983B3] text-[clamp(1rem,4vw,1.125rem)]">
-                Your pronunciation analysis is complete
-              </p>
+            <div className="text-center px-4" style={{ minHeight: '80px', marginBottom: '14px' }}>
+              {/* Title */}
+              <div className="relative font-din overflow-hidden" style={{ height: '60px', marginBottom: '4px' }}>
+                <h1 className="font-semibold text-[#39597D] leading-tight text-[clamp(1.4rem,4vw,2.25rem)]">
+                  Assessment Results
+                </h1>
+              </div>
+              
+              {/* Subtitle */}
+              <div className="relative overflow-hidden" style={{ height: '60px' }}>
+                <p className="font-medium text-[#5983B3] text-[clamp(1rem,4vw,1.125rem)]">
+                  Your pronunciation analysis is complete
+                </p>
+              </div>
             </div>
 
             {/* Top Scores */}
@@ -263,13 +270,20 @@ export default function PronunciationAssessment() {
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col justify-center">
-          <div className="text-center px-4 mb-8">
-            <h1 className="font-semibold text-[#39597D] leading-tight mb-4 font-din text-[clamp(1.75rem,7vw,2.25rem)]">
-              Pronunciation Assessment
-            </h1>
-            <p className="font-medium text-[#5983B3] text-[clamp(1rem,4vw,1.125rem)]">
-              Read the text below out loud
-            </p>
+          <div className="text-center px-4" style={{ minHeight: '80px', marginBottom: '14px' }}>
+            {/* Title */}
+            <div className="relative font-din overflow-hidden" style={{ height: '60px', marginBottom: '4px' }}>
+              <h1 className="font-semibold text-[#39597D] leading-tight text-[clamp(1.4rem,6vw,2.25rem)]">
+                Pronunciation Assessment
+              </h1>
+            </div>
+            
+            {/* Subtitle */}
+            <div className="relative overflow-hidden" style={{ height: '60px' }}>
+              <p className="font-medium text-[#5983B3] text-[clamp(1rem,4vw,1.125rem)]">
+                Read the text below out loud
+              </p>
+            </div>
           </div>
 
           {/* Text to Read */}
