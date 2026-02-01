@@ -86,9 +86,9 @@ export function FeatureCardGallery({ onNavigate }: FeatureCardGalleryProps) {
             const distance = Math.abs(index - currentIndex);
 
             return (
-              <CarouselItem key={card.id} className="pl-2 basis-[85%]">
+              <CarouselItem key={card.id} className="pl-2 md:pl-4 basis-[85%]">
                 <motion.div
-                  className="relative w-full h-[330px] rounded-2xl overflow-hidden cursor-pointer"
+                  className="relative w-full aspect-[4/5] rounded-2xl overflow-hidden cursor-pointer"
                   onClick={() => onNavigate(card.route)}
                   whileTap={{ scale: 0.98 }}
                   animate={{
@@ -111,9 +111,9 @@ export function FeatureCardGallery({ onNavigate }: FeatureCardGalleryProps) {
                   />
 
                   {/* Content */}
-                  <div className="relative h-full flex flex-col justify-end p-6">
+                  <div className="relative h-full flex flex-col justify-between p-6">
                     {/* Icon */}
-                    <div className="flex justify-center mb-auto pt-8">
+                    <div className="flex justify-center pt-14">
                       <div className="w-[52px] h-[52px] flex items-center justify-center">
                         <Mic className="w-full h-full text-white" strokeWidth={1.5} />
                       </div>
@@ -121,10 +121,10 @@ export function FeatureCardGallery({ onNavigate }: FeatureCardGalleryProps) {
 
                     {/* Text Content */}
                     <div>
-                      <h3 className="text-2xl font-medium text-white">
+                      <h3 className="text-xl font-medium text-white mb-3 text-left">
                         {card.title}
                       </h3>
-                      <p className="text-base text-white/85 leading-tight mb-6">
+                      <p className="text-base text-white/85 leading-snug mb-6 text-left">
                         {card.description}
                       </p>
                       <p className="text-base font-medium text-white text-right">

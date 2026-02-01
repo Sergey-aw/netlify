@@ -1261,23 +1261,23 @@ export default function AIChatHome() {
                   </div>
                 ) : (
                   // Empty State - No Recent Conversations
-                  <div className="text-center flex-1 flex flex-col justify-center px-6 pb-24">
+                  <div className="text-center flex-1 flex flex-col justify-center px-0 pb-16">
                     {userLoading ? (
                       <div className="text-gray-400">Loading...</div>
                     ) : (
                       <>
-                        <h1 className="text-xl font-semibold text-gray-900">
+                        <h1 className="text-lg font-semibold text-gray-700">
                           Good to see you,
                         </h1>
-                        <h2 className="text-4xl font-semibold text-gray-400 mb-6">
-                          {user?.display_name || 'Student'}.
+                        <h2 className="text-2xl font-semibold text-gray-400 mb-2">
+                          {user?.display_name || 'Student'}
                         </h2>
-                        <p className="text-gray-500 text-base">
+                        {/* <p className="text-gray-500 text-base">
                           JustTalk AI your personal AI Teacher.
-                        </p>
+                        </p> */}
 
                         {/* Feature Card Gallery */}
-                        <div className="mt-12">
+                        <div className="mt-12 -mx-4">
                           <FeatureCardGallery onNavigate={(route) => navigate(route)} />
                         </div>
                       </>
