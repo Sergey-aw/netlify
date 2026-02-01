@@ -12,12 +12,14 @@ import { useVocabSets, useVocabSetWords } from '@/hooks/useVocabSets';
 import { useLexemeSearch } from '@/hooks/useLexemeSearch';
 import { useFocusSet } from '@/hooks/useFocusSet';
 import { useStudentVocabularyOverview } from '@/hooks/useStudentVocabularyOverview';
+import { useVocabRecommendations } from '@/hooks/useVocabRecommendations';
 import { cn } from '@/lib/utils';
 import { AppSidebar } from '@/components/AppSidebar';
 import { supabase } from '@/lib/supabase';
 import { FocusSummaryCards } from '@/components/vocabulary/FocusSummaryCards';
 import { FocusSetSection } from '@/components/vocabulary/FocusSetSection';
 import { GoalPoolSection } from '@/components/vocabulary/GoalPoolSection';
+import { VocabRecommendationsSection } from '@/components/vocabulary/VocabRecommendationsSection';
 import { SwapFocusDialog } from '@/components/vocabulary/SwapFocusDialog';
 import { DiscoverBottomBar } from '@/components/vocabulary/DiscoverBottomBar';
 import { getCefrLevelColor } from '@/lib/vocabulary-utils';
@@ -93,6 +95,16 @@ export default function VocabularyBuilder() {
   
   // Calculate vocabulary capacity (stable words count from student_lexeme_history)
   const vocabularyCapacity = vocabOverview?.acquired_count ?? 0;
+  
+  // Fetch vocabulary recommendations
+  const {
+    recommendations,
+    isLoading: isRecommendationsLoading,
+    refresh: refreshRecommendations,
+    addToGoals: addRecommendationToGoals,
+    isRefreshing,
+    isAdding: isAddingRecommendation,
+  } = useVocabRecommendations(user?.id);
   
   // Fetch vocabulary sets for Discover tab
   const { sets, isLoading: isLoadingSets } = useVocabSets();
@@ -256,6 +268,16 @@ export default function VocabularyBuilder() {
               words={focusWords}
               isLoading={isFocusLoading}
               onRemove={handleRemoveFromFocus}
+            />
+
+            {/* Vocabulary Recommendations Section */}
+            <VocabRecommendationsSection
+              recommendations={recommendations}
+              isLoading={isRecommendationsLoading}
+              onAddToGoals={addRecommendationToGoals}
+              onRefresh={refreshRecommendations}
+              isRefreshing={isRefreshing}
+              isAdding={isAddingRecommendation}
             />
 
             {/* Goal Pool Section */}

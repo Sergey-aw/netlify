@@ -34,10 +34,12 @@ import { AppSidebar } from '@/components/AppSidebar';
 import { VoiceButtonTransition } from '@/components/VoiceButtonTransition';
 import { FeatureCardGallery } from '@/components/FeatureCardGallery';
 import { FeedbackDrawer } from '@/components/FeedbackDrawer';
+import { VocabRecommendationsCard } from '@/components/vocabulary/VocabRecommendationsCard';
 import { supabase } from '@/lib/supabase';
 import { checkSubscriptionAccess } from '@/lib/justai-api';
 import { getAgentsByCategory } from '@/services/agents.service';
 import { checkBaselineStatus } from '@/services/pronunciationApi';
+import { useVocabRecommendations } from '@/hooks/useVocabRecommendations';
 import { toast } from 'sonner';
 // import LogoBars from '@/assets/logo_bars.svg';
 import Logo from '@/assets/logo.svg';
@@ -103,6 +105,16 @@ export default function AIChatHome() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [showFeedbackDrawer, setShowFeedbackDrawer] = useState(false);
+
+  // Vocabulary recommendations
+  const {
+    recommendations,
+    isLoading: isRecommendationsLoading,
+    refresh: refreshRecommendations,
+    addToGoals: addRecommendationToGoals,
+    isRefreshing,
+    isAdding: isAddingRecommendation,
+  } = useVocabRecommendations();
 
   // Add swipe gesture to open sidebar
   useSwipeGesture({
@@ -1050,7 +1062,7 @@ export default function AIChatHome() {
                   </div>
                 ) : recentAgents && (recentAgents.personal?.length > 0 || recentAgents.multiStep?.length > 0 || recentAgents.singleStep?.length > 0) ? (
                   // Recent Agents View - Categorized
-                  <div className="py-8 space-y-4">
+                  <div className="py-6 space-y-6">
                     {/* Welcome Header */}
                     {/* <div className="text-center">
                    
@@ -1128,7 +1140,7 @@ export default function AIChatHome() {
                               <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-[hsl(var(--brand-blue))] transition-colors">
                                 {baselineStatus?.hasBaseline 
                                   ? 'Continue Practice' 
-                                  : 'Start Baseline Assessment'}
+                                  : 'Start Assessment'}
                               </h3>
                               <p className="text-sm text-gray-500">
                                 {baselineStatus?.hasBaseline
@@ -1183,6 +1195,16 @@ export default function AIChatHome() {
                         </div>
                       )}
                     </div>
+
+                    {/* Vocabulary Recommendations */}
+                    <VocabRecommendationsCard
+                      recommendations={recommendations}
+                      isLoading={isRecommendationsLoading}
+                      onAddToGoals={addRecommendationToGoals}
+                      onRefresh={refreshRecommendations}
+                      isRefreshing={isRefreshing}
+                      isAdding={isAddingRecommendation}
+                    />
 
                     {/* Multi-Step Agents */}
                     {recentAgents.multiStep && recentAgents.multiStep.length > 0 && (
