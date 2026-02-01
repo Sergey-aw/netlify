@@ -54,7 +54,7 @@ export function FeatureCardGrid({ cards, onNavigate }: FeatureCardGridProps) {
               <h3 className="text-xl lg:text-base font-medium text-gray-900 group-hover:text-white mb-3 lg:mb-1.5 text-left transition-colors duration-300">
                 {card.title}
               </h3>
-              <p className="text-base lg:text-sm text-gray-700 group-hover:text-white/85 leading-snug mb-6 lg:mb-0 text-left transition-colors duration-300">
+              <p className="text-base lg:text-sm text-slate-500 group-hover:text-white/85 leading-snug mb-6 lg:mb-0 text-left transition-colors duration-300">
                 {card.description}
               </p>
               <p className="text-base font-medium text-gray-900 group-hover:text-white text-right transition-colors duration-300 lg:hidden">

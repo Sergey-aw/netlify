@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Mic, MessageSquareHeart, BookOpen, AudioLines, UserCircle, MessageCircle } from 'lucide-react';
-import Cover1 from '../assets/Cover-1.png';
+import Cover1 from '../assets/Cover-7.jpg';
 import Cover2 from '../assets/Cover-2.png';
 import Cover3 from '../assets/Cover-3.png';
 import Cover4 from '../assets/Cover-4.png';
+import Cover5 from '../assets/Cover-5.jpg';
+import Cover6 from '../assets/Cover-6.jpg';
 import {
   Carousel,
   CarouselContent,
@@ -25,7 +27,7 @@ const cards = [
     description: 'Practice real conversations — dating, interviews, travel, and more. Some scenarios continue over time, letting conversations evolve naturally.',
     cta: 'Browse scenarios →',
     route: '/role-plays',
-    coverImage: Cover1,
+    coverImage: Cover5,
     icon: MessageSquareHeart,
   },
     {
@@ -34,7 +36,7 @@ const cards = [
     description: 'Evaluate your pronunciation skills with personalized feedback and targeted practice recommendations.',
     cta: 'Start assessment →',
     route: '/pronunciation-practice',
-    coverImage: Cover2,
+    coverImage: Cover6,
     icon: AudioLines,
   },
   {
@@ -43,7 +45,7 @@ const cards = [
     description: '⁠Speak about anything you want. Pause, restart, make mistakes — I’ll help you keep going and sound more natural.',
     cta: 'Start conversation →',
     route: '/ai-chat/voice/new',
-    coverImage: Cover1,    
+    coverImage: Cover2,    
     icon: Mic,  
   },
   {
@@ -52,7 +54,7 @@ const cards = [
     description: 'The words you use. The words you’re learning next.',
     cta: 'Your vocabulary, evolving →',
     route: '/dictionary',
-    coverImage: Cover3,    icon: BookOpen,  },
+    coverImage: Cover1,    icon: BookOpen,  },
   {
     id: 'profile',
     title: 'Profile',
