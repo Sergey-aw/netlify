@@ -35,8 +35,8 @@ interface PersonaCardProps {
 
 function PersonaCard({ persona }: PersonaCardProps) {
   return (
-    <div className="bg-white border border-gray-100 rounded-[32px] p-1 shadow-md w-[160px] flex-shrink-0">
-      <div className="relative h-[160px] w-full rounded-[28px] overflow-hidden flex items-end p-2">
+    <div className="bg-white border border-gray-100 rounded-[32px] p-1 shadow-md w-[136px] flex-shrink-0">
+      <div className="relative h-[136px] w-full rounded-[28px] overflow-hidden flex items-end p-2">
         <img
           src={persona.image}
           alt={persona.name}
@@ -61,7 +61,7 @@ function ScrollingRow({ personas, direction = 'left', offset = 0 }: ScrollingRow
   const x = useMotionValue(offset);
   const controls = useAnimation();
   const isDragging = useRef(false);
-  const cardWidth = 160 + 16; // card width + gap
+  const cardWidth = 136 + 16; // card width + gap
   const totalWidth = personas.length * cardWidth;
 
   useEffect(() => {
@@ -128,6 +128,14 @@ function ScrollingRow({ personas, direction = 'left', offset = 0 }: ScrollingRow
 }
 
 export function PersonalityCarousel() {
+  // Prefetch all persona images
+  useEffect(() => {
+    personas.forEach(persona => {
+      const img = new Image();
+      img.src = persona.image;
+    });
+  }, []);
+
   return (
     <div className="flex flex-col gap-1 w-full overflow-hidden max-w-full">
       <ScrollingRow personas={row1Personas} direction="left" offset={0} />

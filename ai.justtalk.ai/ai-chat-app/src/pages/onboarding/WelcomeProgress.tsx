@@ -103,7 +103,7 @@ export default function WelcomeProgress() {
           {/* Heading - Fixed height container */}
           <div className="text-center px-4" style={{ minHeight: '80px', marginBottom: '14px' }}>
             {/* Title */}
-            <div className="relative font-din overflow-hidden" style={{ height: '90px', marginBottom: '4px' }}>
+            <div className="relative font-din overflow-hidden" style={{ height: '60px', marginBottom: '4px' }}>
               <AnimatePresence mode="wait">
                 <motion.div
                   key={`title-${step.id}`}
@@ -113,7 +113,7 @@ export default function WelcomeProgress() {
                   transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
                   className="absolute inset-0 flex items-center justify-center"
                 >
-                  <h1 className="text-3xl font-semibold text-[#39597D] leading-tight whitespace-pre-line">
+                  <h1 className="font-semibold text-[#39597D] leading-tight whitespace-pre-line text-[clamp(1.4rem,6vw,1.875rem)]">
                     {step.title}
                   </h1>
                 </motion.div>
@@ -131,9 +131,9 @@ export default function WelcomeProgress() {
                   transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1], delay: 0.1 }}
                   className="absolute inset-0 flex items-center justify-center"
                 >
-                  <p className="text-base font-medium text-[#5983B3] leading-tight whitespace-pre-line">
-                    {step.subtitle}
-                  </p>
+                    <p className="text-base font-medium text-[#5983B3] leading-tight whitespace-pre-line text-[clamp(0.8rem,4vw,1.125rem)]">
+                      {step.subtitle}
+                    </p>
                 </motion.div>
               </AnimatePresence>
             </div>

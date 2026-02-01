@@ -59,13 +59,22 @@ function RolePlayCard({ rolePlay }: RolePlayCardProps) {
   const Icon = rolePlay.icon;
   
   return (
-    <div className="bg-white border border-gray-100 rounded-3xl p-2 shadow-md flex-shrink-0 flex items-center gap-2.5">
-      <div className={`${rolePlay.color} rounded-[18px] w-[60px] h-[60px] flex items-center justify-center flex-shrink-0`}>
-        <Icon className="w-6 h-6 text-gray-700" strokeWidth={2} />
+    <div className="bg-white border border-gray-100 rounded-3xl shadow-md flex-shrink-0 flex items-center" 
+         style={{ 
+           padding: 'clamp(0.375rem, 2vw, 0.5rem)',
+           gap: 'clamp(0.5rem, 2.5vw, 0.625rem)'
+         }}>
+      <div className={`${rolePlay.color} rounded-[18px] flex items-center justify-center flex-shrink-0`}
+           style={{
+             width: 'clamp(48px, 15vw, 60px)',
+             height: 'clamp(48px, 15vw, 60px)'
+           }}>
+        <Icon className="text-gray-700" strokeWidth={2}
+              style={{ width: 'clamp(20px, 6vw, 24px)', height: 'clamp(20px, 6vw, 24px)' }} />
       </div>
-      <div className="pr-3">
-        <p className="font-medium text-black mb-0 text-sm leading-tight">{rolePlay.title}</p>
-        <p className="font-normal text-black/75 text-xs leading-tight">{rolePlay.description}</p>
+      <div style={{ paddingRight: 'clamp(0.5rem, 3vw, 0.75rem)' }}>
+        <p className="font-medium text-black mb-0 leading-tight text-[clamp(0.75rem,3.5vw,0.875rem)]">{rolePlay.title}</p>
+        <p className="font-normal text-black/75 leading-tight text-[clamp(0.625rem,3vw,0.75rem)]">{rolePlay.description}</p>
       </div>
     </div>
   );

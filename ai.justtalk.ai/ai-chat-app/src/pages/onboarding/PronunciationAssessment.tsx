@@ -123,10 +123,10 @@ export default function PronunciationAssessment() {
           {/* Main Content */}
           <div className="flex-1 flex flex-col justify-center overflow-y-auto">
             <div className="text-center px-4 mb-8">
-              <h1 className="text-4xl font-semibold text-[#39597D] leading-tight mb-4 font-din">
+              <h1 className="font-semibold text-[#39597D] leading-tight mb-4 font-din text-[clamp(1.75rem,7vw,2.25rem)]">
                 Assessment Results
               </h1>
-              <p className="text-lg font-medium text-[#5983B3]">
+              <p className="font-medium text-[#5983B3] text-[clamp(1rem,4vw,1.125rem)]">
                 Your pronunciation analysis is complete
               </p>
             </div>
@@ -243,8 +243,8 @@ export default function PronunciationAssessment() {
           <img src={Logo} alt="JustTalk" className="h-8 mb-12" />
           <div className="bg-white rounded-3xl p-12 shadow-md text-center">
             <Loader2 className="h-16 w-16 animate-spin text-purple-600 mb-4 mx-auto" />
-            <h3 className="text-xl font-semibold mb-2">Analyzing Your Pronunciation</h3>
-            <p className="text-gray-600">
+            <h3 className="font-semibold mb-2 text-[clamp(1.125rem,5vw,1.25rem)]">Analyzing Your Pronunciation</h3>
+            <p className="text-gray-600 text-[clamp(0.875rem,3.5vw,1rem)]">
               Our AI is evaluating your recording...
             </p>
           </div>
@@ -264,10 +264,10 @@ export default function PronunciationAssessment() {
         {/* Main Content */}
         <div className="flex-1 flex flex-col justify-center">
           <div className="text-center px-4 mb-8">
-            <h1 className="text-4xl font-semibold text-[#39597D] leading-tight mb-4 font-din">
+            <h1 className="font-semibold text-[#39597D] leading-tight mb-4 font-din text-[clamp(1.75rem,7vw,2.25rem)]">
               Pronunciation Assessment
             </h1>
-            <p className="text-lg font-medium text-[#5983B3]">
+            <p className="font-medium text-[#5983B3] text-[clamp(1rem,4vw,1.125rem)]">
               Read the text below out loud
             </p>
           </div>
@@ -275,16 +275,11 @@ export default function PronunciationAssessment() {
           {/* Text to Read */}
           <div className="px-2 mb-6">
             <div className="bg-white rounded-3xl p-6 shadow-md">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-gray-900">Read this text:</h3>
-                <Volume2 className="h-5 w-5 text-gray-400" />
-              </div>
-              <p className="text-lg leading-relaxed text-gray-800 mb-3">
+              
+              <p className="text-base leading-normal text-gray-800 mb-0">
                 {currentText.text}
               </p>
-              <p className="text-sm text-gray-500 italic">
-                {currentText.description}
-              </p>
+             
             </div>
           </div>
 
