@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { MessageCircle, Target, TrendingUp } from 'lucide-react';
+import { Target, Mic, Lightbulb, BookOpen, Route, Trophy, Bot, Users, RefreshCw } from 'lucide-react';
 import Logo from '@/assets/logo.svg';
 import bgWelcome from '@/assets/bg_welcome.jpg';
 import progressWordsAcquired from '@/assets/progress-words-acquired.png';
@@ -24,9 +24,9 @@ const steps = [
     subtitle: "Natural voice conversations that help you improve as you talk",
     background: "bg-gradient-to-br from-blue-300/80 via-blue-50 to-blue-100/20",
     cards: [
-      { icon: MessageCircle, title: "Natural voice conversations", desc: "Speak freely, without scripts or exercises" },
-      { icon: MessageCircle, title: "Helpful feedback after you speak", desc: "Learn from your own words—after the conversation" },
-      { icon: MessageCircle, title: "Vocabulary that grows with you", desc: "Track the words you actually use" },
+      { icon: Mic, title: "Natural voice conversations", desc: "Speak freely, without scripts or exercises" },
+      { icon: Lightbulb, title: "Helpful feedback after you speak", desc: "Learn from your own words—after the conversation" },
+      { icon: BookOpen, title: "Vocabulary that grows with you", desc: "Track the words you actually use" },
     ]
   },
   {
@@ -36,8 +36,8 @@ const steps = [
     background: "bg-gradient-to-bl from-purple-300/80 via-purple-50 to-pink-100/20",
     cards: [
       { icon: Target, title: "Set clear objectives", desc: "Define what you want to achieve" },
-      { icon: Target, title: "Follow your path", desc: "Step-by-step guidance" },
-      { icon: Target, title: "Celebrate milestones", desc: "Track achievements" },
+      { icon: Route, title: "Follow your path", desc: "Step-by-step guidance" },
+      { icon: Trophy, title: "Celebrate milestones", desc: "Track achievements" },
     ]
   },
   {
@@ -46,9 +46,9 @@ const steps = [
     subtitle: "Practice real conversations — from casual chats to high-pressure moments",
     background: "bg-gradient-to-tr from-indigo-300/80 via-cyan-50 to-teal-100/20",
     cards: [
-      { icon: TrendingUp, title: "AI-powered practice", desc: "Available 24/7" },
-      { icon: TrendingUp, title: "Expert tutors", desc: "Get human feedback and guidance" },
-      { icon: TrendingUp, title: "Seamless sync", desc: "Same progress across both methods" },
+      { icon: Bot, title: "AI-powered practice", desc: "Available 24/7" },
+      { icon: Users, title: "Expert tutors", desc: "Get human feedback and guidance" },
+      { icon: RefreshCw, title: "Seamless sync", desc: "Same progress across both methods" },
     ]
   },
   {
@@ -380,8 +380,8 @@ export default function WelcomeProgress() {
                         <Card className="bg-white border-0 rounded-3xl p-3 shadow-md">
                           <div className="flex items-start gap-4">
                             {/* Icon */}
-                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-b from-pink-200 via-pink-100 to-orange-100 flex items-center justify-center flex-shrink-0">
-                              <card.icon className="w-7 h-7 text-pink-400" strokeWidth={2} />
+                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-b from-pink-100 via-rose-100 to-orange-100 flex items-center justify-center flex-shrink-0">
+                              <card.icon className="w-7 h-7 text-rose-400" strokeWidth={2} />
                             </div>
                             {/* Text */}
                             <div className="flex-1">
