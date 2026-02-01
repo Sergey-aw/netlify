@@ -97,7 +97,7 @@ export default function Dictionary() {
             <PanelLeft className="w-6 h-6 text-gray-600" />
           </Button>
           <div className="flex-1 text-center">
-            <h1 className="text-xl font-semibold">Dictionary</h1>
+            <h1 className="text-lg font-medium">Dictionary</h1>
           </div>
           <Avatar className="w-10 h-10 cursor-pointer" onClick={() => navigate('/profile')}>
             <AvatarImage src={user?.profile_photo_url} />

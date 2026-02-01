@@ -715,7 +715,7 @@ export default function SubscriptionPlans() {
           </div> */}
 
           {/* Tabs Component */}
-          <div className="flex justify-center w-full px-[60px]">
+          <div className="flex justify-center w-full px-4 sm:px-8 md:px-[60px]">
             <div className="w-full bg-muted rounded-md p-2 relative">
               {/* Discount badge - show only on annual */}
               {billingCycle === 'annual' && (
@@ -732,9 +732,9 @@ export default function SubscriptionPlans() {
                 initial={false}
                 animate={{
                   left: showWeeklyPlan 
-                    ? (billingCycle === 'weekly' ? '4px' : billingCycle === 'monthly' ? 'calc(33.33% + 2px)' : 'calc(66.66% + 1px)')
-                    : (billingCycle === 'monthly' ? '4px' : '50%'),
-                  width: showWeeklyPlan ? 'calc(33.33% - 4px)' : 'calc(50% - 4px)',
+                    ? (billingCycle === 'weekly' ? '8px' : billingCycle === 'monthly' ? 'calc(33.33% + 4px)' : 'calc(66.66% + 2px)')
+                    : (billingCycle === 'monthly' ? '8px' : 'calc(50% + 4px)'),
+                  width: showWeeklyPlan ? 'calc(33.33% - 8px)' : 'calc(50% - 8px)',
                 }}
                 transition={{
                   type: 'spring',

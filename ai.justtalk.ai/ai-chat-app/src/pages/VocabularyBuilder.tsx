@@ -179,7 +179,7 @@ export default function VocabularyBuilder() {
       <AppSidebar open={showSidebar} onOpenChange={setShowSidebar} />
 
       {/* Header */}
-      <header className="bg-white dark:bg-gray-900 px-4 py-6 border-b dark:border-gray-800 sticky top-0 z-10">
+      <header className="bg-white dark:bg-gray-900 px-4 py-4 border-b dark:border-gray-800 sticky top-0 z-10">
         <div className="flex items-center justify-between mb-4">
           <Button
             variant="ghost"
@@ -189,7 +189,7 @@ export default function VocabularyBuilder() {
           >
             <PanelLeft className="w-6 h-6 text-gray-600 dark:text-gray-400" />
           </Button>
-          <h1 className="text-2xl font-bold flex-1 text-center text-gray-900 dark:text-gray-100">
+          <h1 className="text-lg font-medium flex-1 text-center text-gray-900 dark:text-gray-100">
             Vocabulary Builder
           </h1>
           <Avatar className="w-10 h-10 cursor-pointer" onClick={() => navigate('/profile')}>

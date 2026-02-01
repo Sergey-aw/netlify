@@ -3,21 +3,29 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger, DrawerFooter } from '@/components/ui/drawer';
 import { Target, Play } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import type { PracticeCandidate } from '@/types/pronunciation';
 
 interface TargetedPracticeStarterProps {
   practiceCandidates: PracticeCandidate[];
   onStartPractice: (targetPhonemes: string[]) => void;
+  initialDrawerOpen?: boolean;
 }
 
-export function TargetedPracticeStarter({ practiceCandidates, onStartPractice }: TargetedPracticeStarterProps) {
+export function TargetedPracticeStarter({ practiceCandidates, onStartPractice, initialDrawerOpen = false }: TargetedPracticeStarterProps) {
   const [isStarting, setIsStarting] = useState(false);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(initialDrawerOpen);
 
   // State to track selected phonemes (empty by default)
   const [selectedPhonemes, setSelectedPhonemes] = useState<Set<string>>(new Set());
+
+  // Update drawer state when initialDrawerOpen changes
+  useEffect(() => {
+    if (initialDrawerOpen) {
+      setIsDrawerOpen(true);
+    }
+  }, [initialDrawerOpen]);
 
   const handleStart = async () => {
     if (selectedPhonemes.size === 0) return;

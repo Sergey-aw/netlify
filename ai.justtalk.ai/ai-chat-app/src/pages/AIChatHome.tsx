@@ -23,6 +23,7 @@ import {
   BookOpen,
   Home,
   Utensils,
+  AudioLines,
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -36,10 +37,17 @@ import { FeedbackDrawer } from '@/components/FeedbackDrawer';
 import { supabase } from '@/lib/supabase';
 import { checkSubscriptionAccess } from '@/lib/justai-api';
 import { getAgentsByCategory } from '@/services/agents.service';
+import { checkBaselineStatus } from '@/services/pronunciationApi';
 import { toast } from 'sonner';
 // import LogoBars from '@/assets/logo_bars.svg';
 import Logo from '@/assets/logo.svg';
+import Cover1 from '@/assets/Cover-1.png';
 import { cn } from '@/lib/utils';
+import posthog from 'posthog-js';
+
+// Feature flag for assessment card variant
+// Options: 'default' | 'image-background'
+const ASSESSMENT_CARD_VARIANT: 'default' | 'image-background' = 'image-background';
 
 // Helper function to convert image URL to use _avatar suffix
 const getAvatarUrl = (imageUrl: string | null | undefined): string | undefined => {
@@ -215,6 +223,13 @@ export default function AIChatHome() {
     },
     enabled: !!user?.id,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+
+  // Check baseline status for pronunciation
+  const { data: baselineStatus } = useQuery({
+    queryKey: ['baseline-status', user?.id],
+    queryFn: () => checkBaselineStatus(user!.id),
+    enabled: !!user?.id,
   });
 
   // Get messages for selected conversation
@@ -788,6 +803,22 @@ export default function AIChatHome() {
     }
   };
 
+  const handlePronunciationClick = () => {
+    // Track event
+    posthog.capture('pronunciation_section_clicked', {
+      has_baseline: baselineStatus?.hasBaseline || false,
+      action: baselineStatus?.hasBaseline ? 'select_sounds' : 'start_baseline',
+    });
+    
+    // Navigate to pronunciation practice
+    // If user has baseline, auto-open sound selector
+    navigate('/pronunciation-practice', {
+      state: {
+        autoOpenSoundSelector: baselineStatus?.hasBaseline || false,
+      },
+    });
+  };
+
   const formatLastInteraction = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -880,7 +911,7 @@ export default function AIChatHome() {
         />
 
         {/* Main Content Area */}
-        <div className="h-full bg-gray-100 rounded-[40px] pt-0 pb-0 m-2 flex flex-col relative">
+        <div className="h-full bg-gray-100 rounded-[40px] pt-0 pb-0 m-2 flex flex-col relative overflow-hidden">
           {selectedConversation && messages ? (
             // Conversation View
             <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full px-6 overflow-hidden">
@@ -1003,7 +1034,7 @@ export default function AIChatHome() {
               {/* <div className="flex justify-center pt-8">
                 <img src={Logo} alt="JustTalk AI" className="h-8" />
               </div> */}
-              <main className="flex-1 flex flex-col max-w-2xl mx-auto w-full px-4 overflow-y-auto">
+              <main className="flex-1 flex flex-col max-w-2xl mx-auto w-full px-4 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 {agentsLoading || userLoading ? (
                   // Loading skeleton
                   <div className="py-8 space-y-6">
@@ -1078,6 +1109,80 @@ export default function AIChatHome() {
                         </div>
                       </div>
                     )}
+
+                    {/* Pronunciation Section */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <AudioLines className="w-5 h-5 text-purple-500" />
+                        <h2 className="text-lg font-semibold text-gray-900">Pronunciation</h2>
+                      </div>
+                      
+                      {baselineStatus?.hasBaseline || ASSESSMENT_CARD_VARIANT === 'default' ? (
+                        // Default Variant - White Background (for Continue Practice or when flag is 'default')
+                        <div
+                          onClick={handlePronunciationClick}
+                          className="bg-white border border-gray-200 rounded-3xl p-4 hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-[hsl(var(--brand-blue))] transition-colors">
+                                {baselineStatus?.hasBaseline 
+                                  ? 'Continue Practice' 
+                                  : 'Start Baseline Assessment'}
+                              </h3>
+                              <p className="text-sm text-gray-500">
+                                {baselineStatus?.hasBaseline
+                                  ? 'Select sounds to practice and improve your pronunciation'
+                                  : 'Take a quick assessment to identify sounds that need improvement'}
+                              </p>
+                            </div>
+                            <div className="flex-shrink-0">
+                              <div className="w-10 h-10 rounded-full flex items-center justify-center">
+                                <Play className="w-5 h-5 text-[hsl(var(--brand-blue))]" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        // Image Background Variant (only for Start Baseline Assessment)
+                        <div
+                          onClick={handlePronunciationClick}
+                          className="relative rounded-3xl overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                        >
+                          {/* Background Image - Rotated 90 degrees clockwise */}
+                          <div 
+                            className="absolute inset-0 bg-cover bg-center"
+                            style={{
+                              backgroundImage: `url(${Cover1})`,
+                            }}
+                          />
+                          
+                          {/* Gradient Overlay */}
+                          
+                          
+                          {/* Content */}
+                          <div className="relative h-full flex items-center gap-2 p-6">
+                            <div className="flex-1">
+                              <h3 className="font-medium text-white mb-2 text-base transition-colors">
+                                {baselineStatus?.hasBaseline 
+                                  ? 'Continue Practice' 
+                                  : 'Start Baseline Assessment'}
+                              </h3>
+                              <p className="text-sm text-white/70">
+                                {baselineStatus?.hasBaseline
+                                  ? 'Select sounds to practice and improve your pronunciation'
+                                  : 'Take a quick assessment to identify sounds that need improvement'}
+                              </p>
+                            </div>
+                            <div className="flex-shrink-0">
+                              <div className="w-10 h-10 rounded-full backdrop-blur-sm flex items-center justify-center transition-colors">
+                                <Play className="w-6 h-6 text-white" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
                     {/* Multi-Step Agents */}
                     {recentAgents.multiStep && recentAgents.multiStep.length > 0 && (
@@ -1269,7 +1374,7 @@ export default function AIChatHome() {
                         onClick={() => navigate('/role-plays')}
                         className="rounded-full"
                       >
-                        Explore More Agents
+                        Explore More Scenarios
                       </Button>
                     </div>
                   </div>

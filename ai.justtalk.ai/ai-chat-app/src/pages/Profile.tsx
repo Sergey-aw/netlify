@@ -312,7 +312,7 @@ export default function Profile() {
           ) : (
             <div className="flex-1 flex items-start gap-4 pt-1 pl-4">
               <div className="flex-1">
-                <h1 className="text-2xl font-bold mb-1">
+                <h1 className="text-xl font-semibold mb-0">
                   {user?.display_name || 'Student'}
                 </h1>
                 <p className="text-sm text-muted-foreground mb-2">

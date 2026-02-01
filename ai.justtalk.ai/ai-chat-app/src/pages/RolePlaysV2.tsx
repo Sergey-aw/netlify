@@ -981,7 +981,7 @@ export default function RolePlaysV2() {
         <AppSidebar open={showSidebar} onOpenChange={setShowSidebar} />
 
         {/* Header */}
-        <header className="bg-white px-4 py-4 border-b">
+        <header className="bg-white px-4 py-4 border-b sticky top-0 z-20">
           <div className="flex items-center justify-between max-w-7xl mx-auto">
             <Button
               variant="ghost"
@@ -992,7 +992,7 @@ export default function RolePlaysV2() {
               <PanelLeft className="w-6 h-6 text-gray-600" />
             </Button>
             <div className="flex-1 text-center">
-              <h1 className="text-xl font-semibold">Role-play Journey</h1>
+              <h1 className="text-lg font-medium">Role-play Journey</h1>
             </div>
             <Avatar className="w-10 h-10 cursor-pointer" onClick={() => navigate('/profile')}>
               <AvatarImage src={user?.profile_photo_url} />
@@ -1003,7 +1003,7 @@ export default function RolePlaysV2() {
 
         {/* Categories */}
         <div className="max-w-7xl mx-auto px-4 py-6 space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900">Choose a Category</h3>
+          {/* <h3 className="text-lg font-semibold text-gray-900">Choose a Category</h3> */}
           <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
             {categories.map((category) => {
               const isPersonalized = category.category === 'Personalized for you';

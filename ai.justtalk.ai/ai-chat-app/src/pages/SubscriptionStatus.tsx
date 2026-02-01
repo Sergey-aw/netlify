@@ -162,7 +162,7 @@ export default function SubscriptionStatus() {
         <Button variant="ghost" size="icon" onClick={() => navigate('/ai-chat')}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <h1 className="text-3xl font-bold">My Subscription</h1>
+        <h1 className="text-lg font-medium">My Subscription</h1>
       </div>
 
       <div className="space-y-6">

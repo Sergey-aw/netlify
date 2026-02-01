@@ -282,7 +282,7 @@ export default function SubscriptionManagement() {
             <button onClick={() => navigate(-1)} className="p-2 -ml-2 hover:bg-gray-100 rounded-full">
               <ArrowLeft className="w-6 h-6" />
             </button>
-            <h1 className="text-xl font-semibold">Subscription</h1>
+            <h1 className="text-lg font-medium">Subscription</h1>
           </div>
         </header>
         <div className="px-4 py-12 text-center">
@@ -325,7 +325,7 @@ export default function SubscriptionManagement() {
           <button onClick={() => navigate(-1)} className="p-2 -ml-2 hover:bg-gray-100 rounded-full">
             <ArrowLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-xl font-semibold">Subscription</h1>
+          <h1 className="text-lg font-medium">Subscription</h1>
         </div>
       </header>
 

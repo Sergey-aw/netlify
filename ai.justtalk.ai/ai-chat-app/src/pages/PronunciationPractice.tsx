@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Target, TrendingUp, PanelLeft, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ import { useEffect } from 'react';
 
 export default function PronunciationPractice() {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { mutateAsync: completeSession } = useCompletePracticeSession();
   const [activeTab, setActiveTab] = useState<'practice' | 'progress'>('practice');
@@ -34,6 +35,16 @@ export default function PronunciationPractice() {
   const [existingResults, setExistingResults] = useState<Map<string, PracticeResult>>(new Map());
   const [isLoadingItems, setIsLoadingItems] = useState(false);
   const [isGeneratingPractice, setIsGeneratingPractice] = useState(false);
+  const [autoOpenDrawer, setAutoOpenDrawer] = useState(false);
+
+  // Check if we should auto-open the sound selector from navigation state
+  useEffect(() => {
+    if (location.state?.autoOpenSoundSelector) {
+      setAutoOpenDrawer(true);
+      // Clear the state
+      window.history.replaceState({}, '', '/pronunciation-practice');
+    }
+  }, [location.state]);
 
   // Add swipe gesture to open sidebar
   useSwipeGesture({
@@ -309,7 +320,7 @@ export default function PronunciationPractice() {
             <PanelLeft className="w-6 h-6 text-gray-600" />
           </Button>
           <div className="flex-1 text-center">
-            <h1 className="text-xl font-semibold">Pronunciation Practice</h1>
+            <h1 className="text-lg font-medium">Pronunciation Practice</h1>
           </div>
           <Avatar className="w-10 h-10 cursor-pointer" onClick={() => navigate('/profile')}>
             <AvatarImage src={user?.profile_photo_url} />
@@ -372,6 +383,7 @@ export default function PronunciationPractice() {
                       <TargetedPracticeStarter 
                         practiceCandidates={practiceCandidates}
                         onStartPractice={handleStartTargetedPractice}
+                        initialDrawerOpen={autoOpenDrawer}
                       />
                     ) : !baselineSummary?.is_valid_baseline ? (
                       <Alert className="border-red-200 bg-red-50">
@@ -424,6 +436,7 @@ export default function PronunciationPractice() {
                   <TargetedPracticeStarter 
                     practiceCandidates={practiceCandidates}
                     onStartPractice={handleStartTargetedPractice}
+                    initialDrawerOpen={autoOpenDrawer}
                   />
                 ) : !baselineSummary?.is_valid_baseline ? (
                   <Alert className="border-red-200 bg-red-50">
