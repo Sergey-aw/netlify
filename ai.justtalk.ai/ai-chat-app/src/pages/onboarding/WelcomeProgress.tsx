@@ -15,8 +15,6 @@ import { PersonalityCarousel } from '@/components/PersonalityCarousel';
 import { RolePlayCarousel } from '@/components/RolePlayCarousel';
 import { trackWelcomeStep } from '@/lib/posthog';
 
-const CARD_STACK_HEIGHT = 350;
-
 const steps = [
   {
     id: 1,
@@ -92,18 +90,19 @@ export default function WelcomeProgress() {
       style={{ backgroundImage: `url(${bgWelcome})` }}
     >
     
-      <div className="w-full h-full max-w-md flex flex-col justify-between py-4">
+      <div className="w-full h-full max-w-md flex flex-col py-2">
         {/* Logo */}
-        <div className="flex justify-center mb-2">
+        <div className="flex justify-center flex-shrink-0">
           <img src={Logo} alt="JustTalk" className="h-7" />
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col justify-center">
-          {/* Heading - Fixed height container */}
-          <div className="text-center px-4" style={{ minHeight: '80px', marginBottom: '14px' }}>
+        {/* Spacer */}
+        <div className="flex-1 min-h-[8px]" />
+
+        {/* Heading - Flexible height container */}
+        <div className="text-center px-4 flex-shrink-0">
             {/* Title */}
-            <div className="relative font-din overflow-hidden" style={{ height: '60px', marginBottom: '4px' }}>
+            <div className="relative font-din overflow-hidden mb-2">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={`title-${step.id}`}
@@ -111,7 +110,6 @@ export default function WelcomeProgress() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -20, scale: 0.95 }}
                   transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
-                  className="absolute inset-0 flex items-center justify-center"
                 >
                   <h1 className="font-semibold text-[#39597D] leading-tight whitespace-pre-line text-[clamp(1.4rem,6vw,1.875rem)]">
                     {step.title}
@@ -121,7 +119,7 @@ export default function WelcomeProgress() {
             </div>
             
             {/* Subtitle */}
-            <div className="relative overflow-hidden" style={{ height: '60px' }}>
+            <div className="relative overflow-hidden">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={`subtitle-${step.id}`}
@@ -129,19 +127,21 @@ export default function WelcomeProgress() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -20, scale: 0.95 }}
                   transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1], delay: 0.1 }}
-                  className="absolute inset-0 flex items-center justify-center"
                 >
-                    <p className="text-base font-medium text-[#5983B3] leading-tight whitespace-pre-line text-[clamp(0.8rem,4vw,1.125rem)]">
-                      {step.subtitle}
-                    </p>
+                  <p className="text-base font-medium text-[#5983B3] leading-tight whitespace-pre-line text-[clamp(0.6rem,4vw,1.125rem)]">
+                    {step.subtitle}
+                  </p>
                 </motion.div>
               </AnimatePresence>
             </div>
           </div>
 
+          {/* Spacer */}
+          <div className="flex-1 min-h-[6 px]" />
+
           {/* Feature Cards */}
           <div className={step.id === 2 || step.id === 3 ? '-mx-6' : 'px-2'}>
-            <div className="relative " style={{ height: `${CARD_STACK_HEIGHT}px` }}>
+            <div className="relative flex-shrink-0" style={{ minHeight: '350px', maxHeight: '400px' }}>
               <AnimatePresence mode="wait">
                 {step.id === 2 ? (
                   <motion.div
@@ -150,7 +150,7 @@ export default function WelcomeProgress() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
-                    className="absolute inset-0"
+                    className="h-full"
                   >
                     <PersonalityCarousel />
                   </motion.div>
@@ -161,7 +161,7 @@ export default function WelcomeProgress() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
-                    className="absolute inset-0"
+                    className="h-full"
                   >
                     <RolePlayCarousel />
                   </motion.div>
@@ -172,9 +172,9 @@ export default function WelcomeProgress() {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{ duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
-                    className="absolute inset-0 flex items-center justify-center"
+                    className="h-full flex items-center justify-center"
                   >
-                    <div className="relative w-full h-full">
+                    <div className="relative w-full max-w-[320px] mx-auto" style={{ aspectRatio: '1', maxHeight: '360px' }}>
                       {/* Top Left - Words Acquired */}
                       <motion.div
                         initial={{ x: -40, opacity: 0 }}
@@ -192,10 +192,10 @@ export default function WelcomeProgress() {
                         }}
                         className="absolute rounded-[16px] cursor-pointer"
                         style={{ 
-                          left: '10px', 
-                          top: '20px', 
-                          width: '140px', 
-                          height: '66px',
+                          left: '3%', 
+                          top: '6%', 
+                          width: '44%', 
+                          height: '18%',
                           boxShadow: glowingCard === 'words' 
                             ? '0px 0px 20px 4px hsl(var(--brand-blue))' 
                             : '0px 4px 15px 0px rgba(0,0,0,0.15)',
@@ -226,10 +226,10 @@ export default function WelcomeProgress() {
                         }}
                         className="absolute cursor-pointer"
                         style={{ 
-                          left: '200px', 
-                          top: '0px', 
-                          width: '86px', 
-                          height: '92px',
+                          left: '62%', 
+                          top: '0%', 
+                          width: '27%', 
+                          height: '26%',
                           filter: glowingCard === 'pronunciation'
                             ? 'drop-shadow(0px 0px 15px hsl(var(--brand-blue)))'
                             : 'none',
@@ -240,8 +240,6 @@ export default function WelcomeProgress() {
                           <img 
                             src={progressPronunciation} 
                             alt="Pronunciation" 
-                            width="114" 
-                            height="122"
                             className="block max-w-none w-full h-full"
                           />
                         </div>
@@ -262,21 +260,21 @@ export default function WelcomeProgress() {
                         }}
                         className="absolute rounded-[16px] cursor-pointer"
                         style={{ 
-                          left: '134px', 
-                          top: '120px',
+                          left: '42%', 
+                          top: '33%',
+                          width: '56%',
+                          height: '26%',
                           boxShadow: glowingCard === 'speak'
                             ? '0px 0px 20px 4px hsl(var(--brand-blue))'
                             : '0px 4px 15px 0px rgba(0,0,0,0.15)',
                           transition: 'box-shadow 0.3s ease'
                         }}
                       >
-                        <div className="relative" style={{ width: '180px', height: '94px' }}>
-                          <img 
-                            src={progressSpeakWords} 
-                            alt="Speak and New words" 
-                            className="absolute inset-0 w-full h-full object-contain"
-                          />
-                        </div>
+                        <img 
+                          src={progressSpeakWords} 
+                          alt="Speak and New words" 
+                          className="absolute inset-0 w-full h-full object-contain"
+                        />
                       </motion.div>
 
                       {/* Bottom Left - CEFR Level */}
@@ -296,10 +294,10 @@ export default function WelcomeProgress() {
                         }}
                         className="absolute cursor-pointer"
                         style={{ 
-                          left: '15px', 
-                          top: '170px', 
-                          width: '84px', 
-                          height: '90px',
+                          left: '5%', 
+                          top: '47%', 
+                          width: '26%', 
+                          height: '25%',
                           filter: glowingCard === 'cefr'
                             ? 'drop-shadow(0px 0px 15px hsl(var(--brand-blue)))'
                             : 'none',
@@ -310,8 +308,6 @@ export default function WelcomeProgress() {
                           <img 
                             src={progressCefrLevel} 
                             alt="CEFR Level" 
-                            width="114" 
-                            height="120"
                             className="block max-w-none w-full h-full"
                           />
                         </div>
@@ -334,9 +330,10 @@ export default function WelcomeProgress() {
                         }}
                         className="absolute cursor-pointer"
                         style={{ 
-                          left: '146px', 
-                          top: '220px', 
-                          width: '155px',
+                          left: '46%', 
+                          top: '61%', 
+                          width: '48%',
+                          height: '47%',
                           filter: glowingCard === 'ml'
                             ? 'drop-shadow(0px 0px 15px hsl(var(--brand-blue)))'
                             : 'none',
@@ -346,8 +343,6 @@ export default function WelcomeProgress() {
                         <img 
                           src={progressMlScore} 
                           alt="ML score" 
-                          width="159" 
-                          height="170"
                           className="block max-w-none w-full h-full object-contain"
                         />
                       </motion.div>
@@ -356,7 +351,7 @@ export default function WelcomeProgress() {
                 ) : (
                   <motion.div
                     key={`card-set-${step.id}`}
-                    className="absolute inset-0 space-y-4 flex flex-col justify-center"
+                    className="space-y-4 flex flex-col justify-center h-full"
                     initial={{ opacity: 0, x: 40 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -40 }}
@@ -401,10 +396,12 @@ export default function WelcomeProgress() {
               </AnimatePresence>
             </div>
           </div>
-        </div>
+        
+        {/* Spacer */}
+        <div className="flex-1 min-h-[32px]" />
 
         {/* Continue Button */}
-        <div className="pt-6 px-2">
+        <div className="px-2 flex-shrink-0">
           <Button
             onClick={handleContinue}
             className="w-full bg-gray-900 hover:bg-gray-800 text-white py-7 rounded-2xl text-lg font-semibold shadow-lg"
