@@ -231,7 +231,7 @@ export default function RolePlaysV2() {
     const baseNumber = 5000 + (Math.abs(hash) % 10001);
     
     // Calculate time since Dec 22, 2025
-    const startDate = new Date('2025-12-22').getTime();
+    const startDate = new Date('2026-02-02').getTime();
     const now = new Date();
     const currentTime = now.getTime();
     

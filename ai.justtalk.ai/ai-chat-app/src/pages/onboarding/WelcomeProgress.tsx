@@ -205,7 +205,7 @@ export default function WelcomeProgress() {
                         <img 
                           src={progressWordsAcquired} 
                           alt="Words acquired" 
-                          className="absolute inset-0 w-full h-full object-contain"
+                          className="absolute inset-0 w-full h-full object-contain bg-white/80 rounded-[16px]"
                         />
                       </motion.div>
 
@@ -240,7 +240,7 @@ export default function WelcomeProgress() {
                           <img 
                             src={progressPronunciation} 
                             alt="Pronunciation" 
-                            className="block max-w-none w-full h-full"
+                            className="block max-w-none h-full"
                           />
                         </div>
                       </motion.div>
@@ -273,7 +273,7 @@ export default function WelcomeProgress() {
                         <img 
                           src={progressSpeakWords} 
                           alt="Speak and New words" 
-                          className="absolute inset-0 w-full h-full object-contain"
+                          className="absolute inset-0 w-full h-full object-contain bg-white/80 rounded-[16px]"
                         />
                       </motion.div>
 

@@ -1404,7 +1404,7 @@ export default function AIChatHome() {
                   // Empty State - No Recent Conversations
                   <div className="text-center flex-1 flex flex-col justify-center px-0 pb-16">
                     <h1 className="text-lg font-semibold text-gray-700">
-                      Good to see you,
+                      Welcome,
                     </h1>
                     <h2 className="text-2xl font-semibold text-gray-400 mb-2">
                       {user?.display_name || 'Student'}
