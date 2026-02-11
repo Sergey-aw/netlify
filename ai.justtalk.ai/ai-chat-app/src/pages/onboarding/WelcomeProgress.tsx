@@ -195,7 +195,7 @@ export default function WelcomeProgress() {
                           left: '3%', 
                           top: '6%', 
                           width: '44%', 
-                          height: '18%',
+                          height: '20%',
                           boxShadow: glowingCard === 'words' 
                             ? '0px 0px 20px 4px hsl(var(--brand-blue))' 
                             : '0px 4px 15px 0px rgba(0,0,0,0.15)',
@@ -205,7 +205,7 @@ export default function WelcomeProgress() {
                         <img 
                           src={progressWordsAcquired} 
                           alt="Words acquired" 
-                          className="absolute inset-0 w-full h-full object-contain bg-white/80 rounded-[16px]"
+                          className="absolute inset-0 w-full h-full object-contain bg-white/80 rounded-[16px] p-1"
                         />
                       </motion.div>
 
@@ -308,7 +308,7 @@ export default function WelcomeProgress() {
                           <img 
                             src={progressCefrLevel} 
                             alt="CEFR Level" 
-                            className="block max-w-none w-full h-full"
+                            className="block max-w-none w-full h-full object-contain items-center"
                           />
                         </div>
                       </motion.div>
