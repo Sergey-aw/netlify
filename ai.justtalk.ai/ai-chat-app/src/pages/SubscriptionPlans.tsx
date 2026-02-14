@@ -11,19 +11,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { useSession } from '@/hooks/useSession';
-import { updateOnboardingStep } from '@/lib/onboarding-state';
+import { updateOnboardingStep, getPricingVariant, isValidPricingVariant } from '@/lib/onboarding-state';
 import { trackPaywallViewed, trackPlanSelected, trackCheckoutStarted, trackTrialOfferShown, type TrialConfig } from '@/lib/posthog';
 import type { SubscriptionPlan, PricingVariant } from '@/lib/justai-types';
 import { AppSidebar } from '@/components/AppSidebar';
 import bgWelcome from '@/assets/bg_welcome.jpg';
-
-// Valid pricing variants for A/B testing
-const VALID_PRICING_VARIANTS: PricingVariant[] = ['control', 'plan-a', 'plan-b'];
-
-// Check if a value is a valid pricing variant
-const isValidPricingVariant = (value: string | null): value is PricingVariant => {
-  return value !== null && VALID_PRICING_VARIANTS.includes(value as PricingVariant);
-};
 
 export default function SubscriptionPlans() {
   const navigate = useNavigate();
@@ -47,21 +39,28 @@ export default function SubscriptionPlans() {
   const posthogPricingVariant = useFeatureFlagVariantKey('pricing-test-landing');
   
   // 3. Resolve effective pricing variant with priority:
-  //    URL ref > PostHog feature flag > default 'control'
+  //    URL ref > localStorage (from landing page) > PostHog feature flag > default 'control'
   const getEffectivePricingVariant = (): PricingVariant => {
-    // Priority 1: URL ref parameter (for landing page campaigns)
+    // Priority 1: URL ref parameter (for direct links)
     if (isValidPricingVariant(refParam)) {
       console.log('[Pricing Variant] Using URL ref parameter:', refParam);
       return refParam;
     }
     
-    // Priority 2: PostHog feature flag (for organic traffic)
+    // Priority 2: localStorage (from landing page - preserved through onboarding)
+    const storedVariant = getPricingVariant();
+    if (storedVariant) {
+      console.log('[Pricing Variant] Using stored variant from localStorage:', storedVariant);
+      return storedVariant;
+    }
+    
+    // Priority 3: PostHog feature flag (for organic traffic)
     if (posthogPricingVariant && isValidPricingVariant(posthogPricingVariant as string)) {
       console.log('[Pricing Variant] Using PostHog feature flag:', posthogPricingVariant);
       return posthogPricingVariant as PricingVariant;
     }
     
-    // Priority 3: Default to control
+    // Priority 4: Default to control
     console.log('[Pricing Variant] Using default: control');
     return 'control';
   };
@@ -70,11 +69,14 @@ export default function SubscriptionPlans() {
   
   // Log pricing variant resolution
   useEffect(() => {
+    const storedVariant = getPricingVariant();
     console.log('[Pricing Variant] Resolved:', {
       effectiveVariant: effectivePricingVariant,
       urlRef: refParam,
+      storedVariant: storedVariant,
       posthogVariant: posthogPricingVariant,
-      source: refParam && isValidPricingVariant(refParam) ? 'url' : 
+      source: refParam && isValidPricingVariant(refParam) ? 'url' :
+              storedVariant ? 'localStorage' :
               posthogPricingVariant && isValidPricingVariant(posthogPricingVariant as string) ? 'posthog' : 'default',
     });
   }, [effectivePricingVariant, refParam, posthogPricingVariant]);

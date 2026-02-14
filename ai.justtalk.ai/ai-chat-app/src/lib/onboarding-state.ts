@@ -161,3 +161,64 @@ export function shouldResumeOnboarding(): { shouldResume: boolean; route: string
     route: getResumeRoute(state),
   };
 }
+
+// ========================================
+// PRICING VARIANT PERSISTENCE
+// ========================================
+
+/**
+ * Valid pricing variants for A/B testing
+ */
+export type PricingVariant = 'control' | 'plan-a' | 'plan-b';
+
+const PRICING_VARIANT_KEY = 'justai_pricing_variant';
+
+/**
+ * Check if a value is a valid pricing variant
+ */
+export function isValidPricingVariant(value: string | null): value is PricingVariant {
+  return value !== null && ['control', 'plan-a', 'plan-b'].includes(value);
+}
+
+/**
+ * Save pricing variant from landing page URL
+ * This should be called when user first lands on the welcome page
+ */
+export function savePricingVariant(variant: PricingVariant): void {
+  try {
+    localStorage.setItem(PRICING_VARIANT_KEY, variant);
+    console.log('[Pricing Variant] Saved to localStorage:', variant);
+  } catch (error) {
+    console.error('Error saving pricing variant:', error);
+  }
+}
+
+/**
+ * Get stored pricing variant from localStorage
+ * Returns null if not found or invalid
+ */
+export function getPricingVariant(): PricingVariant | null {
+  try {
+    const stored = localStorage.getItem(PRICING_VARIANT_KEY);
+    if (stored && isValidPricingVariant(stored)) {
+      return stored;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error reading pricing variant:', error);
+    return null;
+  }
+}
+
+/**
+ * Clear stored pricing variant
+ * Should be called after successful subscription
+ */
+export function clearPricingVariant(): void {
+  try {
+    localStorage.removeItem(PRICING_VARIANT_KEY);
+    console.log('[Pricing Variant] Cleared from localStorage');
+  } catch (error) {
+    console.error('Error clearing pricing variant:', error);
+  }
+}

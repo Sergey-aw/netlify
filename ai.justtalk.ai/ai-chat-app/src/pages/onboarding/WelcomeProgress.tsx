@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -14,6 +14,7 @@ import progressSpeakWords from '@/assets/progress-speak-words.png';
 import { PersonalityCarousel } from '@/components/PersonalityCarousel';
 import { RolePlayCarousel } from '@/components/RolePlayCarousel';
 import { trackWelcomeStep } from '@/lib/posthog';
+import { savePricingVariant, isValidPricingVariant } from '@/lib/onboarding-state';
 
 const steps = [
   {
@@ -60,8 +61,26 @@ const steps = [
 
 export default function WelcomeProgress() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [currentStep, setCurrentStep] = useState(0);
   const [glowingCard, setGlowingCard] = useState<string | null>(null);
+  
+  // Capture and store pricing variant from URL params on first load
+  // This preserves the variant from landing page throughout onboarding
+  useEffect(() => {
+    const pricingVariant = searchParams.get('pricing_variant');
+    const refParam = searchParams.get('ref');
+    
+    // Store pricing variant if present in URL (from landing page)
+    if (pricingVariant && isValidPricingVariant(pricingVariant)) {
+      savePricingVariant(pricingVariant);
+      console.log('[WelcomeProgress] Stored pricing_variant from URL:', pricingVariant);
+    } else if (refParam && isValidPricingVariant(refParam)) {
+      // Also check ref param as fallback
+      savePricingVariant(refParam);
+      console.log('[WelcomeProgress] Stored pricing_variant from ref param:', refParam);
+    }
+  }, [searchParams]);
   
   // Track page view on mount
   useState(() => {
