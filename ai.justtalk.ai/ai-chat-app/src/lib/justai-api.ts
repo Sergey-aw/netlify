@@ -133,13 +133,15 @@ export async function getConversationTranscript(conversationId: string) {
 /**
  * Create Stripe checkout session for subscription
  * @param embedded - If true, returns clientSecret for embedded checkout; if false, returns redirect URL
+ * @param pricingVariant - The A/B test variant for pricing (control, plan-a, plan-b)
  */
 export async function createCheckoutSession(
   priceId: string, 
   coupon?: string, 
   trialDays?: number, 
   trialVariant?: string,
-  embedded?: boolean
+  embedded?: boolean,
+  pricingVariant?: string
 ): Promise<{ url?: string; clientSecret?: string }> {
   console.log('createCheckoutSession: Starting...');
   
@@ -155,7 +157,8 @@ export async function createCheckoutSession(
     coupon: coupon || 'none',
     trialDays: trialDays || 'none',
     trialVariant: trialVariant || 'none',
-    embedded: embedded || false
+    embedded: embedded || false,
+    pricingVariant: pricingVariant || 'control'
   });
 
   if (!accessToken) {
@@ -168,6 +171,7 @@ export async function createCheckoutSession(
     trialDays?: number; 
     trialVariant?: string;
     embedded?: boolean;
+    pricingVariant?: string;
   } = {
     priceId: priceId,
   };
@@ -188,6 +192,11 @@ export async function createCheckoutSession(
   // Add embedded flag if provided
   if (embedded) {
     requestBody.embedded = embedded;
+  }
+
+  // Add pricing variant for A/B testing
+  if (pricingVariant) {
+    requestBody.pricingVariant = pricingVariant;
   }
 
   console.log('createCheckoutSession: Sending request', {

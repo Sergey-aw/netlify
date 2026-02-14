@@ -13,9 +13,17 @@ import { supabase } from '@/lib/supabase';
 import { useSession } from '@/hooks/useSession';
 import { updateOnboardingStep } from '@/lib/onboarding-state';
 import { trackPaywallViewed, trackPlanSelected, trackCheckoutStarted, trackTrialOfferShown, type TrialConfig } from '@/lib/posthog';
-import type { SubscriptionPlan } from '@/lib/justai-types';
+import type { SubscriptionPlan, PricingVariant } from '@/lib/justai-types';
 import { AppSidebar } from '@/components/AppSidebar';
 import bgWelcome from '@/assets/bg_welcome.jpg';
+
+// Valid pricing variants for A/B testing
+const VALID_PRICING_VARIANTS: PricingVariant[] = ['control', 'plan-a', 'plan-b'];
+
+// Check if a value is a valid pricing variant
+const isValidPricingVariant = (value: string | null): value is PricingVariant => {
+  return value !== null && VALID_PRICING_VARIANTS.includes(value as PricingVariant);
+};
 
 export default function SubscriptionPlans() {
   const navigate = useNavigate();
@@ -27,6 +35,53 @@ export default function SubscriptionPlans() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  
+  // ========================================
+  // PRICING VARIANT A/B TEST LOGIC
+  // ========================================
+  
+  // 1. Extract URL ref parameter (highest priority)
+  const refParam = searchParams.get('ref');
+  
+  // 2. Get PostHog feature flag for pricing variant (fallback)
+  const posthogPricingVariant = useFeatureFlagVariantKey('pricing-test-landing');
+  
+  // 3. Resolve effective pricing variant with priority:
+  //    URL ref > PostHog feature flag > default 'control'
+  const getEffectivePricingVariant = (): PricingVariant => {
+    // Priority 1: URL ref parameter (for landing page campaigns)
+    if (isValidPricingVariant(refParam)) {
+      console.log('[Pricing Variant] Using URL ref parameter:', refParam);
+      return refParam;
+    }
+    
+    // Priority 2: PostHog feature flag (for organic traffic)
+    if (posthogPricingVariant && isValidPricingVariant(posthogPricingVariant as string)) {
+      console.log('[Pricing Variant] Using PostHog feature flag:', posthogPricingVariant);
+      return posthogPricingVariant as PricingVariant;
+    }
+    
+    // Priority 3: Default to control
+    console.log('[Pricing Variant] Using default: control');
+    return 'control';
+  };
+  
+  const effectivePricingVariant = getEffectivePricingVariant();
+  
+  // Log pricing variant resolution
+  useEffect(() => {
+    console.log('[Pricing Variant] Resolved:', {
+      effectiveVariant: effectivePricingVariant,
+      urlRef: refParam,
+      posthogVariant: posthogPricingVariant,
+      source: refParam && isValidPricingVariant(refParam) ? 'url' : 
+              posthogPricingVariant && isValidPricingVariant(posthogPricingVariant as string) ? 'posthog' : 'default',
+    });
+  }, [effectivePricingVariant, refParam, posthogPricingVariant]);
+  
+  // ========================================
+  // TRIAL PERIOD EXPERIMENT (existing)
+  // ========================================
   
   // Trial period experiment - use official PostHog hooks
   const trialVariant = useFeatureFlagVariantKey('trial-period-experiment');
@@ -187,8 +242,11 @@ export default function SubscriptionPlans() {
       billing_cycle: billingCycle,
       trial_variant: trialVariant,
       trial_days: trialConfig?.trial_days,
+      pricing_variant: effectivePricingVariant,
+      pricing_variant_source: refParam && isValidPricingVariant(refParam) ? 'url' : 
+                              posthogPricingVariant && isValidPricingVariant(posthogPricingVariant as string) ? 'posthog' : 'default',
     });
-  }, [user?.id, layoutVariant, isVerticalLayout, isAuthenticated, isAnonymous, billingCycle, trialVariant, trialConfig]);
+  }, [user?.id, layoutVariant, isVerticalLayout, isAuthenticated, isAnonymous, billingCycle, trialVariant, trialConfig, effectivePricingVariant]);
 
   // Show banner again when Premium plan is selected (but don't reset dismissed state)
   useEffect(() => {
@@ -197,15 +255,16 @@ export default function SubscriptionPlans() {
     }
   }, [selectedPlanName, bannerDismissed]);
 
-  // Fetch monthly plans
+  // Fetch monthly plans with pricing variant filter
   const { data: monthlyPlans, isLoading: isLoadingMonthly } = useQuery({
-    queryKey: ['subscription-plans', 'monthly'],
+    queryKey: ['subscription-plans', 'monthly', effectivePricingVariant],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('justai_subscription_plans')
         .select('*')
         .eq('is_active', true)
         .eq('billing_period', 'monthly')
+        .eq('pricing_variant', effectivePricingVariant)
         .order('display_order');
 
       if (error) throw error;
@@ -213,15 +272,16 @@ export default function SubscriptionPlans() {
     },
   });
 
-  // Fetch annual plans
+  // Fetch annual plans with pricing variant filter
   const { data: annualPlans, isLoading: isLoadingAnnual } = useQuery({
-    queryKey: ['subscription-plans', 'annual'],
+    queryKey: ['subscription-plans', 'annual', effectivePricingVariant],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('justai_subscription_plans')
         .select('*')
         .eq('is_active', true)
         .eq('billing_period', 'annual')
+        .eq('pricing_variant', effectivePricingVariant)
         .order('display_order');
 
       if (error) throw error;
@@ -229,15 +289,16 @@ export default function SubscriptionPlans() {
     },
   });
 
-  // Fetch weekly plans
+  // Fetch weekly plans (always use 'control' variant - weekly plans don't have variants)
   const { data: weeklyPlans, isLoading: isLoadingWeekly } = useQuery({
-    queryKey: ['subscription-plans', 'weekly'],
+    queryKey: ['subscription-plans', 'weekly', 'control'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('justai_subscription_plans')
         .select('*')
         .eq('is_active', true)
         .eq('billing_period', 'weekly')
+        .eq('pricing_variant', 'control') // Weekly plans only exist for control variant
         .order('display_order');
 
       if (error) throw error;
@@ -407,6 +468,7 @@ export default function SubscriptionPlans() {
         planName: plan?.plan_name || 'Selected Plan',
         planPrice: plan?.price_cents.toString() || '0',
         billingPeriod: plan?.billing_period || 'monthly',
+        pricingVariant: effectivePricingVariant, // Pass pricing variant for tracking
       });
       
       if (trialDays) {

@@ -38,6 +38,7 @@ export default function CheckoutPage() {
   const priceId = searchParams.get('priceId');
   const trialDays = searchParams.get('trialDays');
   const trialVariant = searchParams.get('trialVariant');
+  const pricingVariant = searchParams.get('pricingVariant');
 
   // Fetch client secret for embedded checkout
   const fetchClientSecret = useCallback(async () => {
@@ -56,7 +57,8 @@ export default function CheckoutPage() {
         undefined, // coupon
         trialDays ? parseInt(trialDays) : undefined,
         trialVariant || undefined,
-        true // embedded mode
+        true, // embedded mode
+        pricingVariant || undefined // A/B test variant
       );
 
       if (result.clientSecret) {
@@ -70,7 +72,7 @@ export default function CheckoutPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [priceId, trialDays, trialVariant]);
+  }, [priceId, trialDays, trialVariant, pricingVariant]);
 
   useEffect(() => {
     fetchClientSecret();

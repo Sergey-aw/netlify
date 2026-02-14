@@ -12,11 +12,14 @@ export interface PlanFeatures {
   items: FeatureItem[];
 }
 
+export type PricingVariant = 'control' | 'plan-a' | 'plan-b';
+
 export interface SubscriptionPlan {
   id: string;
   plan_name: string;
   plan_type: 'basic' | 'premium' | 'unlimited';
   billing_period: 'weekly' | 'monthly' | 'annual';
+  pricing_variant: PricingVariant;
   description: string;
   monthly_message_limit: number | null;
   includes_voice: boolean;
