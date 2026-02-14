@@ -55,7 +55,7 @@ export function useSubscription(): SubscriptionAccess {
 
       const { data, error } = await supabase
         .from('justai_subscriptions')
-        .select('id, student_id, subscription_type, status, monthly_message_limit, voice_minutes_limit, price_cents, currency, billing_period, current_period_start, current_period_end, cancel_at_period_end, stripe_subscription_id, stripe_customer_id, created_at, updated_at')
+        .select('id, student_id, subscription_type, status, monthly_message_limit, voice_minutes_limit, price_cents, currency, billing_period, current_period_start, current_period_end, cancel_at_period_end, stripe_subscription_id, stripe_customer_id, created_at, updated_at, trial_variant')
         .eq('student_id', user.id)
         .eq('status', 'active')
         .single();

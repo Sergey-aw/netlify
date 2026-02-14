@@ -32,6 +32,7 @@ interface SubscriptionPlan {
   features: string[];
   monthly_equivalent_cents?: number;
   discount_percentage?: number;
+  pricing_variant?: string;
 }
 
 // Helper function to format seconds to human-readable time
@@ -310,11 +311,16 @@ export default function SubscriptionManagement() {
   };
   const currentTier = planTiers[subscription.subscription_type];
 
-  // Filter upgrade options (higher tiers only, same billing period)
+  // Get the user's pricing variant from their subscription
+  // Users should only see upgrade plans from their assigned pricing variant
+  const userPricingVariant = subscription.trial_variant || 'control';
+
+  // Filter upgrade options (higher tiers only, same billing period, same pricing variant)
   const upgradeOptions = plans.filter(
     (plan) =>
       planTiers[plan.plan_type] > currentTier &&
-      plan.billing_period === subscription.billing_period
+      plan.billing_period === subscription.billing_period &&
+      plan.pricing_variant === userPricingVariant
   );
 
   return (
