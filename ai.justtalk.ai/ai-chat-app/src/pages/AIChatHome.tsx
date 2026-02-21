@@ -35,6 +35,7 @@ import { VoiceButtonTransition } from '@/components/VoiceButtonTransition';
 import { FeatureCardGallery } from '@/components/FeatureCardGallery';
 import { FeedbackDrawer } from '@/components/FeedbackDrawer';
 import { VocabRecommendationsCard } from '@/components/vocabulary/VocabRecommendationsCard';
+import { FreeTrialBanner } from '@/components/FreeTrialBanner';
 import { supabase } from '@/lib/supabase';
 import { checkSubscriptionAccess } from '@/lib/justai-api';
 import { getAgentsByCategory } from '@/services/agents.service';
@@ -911,6 +912,13 @@ export default function AIChatHome() {
           </Avatar>
         </div>
       </header>
+
+      {/* Free Trial Banner - between header and gray layout */}
+      <div className="px-2 mb-2">
+        <div className="max-w-2xl mx-auto">
+          <FreeTrialBanner className="rounded-3xl" />
+        </div>
+      </div>
 
       {/* Main Content Container with Sidebar */}
       <div className="flex-1 relative overflow-hidden">

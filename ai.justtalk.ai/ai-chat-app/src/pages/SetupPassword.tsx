@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { supabase } from '@/lib/supabase';
 import { clearTempAuth } from '@/lib/session';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
+import Logo from '@/assets/logo.svg';
 
 export default function SetupPassword() {
   const navigate = useNavigate();
@@ -209,20 +210,8 @@ export default function SetupPassword() {
         console.log('No onboarding data found - user may need to complete onboarding');
       }
 
-      // Check if user has active subscription
-      const { data: subscription } = await supabase
-        .from('justai_subscriptions')
-        .select('id, status')
-        .eq('student_id', user.id)
-        .eq('status', 'active')
-        .single();
-
-      // Redirect based on subscription status
-      if (subscription) {
-        navigate('/ai-chat');
-      } else {
-        navigate('/subscription/plans');
-      }
+      // Always redirect to ai-chat after password setup
+      navigate('/ai-chat');
     } catch (err) {
       console.error('Setup password error:', err);
       setError(err instanceof Error ? err.message : 'Failed to set up password');
@@ -232,17 +221,23 @@ export default function SetupPassword() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>{isPasswordReset ? 'Reset Your Password' : 'Set Up Your Account'}</CardTitle>
-          <CardDescription>
+    <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5] p-4">
+      <Card className="w-full max-w-[480px] shadow-sm">
+        <CardHeader className="pt-8">
+          {/* Logo */}
+          <div className="flex justify-center mb-6">
+            <img src={Logo} alt="JustTalk" className="h-12" />
+          </div>
+          <CardTitle className="text-center text-[#666666] text-lg font-normal">
+            {isPasswordReset ? 'Reset Your Password' : 'Set Up Your Account'}
+          </CardTitle>
+          <CardDescription className="text-center">
             {isPasswordReset 
               ? 'Enter your new password below' 
               : 'Choose a password to secure your account'}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-8 px-8">
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isPasswordReset && (
               <div>

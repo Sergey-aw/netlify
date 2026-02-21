@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useFeatureFlagVariant, usePostHogTracking } from '@/hooks/usePostHog';
 import { useFeatureFlagVariantKey, usePostHog } from 'posthog-js/react';
-import { Check, AlertCircle, Crown, ChessQueen, CreditCard, Infinity, Mic, MessageSquare, BookOpen, BarChart, Sparkles, Zap, Volume2, TrendingUp, Target, Brain, Users, Globe, Trophy, Star, CheckCircle2, Award, GraduationCap, Heart, Briefcase, type LucideIcon } from 'lucide-react';
+import { Check, AlertCircle, Crown, ChessQueen, CreditCard, Infinity, Mic, MessageSquare, BookOpen, BarChart, Sparkles, Zap, Volume2, TrendingUp, Target, Brain, Users, Globe, Trophy, Star, CheckCircle2, Award, GraduationCap, Heart, Briefcase, ArrowLeft, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'motion/react';
@@ -219,12 +219,13 @@ export default function SubscriptionPlans() {
   }, [searchParams, setSearchParams]);
 
   // Show banner after 3 seconds delay
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowBanner(true);
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, []);
+  // HIDDEN: New Year deal banner disabled
+  // useEffect(() => {
+  //   const timer = setTimeout(() => {
+  //     setShowBanner(true);
+  //   }, 3000);
+  //   return () => clearTimeout(timer);
+  // }, []);
 
   // Track page view and identify user
   useEffect(() => {
@@ -251,11 +252,12 @@ export default function SubscriptionPlans() {
   }, [user?.id, layoutVariant, isVerticalLayout, isAuthenticated, isAnonymous, billingCycle, trialVariant, trialConfig, effectivePricingVariant]);
 
   // Show banner again when Premium plan is selected (but don't reset dismissed state)
-  useEffect(() => {
-    if (selectedPlanName === 'Premium' && bannerDismissed) {
-      setShowBanner(true);
-    }
-  }, [selectedPlanName, bannerDismissed]);
+  // HIDDEN: New Year deal banner disabled
+  // useEffect(() => {
+  //   if (selectedPlanName === 'Premium' && bannerDismissed) {
+  //     setShowBanner(true);
+  //   }
+  // }, [selectedPlanName, bannerDismissed]);
 
   // Fetch monthly plans with pricing variant filter
   const { data: monthlyPlans, isLoading: isLoadingMonthly } = useQuery({
@@ -403,7 +405,7 @@ export default function SubscriptionPlans() {
           plan.billing_period,
           {
             plan_name: plan.plan_name,
-            message_limit: plan.monthly_message_limit,
+            voice_minutes_limit: (plan as any).voice_minutes_limit,
           }
         );
       }
@@ -522,8 +524,8 @@ export default function SubscriptionPlans() {
       {/* Sidebar */}
       <AppSidebar open={showSidebar} onOpenChange={setShowSidebar} />
 
-      {/* Glassmorphism Banner - New Year Special */}
-      <AnimatePresence>
+      {/* Glassmorphism Banner - New Year Special - HIDDEN */}
+      {/* <AnimatePresence>
         {showBanner && (
           <motion.div
             initial={{ y: -250, x: '-50%', opacity: 1, scale: 0.9 }}
@@ -544,10 +546,8 @@ export default function SubscriptionPlans() {
               maxWidth: '390px',
             }}
           >
-         
             <div className="relative overflow-hidden rounded-2xl glass-container">
-              {/* Glass effect base */}
-              <div 
+              <div
                 className="relative px-4 py-2 flex items-center gap-2.4"
                 style={{
                   background: 'rgba(129, 190, 255, 0.2)',
@@ -557,94 +557,41 @@ export default function SubscriptionPlans() {
                   border: '1px solid rgba(255, 255, 255, 0.3)',
                 }}
               >
-                {/* Glossy highlight layer */}
-                <div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.06) 40%, rgba(255, 255, 255, 0.02))',
-                    mixBlendMode: 'overlay',
-                  }}
-                />
-                
-                {/* Gradient border effect */}
-                <div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    borderRadius: 'inherit',
-                    padding: '1px',
-                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.2))',
-                    WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                    WebkitMaskComposite: 'xor',
-                    maskComposite: 'exclude',
-                  }}
-                />
-                
-                {/* Emoji */}
                 <div className="relative z-10 flex items-center justify-center p-1 rounded-lg shrink-0">
                   <span className="text-2xl leading-none">🥳</span>
                 </div>
-                
-                {/* Content */}
                 <div className="relative z-10 flex-1 min-w-0">
                   <p className="text-sm font-medium leading-normal" style={{ color: '#064589' }}>
                     Use code <span style={{ color: '#007aff' }}>JUST-2026</span> to get <span style={{ color: '#007aff' }}>Premium</span> for the price of Basic.
                   </p>
                 </div>
-                
                 <button
                   onClick={() => {
                     setShowBanner(false);
                     setBannerDismissed(true);
                   }}
                   className="relative z-10 w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors shrink-0"
-                  style={{
-                    color: '#064589',
-                    fontSize: '20px',
-                    fontWeight: 500,
-                  }}
+                  style={{ color: '#064589', fontSize: '20px', fontWeight: 500 }}
                 >
                   ×
                 </button>
               </div>
-                 {/* Small Green Badge - Centered */}
-           
-
-            </div>
-             <div 
-              className="relative flex items-center justify-center px-2.4 py-1 rounded-lg -mb-2  -inset-y-2"
-              style={{
-                background: 'rgba(13, 255, 0, 0.15)',
-                backdropFilter: 'blur(8px) saturate(140%)',
-                WebkitBackdropFilter: 'blur(8px) saturate(140%)',
-                width: 'fit-content',
-                margin: '0 auto 8px auto',
-              }}
-            >
-              {/* Gradient border effect */}
-              <div
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  borderRadius: 'inherit',
-                  padding: '1px',
-                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.2))',
-                  WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                  WebkitMaskComposite: 'xor',
-                  maskComposite: 'exclude',
-                }}
-              />
-              <p className="text-xs font-medium text-[#035f07] whitespace-nowrap relative z-10">
-                New Year special
-              </p>
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence> */}
 
       {/* Main Content Container */}
       <div className="relative flex flex-col min-h-screen px-6 py-0 pb-12 max-w-xl mx-auto">
-        {/* Header Section */}
-        <div className="flex flex-col items-center text-center pt-8 pb-0 px-8 gap-[21px] mb-8">
-          <h1 className="text-[32px] font-bold text-[#39597d] leading-[1.076]">
+        {/* Header Section with Back Button */}
+        <div className="flex items-center pt-6 pb-0 mb-8">
+          <button
+            onClick={() => navigate('/ai-chat')}
+            className="p-2 -ml-2 hover:bg-white/20 rounded-lg transition-colors flex-shrink-0"
+          >
+            <ArrowLeft className="w-5 h-5 text-[#39597d]" />
+          </button>
+          <h1 className="flex-1 text-center text-[32px] font-bold text-[#39597d] leading-[1.076] pr-9">
             Choose your plan
           </h1>
           {/* <p className="text-[16px] font-medium text-[#5983b3]">
