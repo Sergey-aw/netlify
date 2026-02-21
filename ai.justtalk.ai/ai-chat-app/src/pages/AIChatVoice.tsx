@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { getElevenLabsSignedUrl, getContextMemory, getConversationSuggestions } from '@/lib/justai-api';
 import { supabase } from '@/lib/supabase';
 import { useSession } from '@/hooks/useSession';
+import { useFreeTrial } from '@/hooks/useFreeTrial';
 import { FeedbackDrawer, type FeedbackData } from '@/components/FeedbackDrawer';
 import { VoiceBars } from '@/components/VoiceBars';
 import { CenteredAgentIntro } from '@/components/CenteredAgentIntro';
@@ -177,6 +178,11 @@ export default function AIChatVoice() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useSession();
+  const { 
+    isFreeTrial, 
+    canStartVoiceSession
+  } = useFreeTrial();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isAISpeaking, setIsAISpeaking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -426,33 +432,8 @@ export default function AIChatVoice() {
         console.log('💾 Attempting to save user message, conversationId:', currentConversationId);
         
         if (currentConversationId && user?.id) {
-          // Check subscription limit before saving using database function
-          const { data: subscription } = await supabase
-            .from('justai_subscriptions')
-            .select('id, monthly_message_limit, current_period_start, current_period_end')
-            .eq('student_id', user.id)
-            .eq('status', 'active')
-            .single();
-
-          if (!subscription) {
-            alert('No active subscription found. Ending session.');
-            await endSession();
-            return;
-          }
-
-          // Check message limit using real-time count from justai_messages
-          if (subscription.monthly_message_limit) {
-            const { data: limitCheck } = await supabase.rpc('check_message_limit', {
-              p_student_id: user.id,
-              p_subscription_id: subscription.id,
-            });
-
-            if (limitCheck === false) {
-              alert('You have reached your monthly message limit. Ending session.');
-              await endSession();
-              return;
-            }
-          }
+          // Voice time limit is checked at session start only (in initializeSession)
+          // No per-message limit check needed - limits are based on voice minutes only
 
           // Save user message (usage is automatically tracked via justai_usage_log_view)
           console.log('📝 Inserting user message to database...');
@@ -591,29 +572,41 @@ export default function AIChatVoice() {
           .eq('status', 'active')
           .single();
 
+        // Handle free trial users (no subscription but can still try voice)
         if (subError || !subscription) {
-          alert('No active subscription found. Please subscribe to use voice chat.');
-          navigate('/subscription-plans');
-          return;
-        }
-
-        // Check if user has exceeded their voice time limit using database function
-        if (subscription.voice_minutes_limit) {
-          const { data: limitCheck } = await supabase.rpc('check_voice_time_limit', {
-            p_student_id: user.id,
-            p_subscription_id: subscription.id,
-          });
-
-          if (limitCheck === false) {
-            const limitMinutes = subscription.voice_minutes_limit;
-            const limitDisplay = limitMinutes >= 60 
-              ? `${Math.floor(limitMinutes / 60)} hour${Math.floor(limitMinutes / 60) > 1 ? 's' : ''}` 
-              : `${limitMinutes} minutes`;
-            alert(
-              `You've reached your voice conversation limit (${limitDisplay}). Please upgrade your plan or wait until next billing cycle.`
-            );
-            navigate('/subscription-plans');
+          // Check if user is in free trial mode
+          if (isFreeTrial) {
+            // Check if free trial voice limit is reached
+            if (!canStartVoiceSession) {
+              setShowUpgradeModal(true);
+              return;
+            }
+            // Free trial user can proceed - continue to create conversation
+            console.log('🎙️ Free trial user starting voice session');
+          } else {
+            // Not in free trial and no subscription - show upgrade modal
+            setShowUpgradeModal(true);
             return;
+          }
+        } else {
+          // User has active subscription - check voice time limit
+          if (subscription.voice_minutes_limit) {
+            const { data: limitCheck } = await supabase.rpc('check_voice_time_limit', {
+              p_student_id: user.id,
+              p_subscription_id: subscription.id,
+            });
+
+            if (limitCheck === false) {
+              const limitMinutes = subscription.voice_minutes_limit;
+              const limitDisplay = limitMinutes >= 60 
+                ? `${Math.floor(limitMinutes / 60)} hour${Math.floor(limitMinutes / 60) > 1 ? 's' : ''}` 
+                : `${limitMinutes} minutes`;
+              alert(
+                `You've reached your voice conversation limit (${limitDisplay}). Please upgrade your plan or wait until next billing cycle.`
+              );
+              navigate('/subscription-plans');
+              return;
+            }
           }
         }
 
@@ -1280,6 +1273,9 @@ export default function AIChatVoice() {
             console.log('✅ Lesson marked as completed:', virtualLessonId);
           }
         }
+
+        // Note: Free trial voice usage is now tracked automatically via justai_voice_sessions table
+        // No need to manually record usage - the total_duration_seconds column is updated when session ends
 
         // Update conversation with final message time
         await supabase
@@ -1957,6 +1953,44 @@ export default function AIChatVoice() {
         onContinue={handleContinueTalking}
         showContinuePrompt={showContinuePrompt}
       />
+
+      {/* Free Trial Upgrade Modal */}
+      <Drawer open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>
+        <DrawerContent className="bg-white">
+          <DrawerHeader>
+            <DrawerTitle className="text-center text-xl">
+              {isFreeTrial && !canStartVoiceSession 
+                ? "You've used your 5 free minutes!" 
+                : "Subscription Required"}
+            </DrawerTitle>
+          </DrawerHeader>
+          <div className="p-6 text-center">
+            <p className="text-gray-600 mb-6">
+              {isFreeTrial && !canStartVoiceSession
+                ? "Activate a subscription to continue practicing your English with unlimited voice conversations."
+                : "Start your language learning journey with a subscription to access voice conversations."}
+            </p>
+            <div className="flex flex-col gap-3">
+              <Button
+                onClick={() => navigate('/subscription-plans')}
+                className="w-full bg-blue-600 hover:bg-blue-700"
+              >
+                See Plans
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowUpgradeModal(false);
+                  navigate(-1);
+                }}
+                className="w-full"
+              >
+                Maybe Later
+              </Button>
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

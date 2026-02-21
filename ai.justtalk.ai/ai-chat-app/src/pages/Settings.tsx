@@ -26,7 +26,7 @@ export default function Settings() {
   const queryClient = useQueryClient();
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const { subscription, hasActiveSubscription } = useSubscription();
+  const { subscription, hasActiveSubscription, voiceMinutesLimit, voiceSecondsUsed } = useSubscription();
 
   // Get current user
   const { data: user } = useQuery({
@@ -173,9 +173,9 @@ export default function Settings() {
                 <div>
                   <p className="font-medium">Manage Subscription</p>
                   <p className="text-xs text-gray-500">
-                    {subscription.monthly_message_limit
-                      ? `${subscription.messages_used_this_period || 0}/${subscription.monthly_message_limit} messages used`
-                      : `${subscription.messages_used_this_period || 0} messages this month`}
+                    {voiceMinutesLimit
+                      ? `${Math.floor(voiceSecondsUsed / 60)}/${voiceMinutesLimit} minutes used`
+                      : `${Math.floor(voiceSecondsUsed / 60)} minutes this period`}
                   </p>
                 </div>
               </div>

@@ -30,11 +30,6 @@ export function FreeTrialBanner({ className }: FreeTrialBannerProps) {
     return null;
   }
 
-  const handleConfirmEmail = () => {
-    // Navigate to settings or show email confirmation resend
-    navigate('/settings?tab=account');
-  };
-
   const handleSeePlans = () => {
     navigate('/subscription-plans');
   };

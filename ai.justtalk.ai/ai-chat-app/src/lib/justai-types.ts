@@ -21,7 +21,7 @@ export interface SubscriptionPlan {
   billing_period: 'weekly' | 'monthly' | 'annual';
   pricing_variant: PricingVariant;
   description: string;
-  monthly_message_limit: number | null;
+  voice_minutes_limit: number | null;
   includes_voice: boolean;
   price_cents: number;
   monthly_equivalent_cents: number;
@@ -46,7 +46,7 @@ export interface Subscription {
   current_period_end: string;
   cancel_at_period_end: boolean;
   canceled_at: string | null;
-  messages_used_this_period: number;
+  voice_seconds_used?: number;
   created_at: string;
   updated_at: string;
   plan?: SubscriptionPlan;

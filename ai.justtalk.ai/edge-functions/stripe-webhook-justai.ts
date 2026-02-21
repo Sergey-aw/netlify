@@ -221,7 +221,6 @@ async function handleSubscriptionCreated(
     .insert({
       student_id: studentId,
       subscription_type: plan.plan_type,
-      monthly_message_limit: plan.monthly_message_limit,
       voice_minutes_limit: plan.voice_minutes_limit,
       price_cents: plan.price_cents,
       currency: 'usd',
@@ -233,7 +232,6 @@ async function handleSubscriptionCreated(
       stripe_price_id: priceId,
       current_period_start: new Date(periodStart * 1000).toISOString(),
       current_period_end: new Date(periodEnd * 1000).toISOString(),
-      messages_used_this_period: 0,
       trial_days: trialDays,
       trial_variant: trialVariant,
     })
@@ -316,7 +314,6 @@ async function handleSubscriptionUpdated(
   // If plan changed, update plan details
   if (plan) {
     updateData.subscription_type = plan.plan_type;
-    updateData.monthly_message_limit = plan.monthly_message_limit;
     updateData.voice_minutes_limit = plan.voice_minutes_limit;
     updateData.price_cents = plan.price_cents;
     updateData.stripe_price_id = priceId;
@@ -426,10 +423,9 @@ async function handlePaymentSucceeded(
   const periodStart = subscriptionItem?.current_period_start;
   const periodEnd = subscriptionItem?.current_period_end;
 
-  // Update subscription: mark as active and reset message usage
+  // Update subscription: mark as active for new period
   const updateData: any = {
     status: 'active',
-    messages_used_this_period: 0, // Reset usage for new period
     updated_at: new Date().toISOString(),
   };
 

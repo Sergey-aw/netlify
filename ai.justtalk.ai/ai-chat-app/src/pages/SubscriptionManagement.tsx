@@ -26,7 +26,7 @@ interface SubscriptionPlan {
   plan_name: string;
   plan_type: 'basic' | 'premium' | 'unlimited';
   billing_period: 'weekly' | 'monthly' | 'annual';
-  monthly_message_limit: number | null;
+  voice_minutes_limit: number | null;
   price_cents: number;
   stripe_price_id: string;
   features: string[];
@@ -403,8 +403,8 @@ export default function SubscriptionManagement() {
                     <div>
                       <h4 className="font-semibold capitalize">{plan.plan_type}</h4>
                       <p className="text-sm text-gray-600">
-                        {(plan as any).voice_minutes_limit
-                          ? `${formatTime((plan as any).voice_minutes_limit * 60)} voice time/${plan.billing_period === 'weekly' ? 'week' : 'period'}`
+                        {plan.voice_minutes_limit
+                          ? `${formatTime(plan.voice_minutes_limit * 60)} voice time/${plan.billing_period === 'weekly' ? 'week' : 'period'}`
                           : 'Unlimited voice time'}
                       </p>
                     </div>
@@ -530,8 +530,8 @@ export default function SubscriptionManagement() {
                     <li>• Your voice time used ({formatTime(voiceSecondsUsed)}) will be preserved</li>
                     <li>
                       • You'll immediately get access to{' '}
-                      {(selectedPlan as any).voice_minutes_limit
-                        ? `${formatTime(((selectedPlan as any).voice_minutes_limit * 60) - voiceSecondsUsed)} additional voice time`
+                      {selectedPlan.voice_minutes_limit
+                        ? `${formatTime((selectedPlan.voice_minutes_limit * 60) - voiceSecondsUsed)} additional voice time`
                         : 'unlimited voice time'}
                     </li>
                     <li>• You'll be charged a prorated amount for the remaining billing period</li>
@@ -571,8 +571,8 @@ export default function SubscriptionManagement() {
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Voice Time After Upgrade</span>
                   <span className="text-sm font-medium">
-                    {(selectedPlan as any).voice_minutes_limit
-                      ? formatTime(((selectedPlan as any).voice_minutes_limit * 60) - voiceSecondsUsed)
+                    {selectedPlan.voice_minutes_limit
+                      ? formatTime((selectedPlan.voice_minutes_limit * 60) - voiceSecondsUsed)
                       : 'Unlimited'}
                   </span>
                 </div>

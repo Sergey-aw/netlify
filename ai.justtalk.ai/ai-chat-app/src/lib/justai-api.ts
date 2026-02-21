@@ -262,13 +262,14 @@ export async function checkSubscriptionAccess() {
   }
 
   return {
-    hasActiveSubscription: data[0]?.has_active_subscription || false,
-    planName: data[0]?.plan_name || null,
-    messageLimit: data[0]?.message_limit || null,
-    messagesUsed: data[0]?.messages_used || 0,
-    messagesRemaining: data[0]?.messages_remaining || 0,
-    includesVoice: data[0]?.includes_voice || false,
-    periodEnd: data[0]?.period_end || null,
+    hasActiveSubscription: data[0]?.has_subscription || false,
+    subscriptionStatus: data[0]?.subscription_status || null,
+    canSendMessage: data[0]?.can_send_message || false,
+    voiceMinutesLimit: data[0]?.voice_minutes_limit || null,
+    voiceSecondsUsed: data[0]?.voice_seconds_used || 0,
+    voiceSecondsRemaining: data[0]?.voice_seconds_remaining || null,
+    canStartVoiceSession: data[0]?.can_start_voice_session || false,
+    periodEnd: data[0]?.reset_date || null,
   };
 }
 

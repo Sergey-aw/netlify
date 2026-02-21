@@ -25,11 +25,14 @@ import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { getAgentsByCategory, unlockFirstStep, archiveRoleplay, getPersonalitiesByCategory } from '@/services/agents.service';
 import type { AgentWithProgress, StudentProgress } from '@/types/agents';
+import { useFreeTrial, LOCKED_CATEGORIES } from '@/hooks/useFreeTrial';
 
 export default function RolePlaysV2() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showSidebar, setShowSidebar] = useState(false);
+  const { isFreeTrial } = useFreeTrial();
+  const [showUpgradeDrawer, setShowUpgradeDrawer] = useState(false);
 
   // Add swipe gesture to open sidebar
   useSwipeGesture({
@@ -1007,18 +1010,36 @@ export default function RolePlaysV2() {
           <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
             {categories.map((category) => {
               const isPersonalized = category.category === 'Personalized for you';
+              const isLocked = isFreeTrial && LOCKED_CATEGORIES.includes(category.category);
+              
               return (
                 <Card
                   key={category.category}
                   className={`p-6 cursor-pointer hover:shadow-lg transition-shadow border-1 hover:border-primary relative overflow-hidden ${
                     isPersonalized ? 'bg-cover bg-center' : ''
-                  }`}
+                  } ${isLocked ? 'opacity-75' : ''}`}
                   style={isPersonalized ? {
                     backgroundImage: `url(${new URL('../assets/bg_blue1_square.jpg', import.meta.url).href})`,
                   } : undefined}
-                  onClick={() => setSelectedCategory(category.category)}
+                  onClick={() => {
+                    if (isLocked) {
+                      setShowUpgradeDrawer(true);
+                    } else {
+                      setSelectedCategory(category.category);
+                    }
+                  }}
                 >
                   {isPersonalized && <div className="absolute inset-0" />}
+                  
+                  {/* Lock overlay for free trial */}
+                  {isLocked && (
+                    <div className="absolute inset-0 bg-gray-900/40 flex items-center justify-center z-20 rounded-lg">
+                      <div className="bg-white/90 rounded-full p-3">
+                        <Lock className="w-6 h-6 text-gray-700" />
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className={`flex items-start justify-between mb-3 relative z-10`}>
                     <div className={`text-4xl ${isPersonalized ? '' : ''}`}>{getCategoryIcon(category.category)}</div>
                     <ChevronRight className={`w-5 h-5 ${isPersonalized ? 'text-white' : 'text-gray-400'}`} />
@@ -1610,6 +1631,34 @@ export default function RolePlaysV2() {
       {renderAgentDetailDrawer()}
       {renderPersonalityDrawer()}
       {renderFeedbackDrawer()}
+      
+      {/* Free Trial Upgrade Drawer */}
+      <Drawer open={showUpgradeDrawer} onOpenChange={setShowUpgradeDrawer}>
+        <DrawerContent className="bg-white">
+          <div className="p-6 text-center">
+            <Lock className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+            <h3 className="text-xl font-semibold mb-2">Unlock This Category</h3>
+            <p className="text-gray-600 mb-6">
+              Activate a subscription to access all role-play scenarios including Business, Interview, Dating, and Travel.
+            </p>
+            <div className="flex flex-col gap-3">
+              <Button
+                onClick={() => navigate('/subscription-plans')}
+                className="w-full bg-blue-600 hover:bg-blue-700"
+              >
+                See Plans
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowUpgradeDrawer(false)}
+                className="w-full"
+              >
+                Maybe Later
+              </Button>
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
     </>
   );
 }

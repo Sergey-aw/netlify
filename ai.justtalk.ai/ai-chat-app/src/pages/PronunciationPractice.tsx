@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Target, TrendingUp, PanelLeft, Loader2, AlertCircle } from 'lucide-react';
+import { Target, TrendingUp, PanelLeft, Loader2, AlertCircle, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -19,6 +19,7 @@ import { supabase } from '@/lib/supabase';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { toast } from '@/hooks/use-toast';
 import { useCompletePracticeSession } from '@/hooks/useCompletePracticeSession';
+import { useFreeTrial } from '@/hooks/useFreeTrial';
 import type { PracticeItem, PracticeResult } from '@/types/pronunciation';
 import { useEffect } from 'react';
 
@@ -27,6 +28,7 @@ export default function PronunciationPractice() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const { mutateAsync: completeSession } = useCompletePracticeSession();
+  const { isFreeTrial } = useFreeTrial();
   const [activeTab, setActiveTab] = useState<'practice' | 'progress'>('practice');
   const [showSidebar, setShowSidebar] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -376,10 +378,24 @@ export default function PronunciationPractice() {
             ) : /* Show active sessions list if multiple sessions available */
             activeSessions && activeSessions.length >= 1 && !currentSessionId ? (
               <div className="space-y-6">
-                {/* Show TargetedPracticeStarter FIRST */}
+                {/* Show TargetedPracticeStarter FIRST - LOCKED for free trial */}
                 {baselineStatus?.hasBaseline && (
                   <>
-                    {baselineSummary?.is_valid_baseline && practiceCandidates && practiceCandidates.length > 0 ? (
+                    {isFreeTrial ? (
+                      /* Free trial lock - show upgrade prompt */
+                      <Card className="border-2 border-dashed border-gray-300">
+                        <CardContent className="pt-6 text-center">
+                          <Lock className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                          <h3 className="text-lg font-semibold mb-2">Practice Phonemes</h3>
+                          <p className="text-muted-foreground mb-4">
+                            Activate a subscription to practice specific sounds and get detailed pronunciation feedback.
+                          </p>
+                          <Button onClick={() => navigate('/subscription-plans')} className="bg-blue-600 hover:bg-blue-700">
+                            See Plans
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ) : baselineSummary?.is_valid_baseline && practiceCandidates && practiceCandidates.length > 0 ? (
                       <TargetedPracticeStarter 
                         practiceCandidates={practiceCandidates}
                         onStartPractice={handleStartTargetedPractice}
@@ -432,7 +448,21 @@ export default function PronunciationPractice() {
             ) : /* If baseline exists, show targeted practice starter */
             baselineStatus?.hasBaseline ? (
               <>
-                {baselineSummary?.is_valid_baseline && practiceCandidates && practiceCandidates.length > 0 ? (
+                {isFreeTrial ? (
+                  /* Free trial lock - show upgrade prompt */
+                  <Card className="border-2 border-dashed border-gray-300">
+                    <CardContent className="pt-6 text-center">
+                      <Lock className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                      <h3 className="text-lg font-semibold mb-2">Practice Phonemes</h3>
+                      <p className="text-muted-foreground mb-4">
+                        Activate a subscription to practice specific sounds and get detailed pronunciation feedback.
+                      </p>
+                      <Button onClick={() => navigate('/subscription-plans')} className="bg-blue-600 hover:bg-blue-700">
+                        See Plans
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : baselineSummary?.is_valid_baseline && practiceCandidates && practiceCandidates.length > 0 ? (
                   <TargetedPracticeStarter 
                     practiceCandidates={practiceCandidates}
                     onStartPractice={handleStartTargetedPractice}

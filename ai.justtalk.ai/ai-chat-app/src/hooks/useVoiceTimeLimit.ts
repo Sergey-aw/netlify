@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSubscription } from './useSubscription';
-import { useFreeTrial, FREE_TRIAL_VOICE_SECONDS_LIMIT } from './useFreeTrial';
+import { useFreeTrial } from './useFreeTrial';
 
 export interface VoiceTimeLimitState {
   isLimited: boolean;
@@ -19,7 +19,7 @@ export interface VoiceTimeLimitState {
  * For free trial users: Uses 5-minute cumulative limit (tracked via justai_voice_sessions)
  */
 export function useVoiceTimeLimit(): VoiceTimeLimitState {
-  const { hasActiveSubscription, voiceSecondsRemaining: subSecondsRemaining, voiceSecondsUsed } = useSubscription();
+  const { voiceSecondsRemaining: subSecondsRemaining } = useSubscription();
   const { isFreeTrial, voiceSecondsRemaining: freeTrialSecondsRemaining } = useFreeTrial();
   
   const [sessionElapsedSeconds, setSessionElapsedSeconds] = useState(0);

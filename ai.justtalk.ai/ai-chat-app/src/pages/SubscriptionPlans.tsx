@@ -7,7 +7,7 @@ import { useFeatureFlagVariantKey, usePostHog } from 'posthog-js/react';
 import { Check, AlertCircle, Crown, ChessQueen, CreditCard, Infinity, Mic, MessageSquare, BookOpen, BarChart, Sparkles, Zap, Volume2, TrendingUp, Target, Brain, Users, Globe, Trophy, Star, CheckCircle2, Award, GraduationCap, Heart, Briefcase, ArrowLeft, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { useSession } from '@/hooks/useSession';
@@ -25,8 +25,6 @@ export default function SubscriptionPlans() {
   const [selectedPlanName, setSelectedPlanName] = useState<string | null>(null);
   const [showCanceledMessage, setShowCanceledMessage] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
-  const [showBanner, setShowBanner] = useState(false);
-  const [bannerDismissed, setBannerDismissed] = useState(false);
   
   // ========================================
   // PRICING VARIANT A/B TEST LOGIC

@@ -1,0 +1,1 @@
+{"mcpServers":{"supabase":{"command":"npx","args":["-y","@supabase/mcp-server-supabase@latest","--access-token","sbp_e33cca2bc04da0676d02da382ca9393e1f5b2087","--project-ref","bcsyrxkfeatnbaqlnxgr"],"alwaysAllow":[]}},"servers":{"posthog":{"type":"http","url":"https://mcp.posthog.com/mcp","headers":{"Authorization":"Bearer phx_JofrIOSGrYEY70xFweog0JVICz19XGIXDHPqWSjjgdO1RMH"}}}}

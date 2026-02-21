@@ -7,7 +7,6 @@ export interface Subscription {
   student_id: string;
   subscription_type: 'basic' | 'plus' | 'premium';
   status: 'active' | 'past_due' | 'canceled' | 'expired';
-  monthly_message_limit: number | null;
   voice_minutes_limit: number | null;
   price_cents: number;
   currency: string;
@@ -22,7 +21,6 @@ export interface Subscription {
   trial_days?: number | null;
   trial_variant?: string | null;
   // Computed fields - not from database
-  messages_used_this_period?: number;
   voice_seconds_used?: number;
 }
 
@@ -30,7 +28,6 @@ export interface SubscriptionAccess {
   hasActiveSubscription: boolean;
   subscription: Subscription | null;
   canSendMessage: boolean;
-  messagesRemaining: number | null;
   // Time-based limits
   voiceMinutesLimit: number | null;
   voiceSecondsUsed: number;
@@ -55,7 +52,7 @@ export function useSubscription(): SubscriptionAccess {
 
       const { data, error } = await supabase
         .from('justai_subscriptions')
-        .select('id, student_id, subscription_type, status, monthly_message_limit, voice_minutes_limit, price_cents, currency, billing_period, current_period_start, current_period_end, cancel_at_period_end, stripe_subscription_id, stripe_customer_id, created_at, updated_at, trial_variant')
+        .select('id, student_id, subscription_type, status, voice_minutes_limit, price_cents, currency, billing_period, current_period_start, current_period_end, cancel_at_period_end, stripe_subscription_id, stripe_customer_id, created_at, updated_at, trial_variant')
         .eq('student_id', user.id)
         .eq('status', 'active')
         .single();
@@ -66,20 +63,6 @@ export function useSubscription(): SubscriptionAccess {
           return null;
         }
         throw error;
-      }
-
-      // Get real-time message count using database function
-      const { data: messageCount, error: countError } = await supabase.rpc(
-        'get_messages_used_in_period',
-        {
-          p_student_id: user.id,
-          p_period_start: data.current_period_start,
-          p_period_end: data.current_period_end,
-        }
-      );
-
-      if (countError) {
-        console.error('Failed to get message count:', countError);
       }
 
       // Get real-time voice duration used
@@ -98,7 +81,6 @@ export function useSubscription(): SubscriptionAccess {
 
       return {
         ...data,
-        messages_used_this_period: messageCount || 0,
         voice_seconds_used: voiceDuration || 0,
       } as Subscription;
     },
@@ -109,17 +91,8 @@ export function useSubscription(): SubscriptionAccess {
 
   const subscription = subscriptionData ?? null;
   const hasActiveSubscription = !!subscription && subscription.status === 'active';
-  
-  const messagesRemaining = subscription?.monthly_message_limit
-    ? subscription.monthly_message_limit - (subscription.messages_used_this_period || 0)
-    : null;
 
-  const canSendMessage = hasActiveSubscription && (
-    messagesRemaining === null || // Unlimited
-    messagesRemaining > 0 // Has messages left
-  );
-
-  // Time-based limits
+  // Voice-based limits
   const voiceMinutesLimit = subscription?.voice_minutes_limit ?? null;
   const voiceSecondsUsed = subscription?.voice_seconds_used ?? 0;
   const voiceLimitSeconds = voiceMinutesLimit ? voiceMinutesLimit * 60 : null;
@@ -131,11 +104,13 @@ export function useSubscription(): SubscriptionAccess {
     voiceSecondsRemaining > 0 // Has time left
   );
 
+  // canSendMessage is based on voice session availability (voice is the primary interaction)
+  const canSendMessage = canStartVoiceSession;
+
   return {
     hasActiveSubscription,
     subscription,
     canSendMessage,
-    messagesRemaining,
     voiceMinutesLimit,
     voiceSecondsUsed,
     voiceSecondsRemaining,
