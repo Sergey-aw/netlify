@@ -190,9 +190,8 @@ export default function OnboardingPreferences() {
         voice_id: voicePreference,
       });
 
-      // Redirect to AI chat in free trial mode (no paywall gate)
-      // Users can try the app with limited access before subscribing
-      navigate('/ai-chat');
+      // Redirect to paywall after onboarding completion
+      navigate('/subscription-plans');
     } catch (error) {
       console.error('Error completing onboarding:', error);
     }

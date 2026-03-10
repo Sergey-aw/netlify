@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useFeatureFlagVariantKey } from 'posthog-js/react';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import {
   PanelLeft,
@@ -106,6 +107,13 @@ export default function AIChatHome() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [showFeedbackDrawer, setShowFeedbackDrawer] = useState(false);
+  const skipPaywallVariant = useFeatureFlagVariantKey('skip_paywall');
+  const canSkipPaywall =
+    skipPaywallVariant === true ||
+    skipPaywallVariant === 'true' ||
+    skipPaywallVariant === '1' ||
+    skipPaywallVariant === 'enabled' ||
+    skipPaywallVariant === 'on';
 
   // Vocabulary recommendations
   const {
@@ -539,10 +547,11 @@ export default function AIChatHome() {
 
   // Redirect to subscription if no access
   useEffect(() => {
-    if (hasAccess !== undefined && !hasAccess) {
+    if (canSkipPaywall) return;
+    if (hasAccess !== undefined && !hasAccess.hasActiveSubscription) {
       navigate('/subscription/plans');
     }
-  }, [hasAccess, navigate]);
+  }, [hasAccess, canSkipPaywall, navigate]);
 
   const handleConversationClick = (conversationId: string) => {
     setSelectedConversation(conversationId);

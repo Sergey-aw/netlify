@@ -85,6 +85,14 @@ export default function SubscriptionPlans() {
   
   // Trial period experiment - use official PostHog hooks
   const trialVariant = useFeatureFlagVariantKey('trial-period-experiment');
+  const skipPaywallVariant = useFeatureFlagVariantKey('skip_paywall');
+
+  const canSkipPaywall =
+    skipPaywallVariant === true ||
+    skipPaywallVariant === 'true' ||
+    skipPaywallVariant === '1' ||
+    skipPaywallVariant === 'enabled' ||
+    skipPaywallVariant === 'on';
   
   // Compute trial config from variant (handle boolean variant edge case)
   const trialConfig: TrialConfig | null = trialVariant && typeof trialVariant === 'string'
@@ -583,15 +591,30 @@ export default function SubscriptionPlans() {
       <div className="relative flex flex-col min-h-screen px-6 py-0 pb-12 max-w-xl mx-auto">
         {/* Header Section with Back Button */}
         <div className="flex items-center pt-6 pb-0 mb-8">
-          <button
-            onClick={() => navigate('/ai-chat')}
-            className="p-2 -ml-2 hover:bg-white/20 rounded-lg transition-colors flex-shrink-0"
-          >
-            <ArrowLeft className="w-5 h-5 text-[#39597d]" />
-          </button>
-          <h1 className="flex-1 text-center text-[32px] font-bold text-[#39597d] leading-[1.076] pr-9">
+          {canSkipPaywall ? (
+            <button
+              onClick={() => navigate('/ai-chat')}
+              className="p-2 -ml-2 hover:bg-white/20 rounded-lg transition-colors flex-shrink-0"
+              aria-label="Skip paywall"
+            >
+              <ArrowLeft className="w-5 h-5 text-[#39597d]" />
+            </button>
+          ) : (
+            <div className="w-9 h-9 flex-shrink-0" />
+          )}
+          <h1 className="flex-1 text-center text-[32px] font-bold text-[#39597d] leading-[1.076]">
             Choose your plan
           </h1>
+          {canSkipPaywall ? (
+            <button
+              onClick={() => navigate('/ai-chat')}
+              className="text-sm text-[#39597d] underline underline-offset-2 flex-shrink-0"
+            >
+              Skip
+            </button>
+          ) : (
+            <div className="w-9 h-9 flex-shrink-0" />
+          )}
           {/* <p className="text-[16px] font-medium text-[#5983b3]">
             Start learning today
           </p> */}

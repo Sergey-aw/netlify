@@ -80,8 +80,9 @@ export function OnboardingResumeHandler() {
             .single();
 
           if (profile?.justai_onboarding_completed) {
-            console.log('[OnboardingResume] User completed onboarding - redirecting to /ai-chat');
-            navigate('/ai-chat', { replace: true });
+            const targetRoute = hasActiveSubscription ? '/ai-chat' : '/subscription-plans';
+            console.log('[OnboardingResume] User completed onboarding - redirecting to:', targetRoute);
+            navigate(targetRoute, { replace: true });
             setIsChecking(false);
             return;
           }

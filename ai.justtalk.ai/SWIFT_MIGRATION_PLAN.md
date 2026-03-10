@@ -4,6 +4,23 @@
 
 The current app is a **React/TypeScript PWA** (Progressive Web App) built with Vite, deployed on Vercel, backed by Supabase (PostgreSQL + Edge Functions) and ElevenLabs for real-time voice AI. Migrating to native Swift (iOS) is a significant but well-structured undertaking. The backend (Supabase Edge Functions, database, ElevenLabs) remains **100% reusable** — only the frontend layer changes.
 
+### 🎉 Major Update: ElevenLabs Official Swift SDK
+
+**ElevenLabs now provides an official Swift SDK** (`elevenlabs-swift-sdk`) for Conversational AI, which dramatically simplifies the migration:
+
+- **Repository**: https://github.com/elevenlabs/elevenlabs-swift-sdk
+- **Starter Kit**: https://github.com/elevenlabs/voice-starterkit-swift
+- **UI Components**: https://github.com/elevenlabs/components-swift
+- **Features**:
+  - Ultra-low latency via LiveKit WebRTC
+  - Full Swift Concurrency support (Async/Await)
+  - SwiftUI observation for reactive UI
+  - Client Tools and MCP support
+  - Built-in audio visualization components (OrbVisualizer)
+  - iOS 13.0+, macOS 10.15+, visionOS 1.0+ support
+
+This eliminates the **biggest migration risk** — implementing the WebSocket voice client from scratch.
+
 ---
 
 ## 1. Current App Architecture Analysis
@@ -17,7 +34,7 @@ The current app is a **React/TypeScript PWA** (Progressive Web App) built with V
 | State Management | React Query (TanStack) + useState | SwiftData / Combine / @Observable |
 | Auth | Supabase JS SDK | Supabase Swift SDK / URLSession |
 | Database | Supabase JS client | Supabase Swift SDK |
-| Voice AI | `@elevenlabs/react` WebSocket | ElevenLabs Swift SDK / URLSession WebSocket |
+| Voice AI | `@elevenlabs/react` WebSocket | **ElevenLabs Swift SDK** (official) ✅ |
 | Payments | Stripe JS + Stripe React | StoreKit 2 (IAP) or Stripe iOS SDK |
 | Analytics | PostHog JS | PostHog iOS SDK |
 | UI Components | Radix UI + shadcn/ui + Tailwind | SwiftUI native components |
@@ -130,7 +147,7 @@ All backend logic lives in **Supabase Edge Functions** (Deno/TypeScript). These 
 
 | Web Dependency | Purpose | Swift Replacement |
 |---|---|---|
-| `@elevenlabs/react` | Voice AI WebSocket | URLSessionWebSocketTask + custom Swift wrapper |
+| `@elevenlabs/react` | Voice AI WebSocket | **ElevenLabs Swift SDK** (official) ✅ |
 | `@supabase/supabase-js` | Auth + DB | `supabase-swift` (official) |
 | `@stripe/react-stripe-js` | Payments | StoreKit 2 (preferred) or Stripe iOS SDK |
 | `posthog-js` | Analytics | PostHog iOS SDK |
@@ -165,22 +182,22 @@ JustTalkAI (iOS)
 ├── Core/
 │   ├── Network/
 │   │   ├── SupabaseClient.swift     # Supabase SDK wrapper
-│   │   ├── APIClient.swift          # Edge function calls
-│   │   └── ElevenLabsClient.swift   # WebSocket voice client
+│   │   └── APIClient.swift          # Edge function calls
 │   ├── Auth/
 │   │   ├── AuthManager.swift        # Auth state management
 │   │   └── AuthModels.swift
 │   ├── Audio/
-│   │   ├── AudioRecorder.swift      # AVAudioRecorder wrapper
-│   │   ├── AudioPlayer.swift        # AVAudioPlayer wrapper
-│   │   └── AudioVisualizer.swift    # Real-time level metering
+│   │   └── AudioRecorder.swift      # AVAudioRecorder for pronunciation
 │   └── Storage/
 │       └── OnboardingState.swift    # UserDefaults wrapper
 ├── Features/
 │   ├── Onboarding/
 │   ├── Auth/
 │   ├── Home/
-│   ├── VoiceSession/               # Most complex feature
+│   ├── VoiceSession/               # Uses ElevenLabs Swift SDK ✅
+│   │   ├── VoiceSessionView.swift
+│   │   ├── VoiceSessionViewModel.swift
+│   │   └── TranscriptView.swift
 │   ├── Vocabulary/
 │   ├── Pronunciation/
 │   ├── RolePlays/
@@ -194,6 +211,8 @@ JustTalkAI (iOS)
     ├── Assets.xcassets
     └── Localizable.strings
 ```
+
+**Note:** The `ElevenLabsClient.swift` and `AudioVisualizer.swift` are no longer needed — the official SDK handles all voice session complexity including audio capture, playback, and visualization (via `components-swift`).
 
 ---
 
@@ -233,39 +252,69 @@ JustTalkAI (iOS)
 
 ---
 
-### Phase 3: Core Voice Session (Weeks 5–8) ⭐ Most Critical
+### Phase 3: Core Voice Session (Weeks 5–6) ⭐ Most Critical — NOW SIMPLIFIED
 **Goal:** Real-time voice conversation with ElevenLabs
 
-This is the **hardest and most important** phase.
+**🎉 Major Simplification: ElevenLabs Swift SDK**
 
-- [ ] `ElevenLabsWebSocketClient.swift`
-  - Connect to signed URL via `URLSessionWebSocketTask`
-  - Handle audio streaming (send PCM16 chunks, receive audio)
-  - Parse transcript events (user/AI messages)
-  - Handle connection lifecycle (connecting, connected, disconnected)
-- [ ] `AudioEngine.swift`
-  - Capture microphone input via `AVAudioEngine`
-  - Stream PCM16 audio chunks to WebSocket
-  - Play received audio via `AVAudioPlayerNode`
-  - Real-time level metering for waveform visualization
+The official ElevenLabs Swift SDK (`elevenlabs-swift-sdk`) handles all the complex WebSocket and audio management:
+
+```swift
+import ElevenLabs
+import SwiftUI
+
+@MainActor
+class VoiceSessionViewModel: ObservableObject {
+    @Published var conversation: Conversation?
+    @Published var messages: [Message] = []
+    
+    func startSession(agentId: String) async {
+        do {
+            conversation = try await ElevenLabs.startConversation(agentId: agentId)
+            // Messages automatically update via SwiftUI observation
+        } catch {
+            print("Failed to start: \(error)")
+        }
+    }
+    
+    func endSession() async {
+        await conversation?.endConversation()
+    }
+}
+```
+
+**Tasks:**
+
+- [ ] Add ElevenLabs Swift SDK via SPM:
+  ```swift
+  .package(url: "https://github.com/elevenlabs/elevenlabs-swift-sdk.git", from: "2.1.0")
+  ```
+- [ ] Add UI components package:
+  ```swift
+  .package(url: "https://github.com/elevenlabs/components-swift.git", from: "0.1.3")
+  ```
+- [ ] Add `NSMicrophoneUsageDescription` to `Info.plist`
 - [ ] `VoiceSessionView.swift`
   - Agent avatar + name header
-  - Animated waveform bars (8 bars, real-time levels)
-  - Scrollable transcript with speaker labels
+  - Use `OrbVisualizer` from components-swift for audio visualization
+  - Scrollable transcript with speaker labels (from `conversation.messages`)
   - Mute / stop controls
   - Session timer
-  - "Connecting..." state
 - [ ] `VoiceSessionViewModel.swift`
-  - Manage WebSocket + audio engine lifecycle
+  - Use SDK's `Conversation` object
+  - Observe `conversation.messages` for real-time transcript
+  - Observe `conversation.state` for connection status
   - Real-time vocabulary processing (fire-and-forget API calls)
   - Real-time mistake processing
-  - Session save on end
 - [ ] `TranslationService.swift` — tap-to-translate words in transcript
 - [ ] `ConversationSuggestionsView.swift` — AI-generated prompts overlay
 - [ ] `FeedbackView.swift` — post-session analysis drawer
 - [ ] `RealtimeGoalsPanelView.swift` — goals sidebar overlay
+- [ ] Token generation integration with existing edge function
 
 **Deliverable:** Full voice session works with real-time transcript, feedback, and vocabulary tracking
+
+**Time Saved:** ~2 weeks (was 4 weeks, now 2 weeks)
 
 ---
 
@@ -378,93 +427,71 @@ Two options — choose based on business requirements:
 
 ## 4. Key Technical Challenges
 
-### 🔴 Challenge 1: ElevenLabs WebSocket Voice Streaming
-**Difficulty: Very High**
+### ✅ ~~Challenge 1: ElevenLabs WebSocket Voice Streaming~~ — SOLVED
 
-The current web app uses `@elevenlabs/react` which abstracts the WebSocket protocol. In Swift, you must implement this from scratch:
+**Status: SOLVED by Official ElevenLabs Swift SDK**
 
+The ElevenLabs Swift SDK (`elevenlabs-swift-sdk`) now provides:
+- Complete WebSocket management via LiveKit WebRTC
+- Audio capture and playback
+- Real-time transcript with speaker labels
+- Connection state management
+- Client Tools support for app actions
+
+**What you get out of the box:**
 ```swift
-// Conceptual Swift implementation
-class ElevenLabsWebSocketClient: NSObject {
-    private var webSocketTask: URLSessionWebSocketTask?
-    private var audioEngine = AVAudioEngine()
-    
-    func connect(signedUrl: String) {
-        let url = URL(string: signedUrl)!
-        webSocketTask = URLSession.shared.webSocketTask(with: url)
-        webSocketTask?.resume()
-        receiveMessages()
-        startAudioCapture()
-    }
-    
-    private func startAudioCapture() {
-        let inputNode = audioEngine.inputNode
-        let format = AVAudioFormat(commonFormat: .pcmFormatInt16, 
-                                   sampleRate: 16000, 
-                                   channels: 1, 
-                                   interleaved: true)!
-        inputNode.installTap(onBus: 0, bufferSize: 4096, format: format) { buffer, _ in
-            // Convert buffer to Data and send via WebSocket
-            self.sendAudioChunk(buffer)
-        }
-        try? audioEngine.start()
-    }
+// Start a conversation with just 2 lines
+let conversation = try await ElevenLabs.startConversation(agentId: "your-agent-id")
+
+// Observe messages in real-time
+ForEach(conversation.messages) { msg in
+    Text("**\(msg.role)**: \(msg.content)")
 }
 ```
 
-**Key issues:**
-- ElevenLabs uses a specific binary protocol for audio chunks
-- Must handle audio interruptions (phone calls, Siri)
-- Background audio session configuration required
-- Echo cancellation must be configured properly
-
-**Mitigation:** Check if ElevenLabs has an official Swift SDK (they have a Python SDK). If not, study the `@elevenlabs/react` source code to understand the exact WebSocket message format.
+**Remaining work:** Token generation for private agents (use existing edge function).
 
 ---
 
-### 🔴 Challenge 2: Audio Session Management
-**Difficulty: High**
+### 🟡 Challenge 2: Audio Session Management — SIMPLIFIED
+**Difficulty: Medium (was High)**
 
-iOS audio sessions are complex:
+The ElevenLabs SDK handles most audio session complexity internally. You still need:
+
+- [ ] Add `NSMicrophoneUsageDescription` to `Info.plist`
+- [ ] Add `UIBackgroundModes: audio` for background sessions
+- [ ] Handle interruptions (phone calls) — SDK provides callbacks
 
 ```swift
-// Required audio session setup
-try AVAudioSession.sharedInstance().setCategory(
-    .playAndRecord,
-    mode: .voiceChat,
-    options: [.defaultToSpeaker, .allowBluetooth]
+// SDK handles audio session setup automatically
+// You just observe the state:
+switch conversation.state {
+case .active(let info): print("Connected to: \(info.agentId)")
+case .error(let err): print("Error: \(err)")
+default: break
+}
+```
+
+---
+
+### ✅ ~~Challenge 3: Real-Time Audio Visualization~~ — SOLVED
+
+**Status: SOLVED by ElevenLabs Components Swift**
+
+The `components-swift` package provides a ready-to-use `OrbVisualizer`:
+
+```swift
+import ElevenLabsComponents
+
+OrbVisualizer(
+    inputTrack: conversation?.inputTrack,   // Microphone levels
+    outputTrack: conversation?.outputTrack, // Agent audio levels
+    agentState: .listening,                  // .thinking, .speaking
+    colors: (Color.blue, Color.purple)       // Custom gradient
 )
-try AVAudioSession.sharedInstance().setActive(true)
 ```
 
-**Key issues:**
-- Must handle interruptions (phone calls, other apps)
-- Background audio requires `UIBackgroundModes: audio` in Info.plist
-- Bluetooth headset routing
-- AirPods switching
-- Echo cancellation (`.voiceChat` mode helps)
-- Microphone permission request flow
-
----
-
-### 🟡 Challenge 3: Real-Time Audio Visualization
-**Difficulty: Medium**
-
-The web app uses `AnalyserNode` from Web Audio API. In Swift:
-
-```swift
-// AVAudioEngine metering approach
-audioEngine.inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
-    let channelData = buffer.floatChannelData![0]
-    let frameLength = Int(buffer.frameLength)
-    let rms = sqrt(channelData[0..<frameLength].map { $0 * $0 }.reduce(0, +) / Float(frameLength))
-    DispatchQueue.main.async {
-        self.audioLevel = CGFloat(rms)
-    }
-}
-```
-
-SwiftUI waveform bars can be animated with `withAnimation(.easeInOut(duration: 0.1))`.
+This replaces the custom 8-bar waveform visualization in the web app.
 
 ---
 
@@ -612,36 +639,45 @@ These are native capabilities not available in the web app:
 
 ---
 
-## 7. Estimated Timeline
+## 7. Estimated Timeline — UPDATED
 
-| Phase | Duration | Complexity |
+| Phase | Duration | Complexity | Notes |
+|---|---|---|---|
+| Phase 1: Foundation | 2 weeks | Medium | Auth, navigation, Supabase setup |
+| Phase 2: Onboarding | 2 weeks | Medium | Welcome flow, preferences |
+| Phase 3: Voice Session | **2 weeks** | ~~Very High~~ → **Medium** | ✅ **SDK simplifies drastically** |
+| Phase 4: Home & Agents | 2 weeks | Medium | Agent browser, carousels |
+| Phase 5: Vocabulary | 2 weeks | Medium | Focus set, word pool |
+| Phase 6: Pronunciation | 2 weeks | Medium-High | Audio recording, scoring |
+| Phase 7: Subscription | 2 weeks | High | StoreKit 2 integration |
+| Phase 8: Profile/Settings | 1 week | Low | Account management |
+| Phase 9: Polish & Launch | 1 week | Medium | Analytics, App Store |
+| **Total** | **~16 weeks** | | **2 weeks saved** |
+
+With a single experienced iOS developer, this is approximately **4 months** of focused work (down from 4–5 months).
+
+### Timeline Comparison
+
+| Metric | Before SDK | After SDK |
 |---|---|---|
-| Phase 1: Foundation | 2 weeks | Medium |
-| Phase 2: Onboarding | 2 weeks | Medium |
-| Phase 3: Voice Session | 4 weeks | Very High |
-| Phase 4: Home & Agents | 2 weeks | Medium |
-| Phase 5: Vocabulary | 2 weeks | Medium |
-| Phase 6: Pronunciation | 2 weeks | Medium-High |
-| Phase 7: Subscription | 2 weeks | High |
-| Phase 8: Profile/Settings | 1 week | Low |
-| Phase 9: Polish & Launch | 1 week | Medium |
-| **Total** | **~18 weeks** | |
-
-With a single experienced iOS developer, this is approximately **4–5 months** of focused work.
+| Voice Session Phase | 4 weeks | 2 weeks |
+| Overall Timeline | 18 weeks | 16 weeks |
+| Risk Level | High | Medium |
+| Custom Code for Voice | ~2000 lines | ~200 lines |
 
 ---
 
 ## 8. Risk Assessment
 
-### High Risks
+### ~~High Risks~~ → Now Medium/Low
 
-1. **ElevenLabs WebSocket Protocol** — No official Swift SDK. Must reverse-engineer the protocol from the JS SDK. Could take 2–3 weeks alone.
+1. ~~**ElevenLabs WebSocket Protocol**~~ — ✅ **SOLVED** by official Swift SDK. No reverse-engineering needed.
 
-2. **App Store Review** — Apple may reject the app if Stripe is used for subscriptions (digital goods). Plan for StoreKit 2 from day one.
+2. **App Store Review** — Apple may reject the app if Stripe is used for subscriptions (digital goods). Plan for StoreKit 2 from day one. **Risk Level: Medium**
 
-3. **Audio Session Complexity** — iOS audio routing, interruptions, and background modes are notoriously tricky. Budget extra time.
+3. ~~**Audio Session Complexity**~~ — ✅ **SIMPLIFIED** by SDK. Only need Info.plist permissions. **Risk Level: Low**
 
-4. **ElevenLabs SDK Availability** — Check https://elevenlabs.io/docs for any Swift/iOS SDK. If available, Phase 3 becomes much easier.
+4. ~~**ElevenLabs SDK Availability**~~ — ✅ **CONFIRMED** Official SDK available at https://github.com/elevenlabs/elevenlabs-swift-sdk
 
 ### Medium Risks
 
@@ -657,6 +693,8 @@ With a single experienced iOS developer, this is approximately **4–5 months** 
 
 9. **API Compatibility** — All edge functions use standard HTTP/JSON, which works identically from Swift.
 
+10. **Token Generation** — Existing edge function `elevenlabs-get-signed-url` can be adapted to generate conversation tokens for the SDK.
+
 ---
 
 ## 9. Recommended Swift Packages
@@ -664,6 +702,12 @@ With a single experienced iOS developer, this is approximately **4–5 months** 
 ```swift
 // Package.swift dependencies
 dependencies: [
+    // ElevenLabs Voice AI (NEW - Official SDK) ✅
+    .package(url: "https://github.com/elevenlabs/elevenlabs-swift-sdk.git", from: "2.1.0"),
+    
+    // ElevenLabs UI Components (Orb visualizer, etc.) ✅
+    .package(url: "https://github.com/elevenlabs/components-swift.git", from: "0.1.3"),
+    
     // Supabase
     .package(url: "https://github.com/supabase/supabase-swift", from: "2.0.0"),
     
@@ -688,21 +732,106 @@ dependencies: [
 
 ## 10. Immediate Next Steps
 
-1. **Verify ElevenLabs Swift SDK** — Check https://elevenlabs.io/docs/developer-guides/conversational-ai/overview for any iOS/Swift SDK. This is the single biggest unknown.
+1. ~~**Verify ElevenLabs Swift SDK**~~ — ✅ **CONFIRMED** SDK is available and production-ready at https://github.com/elevenlabs/elevenlabs-swift-sdk
 
-2. **Set up Xcode project** — Create the project structure, add `supabase-swift`, configure environment.
+2. **Set up Xcode project** — Create the project structure, add `supabase-swift` and `elevenlabs-swift-sdk`, configure environment.
 
 3. **Implement Auth first** — Auth is the foundation everything else depends on. Get magic link + anonymous auth working.
 
-4. **Prototype the WebSocket voice client** — Build a minimal proof-of-concept for ElevenLabs WebSocket before committing to the full build.
+4. ~~**Prototype the WebSocket voice client**~~ — ✅ **NO LONGER NEEDED** Use the official SDK directly.
 
 5. **Decide on StoreKit vs Stripe** — This affects the subscription architecture significantly. Make this decision before Phase 7.
 
 6. **App Store Connect setup** — Register bundle ID, create app record, set up subscription products (if using StoreKit).
 
+7. **Clone the starter kit** — Use https://github.com/elevenlabs/voice-starterkit-swift as a reference for voice session implementation.
+
 ---
 
 ## 11. Code Translation Examples
+
+### ElevenLabs Voice Session: Web vs Swift
+
+**TypeScript (current web app):**
+```typescript
+// Complex WebSocket management with @elevenlabs/react
+import { useConversation } from '@elevenlabs/react';
+
+const { startSession, endSession, status, messages } = useConversation({
+  onConnect: () => console.log('Connected'),
+  onDisconnect: () => console.log('Disconnected'),
+  onMessage: (message) => console.log('Message:', message),
+  onError: (error) => console.error('Error:', error),
+});
+
+// Start session with signed URL from edge function
+const signedUrl = await getElevenLabsSignedUrl(agentId);
+await startSession({ signedUrl });
+```
+
+**Swift (with official SDK):**
+```swift
+import ElevenLabs
+import SwiftUI
+
+@MainActor
+class VoiceSessionViewModel: ObservableObject {
+    @Published var conversation: Conversation?
+    
+    func startSession(agentId: String) async {
+        do {
+            // SDK handles everything - just pass agent ID
+            conversation = try await ElevenLabs.startConversation(
+                agentId: agentId
+            )
+        } catch {
+            print("Failed to start: \(error)")
+        }
+    }
+    
+    func endSession() async {
+        await conversation?.endConversation()
+    }
+}
+
+// SwiftUI View - observe conversation directly
+struct VoiceSessionView: View {
+    @StateObject var vm = VoiceSessionViewModel()
+    
+    var body: some View {
+        VStack {
+            if let conversation = vm.conversation {
+                // Connection state
+                switch conversation.state {
+                case .connecting:
+                    ProgressView("Connecting...")
+                case .active(let info):
+                    Text("Connected to: \(info.agentId)")
+                case .error(let err):
+                    Text("Error: \(err)")
+                default:
+                    EmptyView()
+                }
+                
+                // Real-time transcript
+                ScrollView {
+                    ForEach(conversation.messages) { msg in
+                        Text("**\(msg.role)**: \(msg.content)")
+                    }
+                }
+                
+                Button("End Session") {
+                    Task { await vm.endSession() }
+                }
+            } else {
+                Button("Start Voice Chat") {
+                    Task { await vm.startSession(agentId: "your-agent-id") }
+                }
+            }
+        }
+    }
+}
+```
 
 ### TypeScript → Swift: Data Models
 
@@ -806,11 +935,29 @@ class AuthManager {
 
 ## Summary
 
-The migration is **technically feasible** and the backend is **fully reusable**. The main challenges are:
+The migration is **technically feasible** and the backend is **fully reusable**. With the official ElevenLabs Swift SDK now available, the main challenges are significantly reduced:
 
-1. **ElevenLabs WebSocket** — the core voice feature requires custom Swift implementation
-2. **iOS Audio Session** — complex but well-documented
-3. **StoreKit 2** — required for App Store compliance, different from Stripe
-4. **Timeline** — ~18 weeks for a single experienced iOS developer
+### Before vs After ElevenLabs Swift SDK
 
-The good news: the app's architecture is clean, the API layer is well-separated, and all data models are clearly typed — making the translation to Swift `Codable` structs straightforward.
+| Challenge | Before | After |
+|---|---|---|
+| Voice WebSocket | ❌ Custom implementation (~2000 lines) | ✅ Official SDK (~50 lines) |
+| Audio Session | ❌ Complex AVAudioEngine setup | ✅ SDK handles automatically |
+| Audio Visualization | ❌ Custom waveform bars | ✅ OrbVisualizer component |
+| Timeline | 18 weeks | **16 weeks** |
+| Risk Level | High | **Medium** |
+
+### Remaining Challenges
+
+1. **StoreKit 2** — required for App Store compliance, different from Stripe
+2. **Supabase Swift SDK** — slightly less mature than JS SDK
+3. **Subscription Migration** — existing web subscribers need access strategy
+
+### Key Resources
+
+- **ElevenLabs Swift SDK**: https://github.com/elevenlabs/elevenlabs-swift-sdk
+- **Voice Starter Kit**: https://github.com/elevenlabs/voice-starterkit-swift
+- **UI Components**: https://github.com/elevenlabs/components-swift
+- **Supabase Swift**: https://github.com/supabase/supabase-swift
+
+The good news: the app's architecture is clean, the API layer is well-separated, and all data models are clearly typed — making the translation to Swift `Codable` structs straightforward. The ElevenLabs Swift SDK eliminates the biggest technical risk.
