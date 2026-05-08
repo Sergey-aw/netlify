@@ -8,7 +8,7 @@ import { saveOnboardingEmail } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { checkEmailExists } from '@/lib/justai-api';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { saveOnboardingState } from '@/lib/onboarding-state';
+import { saveOnboardingState, markOnboardingComplete } from '@/lib/onboarding-state';
 import { trackEmailEntered } from '@/lib/posthog';
 import Logo from '@/assets/logo.svg';
 
@@ -39,59 +39,97 @@ export default function Login() {
 
       const trimmedEmail = email.trim().toLowerCase();
 
-      // Step 1: Sign in anonymously for immediate onboarding access
-      const { data: anonData, error: anonError } = await supabase.auth.signInAnonymously({
-        options: {
-          data: {
-            email: trimmedEmail, // Store email in anonymous user metadata
-            role: 'student',
-            pending_email_verification: true, // Flag to indicate email needs verification
+      // Get existing anonymous session or create one
+      const { data: { session } } = await supabase.auth.getSession();
+      let userId: string;
+
+      if (session?.user) {
+        userId = session.user.id;
+      } else {
+        const { data: anonData, error: anonError } = await supabase.auth.signInAnonymously({
+          options: {
+            data: {
+              role: 'student',
+            }
           }
-        }
-      });
-      
-      if (anonError) throw anonError;
-      if (!anonData.user) throw new Error('No user returned from anonymous sign in');
-      
-      // Step 2: Update the anonymous user's email (this sends verification email)
-      // This will upgrade the anonymous user to an email user once they verify
+        });
+        if (anonError) throw anonError;
+        if (!anonData.user) throw new Error('No user returned from anonymous sign in');
+        userId = anonData.user.id;
+      }
+
+      // Update the anonymous user's email (sends verification email)
       const { error: updateError } = await supabase.auth.updateUser({
         email: trimmedEmail,
+        data: {
+          email: trimmedEmail,
+          role: 'student',
+          pending_email_verification: true,
+        },
       }, {
         emailRedirectTo: `${window.location.origin}/auth/setup-password`,
       });
 
       if (updateError) throw updateError;
-      
-      console.log('Anonymous user created and email verification sent:', {
-        userId: anonData.user.id,
+
+      console.log('Email verification sent for anonymous user:', {
+        userId,
         email: trimmedEmail,
-        note: 'User will be upgraded to email user after verification'
       });
       
       // Store the email for onboarding
       saveOnboardingEmail(trimmedEmail);
       localStorage.setItem('justai_pending_email', trimmedEmail);
-      
+
       // Track email entry in PostHog
       trackEmailEntered(trimmedEmail, true);
-      
+
+      // Save onboarding data to database now that we have a user
+      const onboardingData = JSON.parse(localStorage.getItem('justai_onboarding_data') || '{}');
+      const preferences = JSON.parse(localStorage.getItem('justai_onboarding_preferences') || '{}');
+
+      const profileUpdate: Record<string, unknown> = {
+        justai_onboarding_completed: true,
+      };
+      if (onboardingData.goals) profileUpdate.learning_goals = onboardingData.goals;
+      if (onboardingData.interests) profileUpdate.interests = onboardingData.interests;
+      if (preferences.cefrLevel) profileUpdate.cefr_level = preferences.cefrLevel;
+      if (preferences.correctionStyle) profileUpdate.justai_correction_style = preferences.correctionStyle;
+      if (preferences.voicePreference) profileUpdate.justai_preferred_voice = preferences.voicePreference;
+
+      await supabase
+        .from('profiles')
+        .update(profileUpdate)
+        .eq('id', userId);
+
+      // Create agent config
+      await supabase
+        .from('justai_agent_configs')
+        .upsert({
+          student_id: userId,
+          learning_goals: onboardingData.goals || [],
+          interests: onboardingData.interests || [],
+          cefr_level: preferences.cefrLevel || '',
+          correction_style: preferences.correctionStyle || 'balanced',
+          system_prompt_template: 'default',
+          onboarding_completed: true,
+        });
+
+      // Mark onboarding as complete
+      markOnboardingComplete();
+
       // Save onboarding state
       saveOnboardingState({
-        currentStep: 'onboarding-goals',
+        currentStep: 'subscription-selection',
         email: trimmedEmail,
-        hasCompletedOnboarding: false,
+        hasCompletedOnboarding: true,
         hasActiveSubscription: false,
-        userId: anonData.user.id,
+        userId: userId,
       });
-      
-      console.log('User can continue onboarding immediately and will receive email to set password');
 
-      // User now has an active anonymous session and will receive email verification
-      // After verification, they can set their password
-      // All data (profile, subscription, etc.) will remain with the same user ID
-      // Navigate to onboarding goals (pronunciation already completed)
-      navigate('/onboarding/goals');
+      console.log('User can continue to subscription and will receive email to set password');
+
+      navigate('/subscription-plans');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign up');
     } finally {

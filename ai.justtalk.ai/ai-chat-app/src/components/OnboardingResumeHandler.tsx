@@ -22,14 +22,16 @@ export function OnboardingResumeHandler() {
       return;
     }
 
-    // Don't redirect if user is on auth pages (setup password, callback, etc.)
+    // Don't redirect if user is on auth or onboarding pages
     const currentPath = window.location.pathname;
-    const isAuthPage = currentPath.startsWith('/auth/') || 
-                       currentPath === '/login' || 
+    const isAuthPage = currentPath.startsWith('/auth/') ||
+                       currentPath === '/login' ||
                        currentPath === '/signin';
-    
-    if (isAuthPage) {
-      console.log('[OnboardingResume] Skipping redirect - user is on auth page:', currentPath);
+    const isOnboardingPage = currentPath.startsWith('/onboarding/') ||
+                             currentPath.startsWith('/welcome');
+
+    if (isAuthPage || isOnboardingPage) {
+      console.log('[OnboardingResume] Skipping redirect - user is on auth/onboarding page:', currentPath);
       setIsChecking(false);
       return;
     }
@@ -50,23 +52,22 @@ export function OnboardingResumeHandler() {
     const checkOnboardingAndRedirect = async () => {
       if (!user) {
         console.log('[OnboardingResume] No user - checking for incomplete onboarding');
-        
-        // If on root path and no user, show welcome screen
+
+        // If on root path and no user, check if they have in-progress onboarding
         if (currentPath === '/') {
-          console.log('[OnboardingResume] Redirecting to welcome screen');
+          const { shouldResume, route } = shouldResumeOnboarding();
+          if (shouldResume) {
+            console.log('[OnboardingResume] Resuming onboarding at:', route);
+            navigate(route);
+          } else {
+            console.log('[OnboardingResume] Redirecting to welcome screen');
+            navigate('/welcome');
+          }
           setIsChecking(false);
-          navigate('/welcome');
           return;
         }
-        
-        const { shouldResume } = shouldResumeOnboarding();
-        if (shouldResume) {
-          console.log('[OnboardingResume] User needs to sign in');
-          setIsChecking(false);
-          navigate('/login');
-        } else {
-          setIsChecking(false);
-        }
+
+        setIsChecking(false);
         return;
       }
 
@@ -93,12 +94,9 @@ export function OnboardingResumeHandler() {
 
       // Check if we need to resume incomplete onboarding
       const { shouldResume, route } = shouldResumeOnboarding();
-      if (shouldResume && isAuthenticated) {
+      if (shouldResume) {
         console.log('[OnboardingResume] Resuming onboarding at:', route);
         navigate(route);
-      } else if (shouldResume && !isAuthenticated) {
-        console.log('[OnboardingResume] User needs to sign in');
-        navigate('/login');
       }
       setIsChecking(false);
     };

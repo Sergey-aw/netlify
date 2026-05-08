@@ -14,7 +14,7 @@ export default function WelcomeSync() {
   
   const handleGetStarted = () => {
     trackWelcomeCompleted();
-    navigate('/login');
+    navigate('/onboarding/pronunciation');
   };
 
   return (

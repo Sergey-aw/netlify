@@ -4,9 +4,9 @@ import { Play, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cefrLevels } from '@/data/mockData';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { markOnboardingComplete } from '@/lib/onboarding-state';
+import { ensureAnonymousSession } from '@/lib/auth';
+import { updateOnboardingStep } from '@/lib/onboarding-state';
 import { trackOnboardingStep, trackOnboardingCompleted } from '@/lib/posthog';
 
 interface Voice {
@@ -24,7 +24,6 @@ interface Voice {
 
 export default function OnboardingPreferences() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [cefrLevel, setCefrLevel] = useState('');
   const [voicePreference, setVoicePreference] = useState('');
   const [correctionStyle, setCorrectionStyle] = useState('balanced');
@@ -38,22 +37,23 @@ export default function OnboardingPreferences() {
     trackOnboardingStep('preferences', 'started');
     const loadVoices = async () => {
       try {
+        // Ensure we have a session for the API call
+        await ensureAnonymousSession();
+
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
+        const headers: Record<string, string> = {};
+        if (session) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
 
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-get-voices`,
-          {
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-            },
-          }
+          { headers }
         );
 
         if (response.ok) {
           const data = await response.json();
           setVoices(data.voices || []);
-          // Set primary voice as default
           const primaryVoice = data.voices.find((v: Voice) => v.is_primary);
           if (primaryVoice) {
             setVoicePreference(primaryVoice.voice_id);
@@ -66,25 +66,17 @@ export default function OnboardingPreferences() {
       }
     };
     loadVoices();
-  }, []);
 
-  // Load from database on mount
-  useEffect(() => {
-    const loadPreferences = async () => {
-      if (!user) return;
-      
-      const { data } = await supabase
-        .from('profiles')
-        .select('cefr_level, justai_correction_style, justai_preferred_voice')
-        .eq('id', user.id)
-        .single();
-      
-      if (data?.cefr_level) setCefrLevel(data.cefr_level);
-      if (data?.justai_correction_style) setCorrectionStyle(data.justai_correction_style);
-      if (data?.justai_preferred_voice) setVoicePreference(data.justai_preferred_voice);
-    };
-    loadPreferences();
-  }, [user]);
+    // Load saved preferences from localStorage
+    const saved = localStorage.getItem('justai_onboarding_preferences');
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        if (data.cefrLevel) setCefrLevel(data.cefrLevel);
+        if (data.correctionStyle) setCorrectionStyle(data.correctionStyle);
+      } catch {}
+    }
+  }, []);
 
   // Play voice preview
   const handlePlayVoice = (voiceId: string, previewUrl: string, e: React.MouseEvent) => {
@@ -134,50 +126,17 @@ export default function OnboardingPreferences() {
     if (!cefrLevel || !voicePreference) return;
 
     try {
-      // Save to localStorage first
+      // Save all preferences to localStorage for later DB sync after signup
       const onboardingData = {
         cefrLevel,
         correctionStyle,
+        voicePreference,
       };
       localStorage.setItem('justai_onboarding_preferences', JSON.stringify(onboardingData));
 
-      // If user is authenticated, save to database
-      if (user) {
-        // Get current profile data
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('learning_goals, interests')
-          .eq('id', user.id)
-          .single();
+      // Update onboarding state
+      updateOnboardingStep('email-entry');
 
-        // Update profile with preferences and mark onboarding complete
-        await supabase
-          .from('profiles')
-          .update({
-            cefr_level: cefrLevel,
-            justai_correction_style: correctionStyle,
-            justai_preferred_voice: voicePreference,
-            justai_onboarding_completed: true,
-          })
-          .eq('id', user.id);
-
-        // Create or update agent config
-        await supabase
-          .from('justai_agent_configs')
-          .upsert({
-            student_id: user.id,
-            learning_goals: profile?.learning_goals || [],
-            interests: profile?.interests || [],
-            cefr_level: cefrLevel,
-            correction_style: correctionStyle,
-            system_prompt_template: 'default',
-            onboarding_completed: true,
-          });
-      }
-
-      // Mark onboarding as complete in state
-      markOnboardingComplete();
-      
       // Track completion
       trackOnboardingStep('preferences', 'completed', {
         cefr_level: cefrLevel,
@@ -190,8 +149,8 @@ export default function OnboardingPreferences() {
         voice_id: voicePreference,
       });
 
-      // Redirect to paywall after onboarding completion
-      navigate('/subscription-plans');
+      // Navigate to signup
+      navigate('/login');
     } catch (error) {
       console.error('Error completing onboarding:', error);
     }

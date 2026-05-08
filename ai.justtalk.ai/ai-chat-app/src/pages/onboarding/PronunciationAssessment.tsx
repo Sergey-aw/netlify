@@ -104,9 +104,9 @@ export default function PronunciationAssessment() {
       });
     }
     
-    // Update onboarding state and continue to email entry
-    updateOnboardingStep('email-entry');
-    navigate('/login');
+    // Update onboarding state and continue to goals
+    updateOnboardingStep('onboarding-goals');
+    navigate('/onboarding/goals');
   };
 
   const getScoreBadgeColor = (score: number) => {
@@ -325,7 +325,7 @@ export default function PronunciationAssessment() {
         {!audioBlob && !isRecording && (
           <div className="pt-6 px-2">
             <Button
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/onboarding/goals')}
               variant="ghost"
               className="w-full text-gray-600 hover:text-gray-900"
             >

@@ -3,12 +3,12 @@
  * Tracks user progress through signup, onboarding, and subscription
  */
 
-export type OnboardingStep = 
-  | 'email-entry'           // Initial email entry
+export type OnboardingStep =
   | 'pronunciation-assessment' // Pronunciation test
   | 'onboarding-goals'      // Step 1: Learning goals
   | 'onboarding-interests'  // Step 2: Interests
   | 'onboarding-preferences' // Step 3: Preferences (CEFR level, etc)
+  | 'email-entry'           // Email signup (after onboarding screens)
   | 'subscription-selection' // Choose a plan
   | 'subscription-payment'   // Payment in progress
   | 'email-verification'     // Waiting for email verification
@@ -56,7 +56,7 @@ export function saveOnboardingState(state: Partial<OnboardingState>): void {
   try {
     const current = getOnboardingState();
     const updated: OnboardingState = {
-      currentStep: state.currentStep ?? current?.currentStep ?? 'email-entry',
+      currentStep: state.currentStep ?? current?.currentStep ?? 'pronunciation-assessment',
       email: state.email ?? current?.email ?? null,
       hasCompletedOnboarding: state.hasCompletedOnboarding ?? current?.hasCompletedOnboarding ?? false,
       hasActiveSubscription: state.hasActiveSubscription ?? current?.hasActiveSubscription ?? false,
@@ -124,8 +124,6 @@ export function getResumeRoute(state: OnboardingState): string {
   
   // Resume at current step
   switch (state.currentStep) {
-    case 'email-entry':
-      return '/login';
     case 'pronunciation-assessment':
       return '/onboarding/pronunciation';
     case 'onboarding-goals':
@@ -134,6 +132,8 @@ export function getResumeRoute(state: OnboardingState): string {
       return '/onboarding/interests';
     case 'onboarding-preferences':
       return '/onboarding/preferences';
+    case 'email-entry':
+      return '/login';
     case 'subscription-selection':
     case 'subscription-payment':
       return '/subscription-plans';
@@ -142,7 +142,7 @@ export function getResumeRoute(state: OnboardingState): string {
     case 'completed':
       return '/ai-chat';
     default:
-      return '/login';
+      return '/welcome';
   }
 }
 
@@ -153,7 +153,7 @@ export function shouldResumeOnboarding(): { shouldResume: boolean; route: string
   const state = getOnboardingState();
   
   if (!state || state.currentStep === 'completed') {
-    return { shouldResume: false, route: '/login' };
+    return { shouldResume: false, route: '/welcome' };
   }
   
   return {

@@ -15,6 +15,7 @@ import { PersonalityCarousel } from '@/components/PersonalityCarousel';
 import { RolePlayCarousel } from '@/components/RolePlayCarousel';
 import { trackWelcomeStep } from '@/lib/posthog';
 import { savePricingVariant, isValidPricingVariant } from '@/lib/onboarding-state';
+import { ensureAnonymousSession } from '@/lib/auth';
 
 const steps = [
   {
@@ -92,11 +93,13 @@ export default function WelcomeProgress() {
     setTimeout(() => setGlowingCard(null), 1000);
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
       trackWelcomeStep('progress', { step_number: currentStep + 1 });
     } else {
+      // Create anonymous session before entering onboarding
+      await ensureAnonymousSession();
       navigate('/onboarding/pronunciation');
     }
   };
