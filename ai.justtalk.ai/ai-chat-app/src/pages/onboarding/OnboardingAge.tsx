@@ -13,7 +13,7 @@ const ageGroups = [
   { id: '60-plus', label: '60+' },
 ];
 
-const TOTAL_STEPS = 8;
+const TOTAL_STEPS = 12;
 const CURRENT_STEP = 1;
 
 export default function OnboardingAge() {
@@ -35,7 +35,7 @@ export default function OnboardingAge() {
 
     trackOnboardingStep('age', 'completed', { age_group: id });
 
-    setTimeout(() => navigate('/onboarding/daily-usage'), 200);
+    setTimeout(() => navigate('/onboarding/native-language'), 200);
   };
 
   return (

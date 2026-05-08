@@ -6,6 +6,9 @@
 export type OnboardingStep =
   | 'pronunciation-assessment' // Pronunciation test
   | 'onboarding-age'        // Age selection
+  | 'onboarding-native-language' // Native language
+  | 'onboarding-speaking-confidence' // Speaking confidence
+  | 'onboarding-current-learning' // Current learning methods
   | 'onboarding-daily-usage' // Daily English usage
   | 'onboarding-pain-points' // Speaking pain points
   | 'onboarding-motivation' // Why improve English
@@ -132,6 +135,12 @@ export function getResumeRoute(state: OnboardingState): string {
       return '/onboarding/pronunciation';
     case 'onboarding-age':
       return '/onboarding/age';
+    case 'onboarding-native-language':
+      return '/onboarding/native-language';
+    case 'onboarding-speaking-confidence':
+      return '/onboarding/speaking-confidence';
+    case 'onboarding-current-learning':
+      return '/onboarding/current-learning';
     case 'onboarding-daily-usage':
       return '/onboarding/daily-usage';
     case 'onboarding-pain-points':

@@ -4,38 +4,37 @@ import { ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { trackOnboardingStep } from '@/lib/posthog';
 
-const motivations = [
-  { id: 'work', icon: '🎯', label: 'Speak confidently at work' },
-  { id: 'new-job', icon: '💼', label: 'Find a new job' },
-  { id: 'abroad', icon: '🌍', label: 'Live comfortably abroad' },
-  { id: 'travel', icon: '✈️', label: 'Travel with ease' },
-  { id: 'skills', icon: '🚀', label: 'Expand my skills' },
-  { id: 'connect', icon: '🫶', label: 'Connect with family & friends' },
+const confidenceLevels = [
+  { id: 'anxious', icon: '😰', label: 'I get anxious and start sweating' },
+  { id: 'freeze', icon: '🥶', label: 'I freeze and forget words' },
+  { id: 'avoid', icon: '🙈', label: 'I avoid speaking if possible' },
+  { id: 'embarrassed', icon: '😬', label: 'I speak, but feel embarrassed' },
+  { id: 'confident', icon: '😎', label: 'I feel confident enough' },
 ];
 
 const TOTAL_STEPS = 12;
-const CURRENT_STEP = 8;
+const CURRENT_STEP = 3;
 
-export default function OnboardingMotivation() {
+export default function OnboardingSpeakingConfidence() {
   const navigate = useNavigate();
   const [selected, setSelected] = useState('');
 
   useEffect(() => {
-    trackOnboardingStep('motivation', 'started');
+    trackOnboardingStep('speaking-confidence', 'started');
     const saved = JSON.parse(localStorage.getItem('justai_onboarding_data') || '{}');
-    if (saved.motivation) setSelected(saved.motivation);
+    if (saved.speakingConfidence) setSelected(saved.speakingConfidence);
   }, []);
 
   const handleSelect = (id: string) => {
     setSelected(id);
 
     const saved = JSON.parse(localStorage.getItem('justai_onboarding_data') || '{}');
-    saved.motivation = id;
+    saved.speakingConfidence = id;
     localStorage.setItem('justai_onboarding_data', JSON.stringify(saved));
 
-    trackOnboardingStep('motivation', 'completed', { motivation: id });
+    trackOnboardingStep('speaking-confidence', 'completed', { speaking_confidence: id });
 
-    setTimeout(() => navigate('/onboarding/motivation-stats'), 200);
+    setTimeout(() => navigate('/onboarding/current-learning'), 200);
   };
 
   return (
@@ -58,23 +57,24 @@ export default function OnboardingMotivation() {
       {/* Content */}
       <div className="flex-1 px-4">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">
-          Why do you want to{'\n'}improve your English?
+          How do you feel when you need to speak English?
         </h1>
 
-        <div className="space-y-3">
-          {motivations.map((option) => (
+        <div className="grid grid-cols-2 gap-3">
+          {confidenceLevels.map((level, index) => (
             <button
-              key={option.id}
-              onClick={() => handleSelect(option.id)}
+              key={level.id}
+              onClick={() => handleSelect(level.id)}
               className={cn(
-                'w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left',
-                selected === option.id
+                'p-5 rounded-2xl border-2 transition-all text-left',
+                index === confidenceLevels.length - 1 ? 'col-span-1' : '',
+                selected === level.id
                   ? 'border-blue-500 bg-blue-50'
                   : 'border-gray-200 bg-white hover:border-gray-300'
               )}
             >
-              <span className="text-2xl">{option.icon}</span>
-              <span className="flex-1 font-medium text-gray-900">{option.label}</span>
+              <span className="text-3xl block mb-3">{level.icon}</span>
+              <span className="font-medium text-gray-900 text-sm leading-snug">{level.label}</span>
             </button>
           ))}
         </div>

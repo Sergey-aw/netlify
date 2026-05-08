@@ -52,8 +52,8 @@ const statsByMotivation: Record<string, StatContent> = {
 
 const defaultStat: StatContent = statsByMotivation.work;
 
-const TOTAL_STEPS = 8;
-const CURRENT_STEP = 4;
+const TOTAL_STEPS = 12;
+const CURRENT_STEP = 9;
 
 export default function OnboardingMotivationStats() {
   const navigate = useNavigate();

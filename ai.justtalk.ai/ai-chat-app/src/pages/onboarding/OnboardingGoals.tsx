@@ -55,7 +55,7 @@ export default function OnboardingGoals() {
             <ChevronLeft className="w-6 h-6" />
           </button>
           <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-            <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: '62.5%' }} />
+            <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: '83%' }} />
           </div>
         </div>
       </div>

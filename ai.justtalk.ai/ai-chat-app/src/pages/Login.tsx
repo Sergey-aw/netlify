@@ -93,6 +93,7 @@ export default function Login() {
       };
       if (onboardingData.goals) profileUpdate.learning_goals = onboardingData.goals;
       if (onboardingData.interests) profileUpdate.interests = onboardingData.interests;
+      if (onboardingData.nativeLanguage) profileUpdate.native_language = onboardingData.nativeLanguage;
       if (preferences.cefrLevel) profileUpdate.cefr_level = preferences.cefrLevel;
       if (preferences.correctionStyle) profileUpdate.justai_correction_style = preferences.correctionStyle;
       if (preferences.voicePreference) profileUpdate.justai_preferred_voice = preferences.voicePreference;

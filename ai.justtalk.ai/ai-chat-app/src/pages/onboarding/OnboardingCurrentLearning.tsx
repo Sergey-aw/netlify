@@ -5,47 +5,52 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { trackOnboardingStep } from '@/lib/posthog';
 
-const usageOptions = [
-  { id: 'read-news', icon: '📰', label: 'Read English news' },
-  { id: 'watch-shows', icon: '📺', label: 'Watch English shows' },
-  { id: 'listen-music', icon: '🎧', label: 'Listen to English music' },
-  { id: 'use-at-work', icon: '👨‍💻', label: 'Use English at work' },
-  { id: 'chat-speakers', icon: '💬', label: 'Chat with English speakers' },
-  { id: 'rarely-use', icon: '🙈', label: 'Rarely use English' },
+const learningMethods = [
+  { id: 'classes', icon: '📚', label: 'Classes or courses' },
+  { id: 'apps', icon: '🎯', label: 'Learning apps' },
+  { id: 'videos', icon: '🎬', label: 'Videos or movies' },
+  { id: 'podcasts', icon: '🎧', label: 'Podcasts or audiobooks' },
+  { id: 'speaking', icon: '🤝', label: 'Speaking with others' },
+  { id: 'not-learning', icon: '❌', label: 'Not learning right now' },
 ];
 
 const TOTAL_STEPS = 12;
-const CURRENT_STEP = 6;
+const CURRENT_STEP = 4;
 
-export default function OnboardingDailyUsage() {
+export default function OnboardingCurrentLearning() {
   const navigate = useNavigate();
   const [selected, setSelected] = useState<string[]>([]);
 
   useEffect(() => {
-    trackOnboardingStep('daily-usage', 'started');
+    trackOnboardingStep('current-learning', 'started');
     const saved = JSON.parse(localStorage.getItem('justai_onboarding_data') || '{}');
-    if (saved.dailyUsage) setSelected(saved.dailyUsage);
+    if (saved.currentLearning) setSelected(saved.currentLearning);
   }, []);
 
   const toggle = (id: string) => {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
+    if (id === 'not-learning') {
+      setSelected((prev) => (prev.includes('not-learning') ? [] : ['not-learning']));
+      return;
+    }
+    setSelected((prev) => {
+      const without = prev.filter((i) => i !== 'not-learning');
+      return without.includes(id) ? without.filter((i) => i !== id) : [...without, id];
+    });
   };
 
   const handleContinue = () => {
     if (selected.length === 0) return;
 
     const saved = JSON.parse(localStorage.getItem('justai_onboarding_data') || '{}');
-    saved.dailyUsage = selected;
+    saved.currentLearning = selected;
     localStorage.setItem('justai_onboarding_data', JSON.stringify(saved));
 
-    trackOnboardingStep('daily-usage', 'completed', {
-      daily_usage_selected: selected.length,
-      daily_usage: selected,
+    trackOnboardingStep('current-learning', 'completed', {
+      current_learning_selected: selected.length,
+      current_learning: selected,
     });
 
-    navigate('/onboarding/pain-points');
+    navigate('/onboarding/retention-stats');
   };
 
   return (
@@ -68,33 +73,33 @@ export default function OnboardingDailyUsage() {
       {/* Content */}
       <div className="flex-1 px-4">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          How do you use English{'\n'}in your daily life?
+          How are you currently improving your English?
         </h1>
         <p className="text-gray-500 mb-8">Select all that apply.</p>
 
         <div className="space-y-3">
-          {usageOptions.map((option) => (
+          {learningMethods.map((method) => (
             <button
-              key={option.id}
-              onClick={() => toggle(option.id)}
+              key={method.id}
+              onClick={() => toggle(method.id)}
               className={cn(
                 'w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left',
-                selected.includes(option.id)
+                selected.includes(method.id)
                   ? 'border-blue-500 bg-blue-50'
                   : 'border-gray-200 bg-white hover:border-gray-300'
               )}
             >
-              <span className="text-2xl">{option.icon}</span>
-              <span className="flex-1 font-medium text-gray-900">{option.label}</span>
+              <span className="text-2xl">{method.icon}</span>
+              <span className="flex-1 font-medium text-gray-900">{method.label}</span>
               <div
                 className={cn(
                   'w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all',
-                  selected.includes(option.id)
+                  selected.includes(method.id)
                     ? 'bg-blue-500 border-blue-500'
                     : 'border-gray-300'
                 )}
               >
-                {selected.includes(option.id) && (
+                {selected.includes(method.id) && (
                   <Check className="w-4 h-4 text-white" />
                 )}
               </div>

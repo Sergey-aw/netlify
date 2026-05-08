@@ -30,6 +30,10 @@ import SubscriptionStatus from './pages/SubscriptionStatus'
 import SubscriptionManagement from './pages/SubscriptionManagement'
 import CheckoutPage from './pages/CheckoutPage'
 import OnboardingAge from './pages/onboarding/OnboardingAge'
+import OnboardingNativeLanguage from './pages/onboarding/OnboardingNativeLanguage'
+import OnboardingSpeakingConfidence from './pages/onboarding/OnboardingSpeakingConfidence'
+import OnboardingCurrentLearning from './pages/onboarding/OnboardingCurrentLearning'
+import OnboardingRetentionStats from './pages/onboarding/OnboardingRetentionStats'
 import OnboardingDailyUsage from './pages/onboarding/OnboardingDailyUsage'
 import OnboardingPainPoints from './pages/onboarding/OnboardingPainPoints'
 import OnboardingMotivation from './pages/onboarding/OnboardingMotivation'
@@ -77,6 +81,10 @@ function App() {
             {/* Onboarding Routes - Can be accessed without full auth */}
             <Route path="/onboarding/pronunciation" element={<PronunciationAssessment />} />
             <Route path="/onboarding/age" element={<OnboardingAge />} />
+            <Route path="/onboarding/native-language" element={<OnboardingNativeLanguage />} />
+            <Route path="/onboarding/speaking-confidence" element={<OnboardingSpeakingConfidence />} />
+            <Route path="/onboarding/current-learning" element={<OnboardingCurrentLearning />} />
+            <Route path="/onboarding/retention-stats" element={<OnboardingRetentionStats />} />
             <Route path="/onboarding/daily-usage" element={<OnboardingDailyUsage />} />
             <Route path="/onboarding/pain-points" element={<OnboardingPainPoints />} />
             <Route path="/onboarding/motivation" element={<OnboardingMotivation />} />
