@@ -5,9 +5,13 @@
 
 export type OnboardingStep =
   | 'pronunciation-assessment' // Pronunciation test
-  | 'onboarding-goals'      // Step 1: Learning goals
-  | 'onboarding-interests'  // Step 2: Interests
-  | 'onboarding-preferences' // Step 3: Preferences (CEFR level, etc)
+  | 'onboarding-age'        // Age selection
+  | 'onboarding-daily-usage' // Daily English usage
+  | 'onboarding-pain-points' // Speaking pain points
+  | 'onboarding-motivation' // Why improve English
+  | 'onboarding-goals'      // Learning goals
+  | 'onboarding-interests'  // Interests
+  | 'onboarding-preferences' // Preferences (CEFR level, etc)
   | 'email-entry'           // Email signup (after onboarding screens)
   | 'subscription-selection' // Choose a plan
   | 'subscription-payment'   // Payment in progress
@@ -126,6 +130,14 @@ export function getResumeRoute(state: OnboardingState): string {
   switch (state.currentStep) {
     case 'pronunciation-assessment':
       return '/onboarding/pronunciation';
+    case 'onboarding-age':
+      return '/onboarding/age';
+    case 'onboarding-daily-usage':
+      return '/onboarding/daily-usage';
+    case 'onboarding-pain-points':
+      return '/onboarding/pain-points';
+    case 'onboarding-motivation':
+      return '/onboarding/motivation';
     case 'onboarding-goals':
       return '/onboarding/goals';
     case 'onboarding-interests':

@@ -29,6 +29,11 @@ import SubscriptionPlans from './pages/SubscriptionPlans'
 import SubscriptionStatus from './pages/SubscriptionStatus'
 import SubscriptionManagement from './pages/SubscriptionManagement'
 import CheckoutPage from './pages/CheckoutPage'
+import OnboardingAge from './pages/onboarding/OnboardingAge'
+import OnboardingDailyUsage from './pages/onboarding/OnboardingDailyUsage'
+import OnboardingPainPoints from './pages/onboarding/OnboardingPainPoints'
+import OnboardingMotivation from './pages/onboarding/OnboardingMotivation'
+import OnboardingMotivationStats from './pages/onboarding/OnboardingMotivationStats'
 import OnboardingGoals from './pages/onboarding/OnboardingGoals'
 import OnboardingInterests from './pages/onboarding/OnboardingInterests'
 import OnboardingPreferences from './pages/onboarding/OnboardingPreferences'
@@ -71,6 +76,11 @@ function App() {
             
             {/* Onboarding Routes - Can be accessed without full auth */}
             <Route path="/onboarding/pronunciation" element={<PronunciationAssessment />} />
+            <Route path="/onboarding/age" element={<OnboardingAge />} />
+            <Route path="/onboarding/daily-usage" element={<OnboardingDailyUsage />} />
+            <Route path="/onboarding/pain-points" element={<OnboardingPainPoints />} />
+            <Route path="/onboarding/motivation" element={<OnboardingMotivation />} />
+            <Route path="/onboarding/motivation-stats" element={<OnboardingMotivationStats />} />
             <Route path="/onboarding/goals" element={<OnboardingGoals />} />
             <Route path="/onboarding/interests" element={<OnboardingInterests />} />
             <Route path="/onboarding/preferences" element={<OnboardingPreferences />} />

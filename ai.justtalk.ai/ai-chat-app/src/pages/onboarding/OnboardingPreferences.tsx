@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Pause } from 'lucide-react';
+import { Play, Pause, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cefrLevels } from '@/data/mockData';
 import { cn } from '@/lib/utils';
@@ -160,12 +160,14 @@ export default function OnboardingPreferences() {
     <div className="min-h-screen bg-white flex flex-col overflow-y-auto">
       {/* Progress Indicator */}
       <div className="px-4 py-6">
-        <div className="flex gap-1.5 mb-4">
-          <div className="h-1 flex-1 bg-blue-500 rounded-full" />
-          <div className="h-1 flex-1 bg-blue-500 rounded-full" />
-          <div className="h-1 flex-1 bg-blue-500 rounded-full" />
+        <div className="flex items-center gap-3 mb-4">
+          <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-gray-600">
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: '100%' }} />
+          </div>
         </div>
-        <p className="text-sm text-gray-500">Step 3 of 3</p>
       </div>
 
       {/* Content */}

@@ -104,9 +104,9 @@ export default function PronunciationAssessment() {
       });
     }
     
-    // Update onboarding state and continue to goals
-    updateOnboardingStep('onboarding-goals');
-    navigate('/onboarding/goals');
+    // Update onboarding state and continue to age selection
+    updateOnboardingStep('onboarding-age');
+    navigate('/onboarding/age');
   };
 
   const getScoreBadgeColor = (score: number) => {
@@ -325,7 +325,7 @@ export default function PronunciationAssessment() {
         {!audioBlob && !isRecording && (
           <div className="pt-6 px-2">
             <Button
-              onClick={() => navigate('/onboarding/goals')}
+              onClick={() => navigate('/onboarding/age')}
               variant="ghost"
               className="w-full text-gray-600 hover:text-gray-900"
             >
