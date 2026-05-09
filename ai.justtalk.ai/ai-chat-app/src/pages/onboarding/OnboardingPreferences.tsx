@@ -189,7 +189,7 @@ export default function OnboardingPreferences() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col overflow-y-auto">
+    <div className="min-h-screen bg-white flex justify-center"><div className="w-full max-w-md flex flex-col overflow-y-auto">
       {/* Progress Indicator */}
       <div className="px-4 py-6">
         <div className="flex items-center gap-3 mb-4">
@@ -338,6 +338,6 @@ export default function OnboardingPreferences() {
           Complete Setup
         </Button>
       </div>
-    </div>
+    </div></div>
   );
 }

@@ -20,7 +20,7 @@ export default function OnboardingRetentionStats() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-white flex justify-center"><div className="w-full max-w-md flex flex-col">
       {/* Header */}
       <div className="px-4 py-6">
         <div className="flex items-center gap-3 mb-4">
@@ -85,6 +85,6 @@ export default function OnboardingRetentionStats() {
           Continue
         </Button>
       </div>
-    </div>
+    </div></div>
   );
 }

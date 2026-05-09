@@ -14,6 +14,7 @@ import progressSpeakWords from '@/assets/progress-speak-words.png';
 import { PersonalityCarousel } from '@/components/PersonalityCarousel';
 import { RolePlayCarousel } from '@/components/RolePlayCarousel';
 import { trackWelcomeStep } from '@/lib/posthog';
+import { useFeatureFlagEnabled } from 'posthog-js/react';
 import { savePricingVariant, isValidPricingVariant } from '@/lib/onboarding-state';
 import { ensureAnonymousSession } from '@/lib/auth';
 
@@ -65,6 +66,7 @@ export default function WelcomeProgress() {
   const [searchParams] = useSearchParams();
   const [currentStep, setCurrentStep] = useState(0);
   const [glowingCard, setGlowingCard] = useState<string | null>(null);
+  const skipPronunciation = useFeatureFlagEnabled('pronunciation-skip-onboarding');
   
   // Capture and store pricing variant from URL params on first load
   // This preserves the variant from landing page throughout onboarding
@@ -100,7 +102,8 @@ export default function WelcomeProgress() {
     } else {
       // Create anonymous session before entering onboarding
       await ensureAnonymousSession();
-      navigate('/onboarding/pronunciation');
+      console.log('[WelcomeProgress] skipPronunciation flag:', skipPronunciation);
+      navigate(skipPronunciation ? '/onboarding/age' : '/onboarding/pronunciation');
     }
   };
 

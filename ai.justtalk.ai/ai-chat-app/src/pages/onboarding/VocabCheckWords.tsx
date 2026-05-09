@@ -128,7 +128,7 @@ function AnalyzingScreen({ duration }: { duration: number }) {
   const review = REVIEWS[currentReview];
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center pt-16 px-6">
+    <div className="min-h-screen bg-white flex justify-center"><div className="w-full max-w-md flex flex-col items-center pt-16 px-6">
       <h1 className="text-gray-900 text-3xl font-bold text-center mb-10 leading-tight">
         Evaluating your<br />vocabulary skills
       </h1>
@@ -169,7 +169,7 @@ function AnalyzingScreen({ duration }: { duration: number }) {
           </div>
         </div>
       </div>
-    </div>
+    </div></div>
   );
 }
 
@@ -287,7 +287,7 @@ export default function VocabCheckWords() {
   const pageKnownCount = pageWords.filter((w) => knownIds.has(w.id)).length;
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-white flex justify-center"><div className="w-full max-w-md flex flex-col">
       {/* Header */}
       <div className="px-4 py-6">
         <div className="flex items-center gap-3 mb-4">
@@ -345,6 +345,6 @@ export default function VocabCheckWords() {
           {isPage1 ? 'Continue' : 'Analyze My Vocabulary'}
         </Button>
       </div>
-    </div>
+    </div></div>
   );
 }
