@@ -1599,7 +1599,7 @@ export default function AIChatHome() {
                 {selectedWord.translations && Object.keys(selectedWord.translations).length > 0 && (
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h3 className="text-sm font-semibold text-gray-500 mb-2">
-                      Translations ({user?.native_language || 'Russian'})
+                      Translations ({user?.native_language || 'your language'})
                     </h3>
                     <div className="flex flex-wrap gap-2">
                       {Object.entries(selectedWord.translations)

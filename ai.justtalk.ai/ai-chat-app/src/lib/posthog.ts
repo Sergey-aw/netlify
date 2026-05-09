@@ -114,7 +114,7 @@ export const trackEmailEntered = (email: string, isNewUser: boolean = true) => {
 
 // Onboarding Events
 export const trackOnboardingStep = (
-  step: 'pronunciation' | 'goals' | 'interests' | 'preferences',
+  step: string,
   action: 'started' | 'completed',
   properties?: Record<string, any>
 ) => {

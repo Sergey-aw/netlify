@@ -6,7 +6,7 @@ import { cefrLevels } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { ensureAnonymousSession } from '@/lib/auth';
-import { updateOnboardingStep, markOnboardingComplete, saveOnboardingState } from '@/lib/onboarding-state';
+import { markOnboardingComplete, saveOnboardingState } from '@/lib/onboarding-state';
 import { trackOnboardingStep, trackOnboardingCompleted } from '@/lib/posthog';
 
 interface Voice {

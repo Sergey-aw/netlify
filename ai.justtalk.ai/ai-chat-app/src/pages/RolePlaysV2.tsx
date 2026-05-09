@@ -1551,7 +1551,7 @@ export default function RolePlaysV2() {
                     isLocked
                       ? 'opacity-60 cursor-not-allowed'
                       : 'cursor-pointer hover:shadow-md hover:border-primary'
-                  } ${getStatusColor(progress?.status)}`}
+                  } ${getStatusColor(isLocked ? 'locked' : (progress?.status || (isFirstStep ? 'unlocked' : undefined)))}`}
                   onClick={() => !isLocked && handleStepClick(selectedAgent, step)}
                 >
                   <div className="flex items-start gap-4">
@@ -1581,7 +1581,7 @@ export default function RolePlaysV2() {
                             <p className="text-sm text-muted-foreground mt-1">{step.description}</p>
                           )}
                         </div>
-                        {getStatusIcon(progress?.status)}
+                        {getStatusIcon(isLocked ? 'locked' : (progress?.status || (isFirstStep ? 'unlocked' : undefined)))}
                       </div>
 
                       {/* Progress Stats */}

@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useRef } from 'react';
-import { ArrowLeft, Play, Pause, CreditCard, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Play, Pause, CreditCard, ChevronRight, Check } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -21,10 +22,43 @@ interface Voice {
   is_primary: boolean;
 }
 
+const LANGUAGES = [
+  { code: 'es', flag: '🇪🇸', name: 'Spanish', native: 'español' },
+  { code: 'pt', flag: '🇧🇷', name: 'Portuguese', native: 'português' },
+  { code: 'fr', flag: '🇫🇷', name: 'French', native: 'français' },
+  { code: 'de', flag: '🇩🇪', name: 'German', native: 'Deutsch' },
+  { code: 'it', flag: '🇮🇹', name: 'Italian', native: 'italiano' },
+  { code: 'ru', flag: '🇷🇺', name: 'Russian', native: 'русский' },
+  { code: 'pl', flag: '🇵🇱', name: 'Polish', native: 'polski' },
+  { code: 'nl', flag: '🇳🇱', name: 'Dutch', native: 'Nederlands' },
+  { code: 'sv', flag: '🇸🇪', name: 'Swedish', native: 'svenska' },
+  { code: 'da', flag: '🇩🇰', name: 'Danish', native: 'dansk' },
+  { code: 'fi', flag: '🇫🇮', name: 'Finnish', native: 'suomi' },
+  { code: 'no', flag: '🇳🇴', name: 'Norwegian', native: 'norsk' },
+  { code: 'el', flag: '🇬🇷', name: 'Greek', native: 'ελληνικά' },
+  { code: 'tr', flag: '🇹🇷', name: 'Turkish', native: 'Türkçe' },
+  { code: 'zh', flag: '🇨🇳', name: 'Chinese', native: '中文' },
+  { code: 'ja', flag: '🇯🇵', name: 'Japanese', native: '日本語' },
+  { code: 'ko', flag: '🇰🇷', name: 'Korean', native: '한국어' },
+  { code: 'th', flag: '🇹🇭', name: 'Thai', native: 'ไทย' },
+  { code: 'vi', flag: '🇻🇳', name: 'Vietnamese', native: 'Tiếng Việt' },
+  { code: 'id', flag: '🇮🇩', name: 'Indonesian', native: 'Bahasa Indonesia' },
+  { code: 'ms', flag: '🇲🇾', name: 'Malay', native: 'Bahasa Melayu' },
+  { code: 'hi', flag: '🇮🇳', name: 'Hindi', native: 'हिन्दी' },
+  { code: 'bn', flag: '🇧🇩', name: 'Bengali', native: 'বাংলা' },
+  { code: 'ta', flag: '🇮🇳', name: 'Tamil', native: 'தமிழ்' },
+  { code: 'te', flag: '🇮🇳', name: 'Telugu', native: 'తెలుగు' },
+  { code: 'ar', flag: '🇸🇦', name: 'Arabic', native: 'العربية' },
+  { code: 'he', flag: '🇮🇱', name: 'Hebrew', native: 'עברית' },
+  { code: 'fa', flag: '🇮🇷', name: 'Persian', native: 'فارسی' },
+  { code: 'ur', flag: '🇵🇰', name: 'Urdu', native: 'اردو' },
+];
+
 export default function Settings() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { subscription, hasActiveSubscription, voiceMinutesLimit, voiceSecondsUsed } = useSubscription();
 
@@ -111,6 +145,25 @@ export default function Settings() {
     },
     onError: (error) => {
       console.error('Mutation error:', error);
+    },
+  });
+
+  const updateLanguageMutation = useMutation({
+    mutationFn: async (languageCode: string) => {
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      if (authError || !authUser) throw new Error('Not authenticated');
+
+      const lang = LANGUAGES.find(l => l.code === languageCode);
+      const { error } = await supabase
+        .from('profiles')
+        .update({ native_language: lang?.name || languageCode })
+        .eq('id', authUser.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['current-user'] });
+      setShowLanguagePicker(false);
     },
   });
 
@@ -204,12 +257,18 @@ export default function Settings() {
         <Card className="p-4">
           <h3 className="font-semibold mb-3">Learning Preferences</h3>
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <button
+              className="flex items-center justify-between w-full"
+              onClick={() => setShowLanguagePicker(true)}
+            >
               <span className="text-sm">Native Language</span>
-              <span className="text-sm font-medium">
-                {user?.native_language || 'Not set'}
-              </span>
-            </div>
+              <div className="flex items-center gap-1">
+                <span className="text-sm font-medium">
+                  {user?.native_language || 'Not set'}
+                </span>
+                <ChevronRight className="w-4 h-4 text-gray-400" />
+              </div>
+            </button>
             <div className="flex items-center justify-between">
               <span className="text-sm">Target Language</span>
               <span className="text-sm font-medium">English</span>
@@ -273,6 +332,35 @@ export default function Settings() {
           )}
         </Card>
       </main>
+
+      <Drawer open={showLanguagePicker} onOpenChange={setShowLanguagePicker}>
+        <DrawerContent className="bg-white max-h-[80vh]">
+          <div className="p-4">
+            <h3 className="text-lg font-semibold mb-4">Native Language</h3>
+            <div className="overflow-y-auto max-h-[60vh] space-y-1">
+              {LANGUAGES.map((lang) => (
+                <button
+                  key={lang.code}
+                  className={cn(
+                    'w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors',
+                    user?.native_language === lang.name
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'hover:bg-gray-50'
+                  )}
+                  onClick={() => updateLanguageMutation.mutate(lang.code)}
+                >
+                  <span className="text-2xl">{lang.flag}</span>
+                  <span className="flex-1 text-left font-medium">{lang.name}</span>
+                  <span className="text-sm text-gray-400">{lang.native}</span>
+                  {user?.native_language === lang.name && (
+                    <Check className="w-5 h-5 text-blue-600" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
