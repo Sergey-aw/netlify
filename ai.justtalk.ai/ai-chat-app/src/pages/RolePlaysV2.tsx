@@ -1033,7 +1033,7 @@ export default function RolePlaysV2() {
                   
                   {/* Lock overlay for free trial */}
                   {isLocked && (
-                    <div className="absolute inset-0 bg-gray-900/40 flex items-center justify-center z-20 rounded-lg">
+                    <div className="absolute inset-0 bg-gray-900/40 flex items-center justify-center z-20 rounded-lg pointer-events-none">
                       <div className="bg-white/90 rounded-full p-3">
                         <Lock className="w-6 h-6 text-gray-700" />
                       </div>
@@ -1056,6 +1056,34 @@ export default function RolePlaysV2() {
           </div>
         </div>
         {renderAgentDetailDrawer()}
+
+        {/* Upgrade drawer for locked categories */}
+        <Drawer open={showUpgradeDrawer} onOpenChange={setShowUpgradeDrawer}>
+          <DrawerContent className="bg-white">
+            <div className="p-6 text-center">
+              <Lock className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+              <h3 className="text-xl font-semibold mb-2">Unlock This Category</h3>
+              <p className="text-gray-600 mb-6">
+                Activate a subscription to access all role-play scenarios including Business, Interview, Education, and Travel.
+              </p>
+              <div className="flex flex-col gap-3">
+                <Button
+                  onClick={() => navigate('/subscription-plans')}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                >
+                  See Plans
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowUpgradeDrawer(false)}
+                  className="w-full"
+                >
+                  Maybe Later
+                </Button>
+              </div>
+            </div>
+          </DrawerContent>
+        </Drawer>
       </div>
     );
   }
@@ -1639,7 +1667,7 @@ export default function RolePlaysV2() {
             <Lock className="w-12 h-12 mx-auto mb-4 text-gray-400" />
             <h3 className="text-xl font-semibold mb-2">Unlock This Category</h3>
             <p className="text-gray-600 mb-6">
-              Activate a subscription to access all role-play scenarios including Business, Interview, Dating, and Travel.
+              Activate a subscription to access all role-play scenarios including Business, Interview, Education, and Travel.
             </p>
             <div className="flex flex-col gap-3">
               <Button

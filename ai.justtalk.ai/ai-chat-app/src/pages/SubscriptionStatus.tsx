@@ -9,6 +9,7 @@ import { CheckCircle, ArrowLeft } from 'lucide-react';
 import { useSubscription } from '../hooks/useSubscription';
 import { useSession } from '../hooks/useSession';
 import { trackSubscriptionActivated, identifyUser } from '@/lib/posthog';
+import { toast } from 'sonner';
 
 export default function SubscriptionStatus() {
   const navigate = useNavigate();
@@ -72,17 +73,20 @@ export default function SubscriptionStatus() {
         // Now track the subscription activation
         trackSubscriptionActivated(
           subscription.subscription_type,
-          'stripe_price_id_from_subscription', // Price ID not stored in subscription table
+          'stripe_price_id_from_subscription',
           subscription.price_cents,
           subscription.billing_period,
           subscription.stripe_subscription_id || undefined
         );
         setHasTrackedActivation(true);
+
+        toast.success('Subscription activated! Enjoy unlimited access to JustTalk.');
+        navigate('/ai-chat');
       }
     };
-    
+
     trackActivation();
-  }, [isPostCheckout, subscription, hasTrackedActivation, user, getEmail]);
+  }, [isPostCheckout, subscription, hasTrackedActivation, user, getEmail, navigate]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center p-8">Loading...</div>;
