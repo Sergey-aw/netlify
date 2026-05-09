@@ -4,17 +4,21 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ArrowRight, Bot, UserRound } from 'lucide-react';
 import { trackWelcomeStep, trackWelcomeCompleted } from '@/lib/posthog';
+import { useFeatureFlagEnabled } from 'posthog-js/react';
+import { ensureAnonymousSession } from '@/lib/auth';
 
 export default function WelcomeSync() {
   const navigate = useNavigate();
-  
+  const skipPronunciation = useFeatureFlagEnabled('pronunciation-skip-onboarding');
+
   useEffect(() => {
     trackWelcomeStep('sync');
   }, []);
-  
-  const handleGetStarted = () => {
+
+  const handleGetStarted = async () => {
     trackWelcomeCompleted();
-    navigate('/onboarding/pronunciation');
+    await ensureAnonymousSession();
+    navigate(skipPronunciation ? '/onboarding/age' : '/onboarding/pronunciation');
   };
 
   return (
