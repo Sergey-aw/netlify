@@ -1,19 +1,34 @@
 // JustAI Supabase client types and utilities
 
+export interface FeatureItem {
+  name: string;
+  description: string;
+  icon?: string;
+}
+
+export interface PlanFeatures {
+  title?: string;
+  subtitle?: string;
+  items: FeatureItem[];
+}
+
+export type PricingVariant = 'control' | 'plan-a' | 'plan-b';
+
 export interface SubscriptionPlan {
   id: string;
   plan_name: string;
   plan_type: 'basic' | 'premium' | 'unlimited';
-  billing_period: 'monthly' | 'annual';
+  billing_period: 'weekly' | 'monthly' | 'annual';
+  pricing_variant: PricingVariant;
   description: string;
-  monthly_message_limit: number | null;
+  voice_minutes_limit: number | null;
   includes_voice: boolean;
   price_cents: number;
   monthly_equivalent_cents: number;
   discount_percentage: number;
   stripe_price_id: string;
   stripe_product_id: string;
-  features: string[];
+  features: PlanFeatures | string[]; // Support both old and new format
   is_active: boolean;
   is_featured: boolean;
   display_order: number;
@@ -23,7 +38,7 @@ export interface Subscription {
   id: string;
   student_id: string;
   plan_id: string;
-  billing_period: 'monthly' | 'annual';
+  billing_period: 'weekly' | 'monthly' | 'annual';
   status: 'active' | 'past_due' | 'canceled' | 'incomplete';
   stripe_subscription_id: string;
   stripe_customer_id: string;
@@ -31,7 +46,7 @@ export interface Subscription {
   current_period_end: string;
   cancel_at_period_end: boolean;
   canceled_at: string | null;
-  messages_used_this_period: number;
+  voice_seconds_used?: number;
   created_at: string;
   updated_at: string;
   plan?: SubscriptionPlan;

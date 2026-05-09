@@ -107,6 +107,39 @@ export async function completeOnboarding(userId: string, data: OnboardingData) {
 }
 
 /**
+ * Ensure an anonymous session exists for onboarding.
+ * Creates one silently if no session is active.
+ * Returns the user id.
+ */
+export async function ensureAnonymousSession(): Promise<string | null> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      return session.user.id;
+    }
+
+    const { data, error } = await supabase.auth.signInAnonymously({
+      options: {
+        data: {
+          role: 'student',
+        }
+      }
+    });
+
+    if (error) {
+      console.error('[Auth] Failed to create anonymous session:', error);
+      return null;
+    }
+
+    console.log('[Auth] Anonymous session created for onboarding:', data.user?.id);
+    return data.user?.id ?? null;
+  } catch (error) {
+    console.error('[Auth] Error ensuring anonymous session:', error);
+    return null;
+  }
+}
+
+/**
  * Send passwordless login email
  */
 export async function sendMagicLink(email: string) {

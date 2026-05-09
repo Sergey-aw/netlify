@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useSwipeGesture } from '@/hooks/useSwipeGesture';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   Settings, 
   Crown, 
@@ -9,7 +10,9 @@ import {
   Award,
   ChevronRight,
   LogOut,
-  PanelLeft
+  PanelLeft,
+  Camera,
+  Loader2
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
@@ -20,12 +23,29 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { AppSidebar } from '@/components/AppSidebar';
+import AvatarCropModal from '@/components/AvatarCropModal';
 
 export default function Profile() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const { subscription, messagesRemaining } = useSubscription();
+  const { subscription } = useSubscription();
   const [showSidebar, setShowSidebar] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [imageSrc, setImageSrc] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
+
+  // Add swipe gesture to open sidebar
+  useSwipeGesture({
+    onSwipeRight: () => {
+      if (!showSidebar) {
+        setShowSidebar(true);
+      }
+    },
+    minSwipeDistance: 50,
+    maxVerticalDistance: 100,
+  });
 
   // Get current user
   const { data: user, isLoading: userLoading } = useQuery({
@@ -148,6 +168,95 @@ export default function Profile() {
     navigate('/login');
   };
 
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size must be less than 5MB');
+      return;
+    }
+
+    // Create a preview URL and show crop modal
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImageSrc(reader.result as string);
+      setShowCropModal(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropComplete = async (croppedImageBlob: Blob) => {
+    if (!user) return;
+
+    setUploadingAvatar(true);
+
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error('Not authenticated');
+
+      // Delete old avatar if exists
+      if (user.profile_photo_url) {
+        const oldPath = user.profile_photo_url.split('/').pop();
+        if (oldPath) {
+          await supabase.storage
+            .from('profile-photos')
+            .remove([`${authUser.id}/${oldPath}`]);
+        }
+      }
+
+      // Upload cropped avatar
+      const fileName = `${Date.now()}.jpg`;
+      const filePath = `${authUser.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('profile-photos')
+        .upload(filePath, croppedImageBlob, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: 'image/jpeg',
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile-photos')
+        .getPublicUrl(filePath);
+
+      // Update profile with new avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ profile_photo_url: publicUrl })
+        .eq('id', authUser.id);
+
+      if (updateError) throw updateError;
+
+      // Invalidate queries to refetch with new avatar
+      queryClient.invalidateQueries({ queryKey: ['current-user'] });
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      alert('Failed to upload avatar. Please try again.');
+    } finally {
+      setUploadingAvatar(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   const stats = [
     { label: 'Conversations', value: userStats?.conversationCount?.toString() || '0', icon: TrendingUp },
     { label: 'Current Streak', value: `${userStats?.streak || 0} days`, icon: Target },
@@ -158,7 +267,7 @@ export default function Profile() {
     { 
       icon: Crown, 
       label: 'Subscription', 
-      value: subscription ? `${subscription.subscription_type.charAt(0).toUpperCase() + subscription.subscription_type.slice(1)} (${messagesRemaining ?? '∞'} msgs left)` : 'No subscription',
+      value: subscription ? `${subscription.subscription_type.charAt(0).toUpperCase() + subscription.subscription_type.slice(1)}` : 'No subscription',
       action: () => navigate(subscription ? '/subscription-status' : '/subscription-plans')
     },
     { 
@@ -179,6 +288,14 @@ export default function Profile() {
       {/* Sidebar */}
       <AppSidebar open={showSidebar} onOpenChange={setShowSidebar} />
 
+      {/* Avatar Crop Modal */}
+      <AvatarCropModal
+        open={showCropModal}
+        onClose={() => setShowCropModal(false)}
+        imageSrc={imageSrc}
+        onCropComplete={handleCropComplete}
+      />
+
       {/* Header */}
       <header className="px-4 py-4">
         <div className="flex items-start justify-between max-w-7xl mx-auto">
@@ -195,7 +312,7 @@ export default function Profile() {
           ) : (
             <div className="flex-1 flex items-start gap-4 pt-1 pl-4">
               <div className="flex-1">
-                <h1 className="text-2xl font-bold mb-1">
+                <h1 className="text-xl font-semibold mb-0">
                   {user?.display_name || 'Student'}
                 </h1>
                 <p className="text-sm text-muted-foreground mb-2">
@@ -205,12 +322,42 @@ export default function Profile() {
                   Intermediate Level
                 </Badge>
               </div>
-              <Avatar className="w-20 h-20 flex-shrink-0">
-                <AvatarImage src={user?.profile_photo_url} />
-                <AvatarFallback className="text-2xl">
-                  {user?.display_name?.[0] || 'U'}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative flex-shrink-0">
+                <button
+                  onClick={handleAvatarClick}
+                  disabled={uploadingAvatar}
+                  className="relative group"
+                  title="Change profile picture"
+                >
+                  <Avatar className="w-20 h-20">
+                    <AvatarImage src={user?.profile_photo_url} />
+                    <AvatarFallback className="text-2xl">
+                      {user?.display_name?.[0] || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  {!user?.profile_photo_url && (
+                    <div className="absolute bottom-0 right-0 p-1.5 bg-blue-600 rounded-full text-white shadow-lg group-hover:bg-blue-700 transition-colors">
+                      {uploadingAvatar ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Camera className="w-4 h-4" />
+                      )}
+                    </div>
+                  )}
+                  {user?.profile_photo_url && uploadingAvatar && (
+                    <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                      <Loader2 className="w-6 h-6 text-white animate-spin" />
+                    </div>
+                  )}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
+              </div>
             </div>
           )}
         </div>

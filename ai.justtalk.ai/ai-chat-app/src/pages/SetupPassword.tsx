@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { supabase } from '@/lib/supabase';
 import { clearTempAuth } from '@/lib/session';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
+import Logo from '@/assets/logo.svg';
 
 export default function SetupPassword() {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export default function SetupPassword() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [name, setName] = useState('');
+  const [isPasswordReset, setIsPasswordReset] = useState(false);
 
   useEffect(() => {
     // Check if we have verification parameters OR an active session
@@ -23,11 +25,20 @@ export default function SetupPassword() {
     const tokenHash = searchParams.get('token_hash');
     const type = searchParams.get('type');
     
+    // Check if this is a password recovery flow
+    if (type === 'recovery' || type === 'password_recovery') {
+      setIsPasswordReset(true);
+    }
+    
     // Also check URL hash (Supabase sometimes uses hash fragments)
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const hashCode = hashParams.get('code');
     const hashTokenHash = hashParams.get('token_hash');
     const hashType = hashParams.get('type');
+    
+    if (hashType === 'recovery' || hashType === 'password_recovery') {
+      setIsPasswordReset(true);
+    }
     const hashAccessToken = hashParams.get('access_token');
     
     console.log('Setup password params:', { 
@@ -121,7 +132,8 @@ export default function SetupPassword() {
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
-          full_name: name,
+          display_name: name,
+          name: name,
           role: 'student',
           email: user.email, // Ensure email is set
         })
@@ -145,6 +157,14 @@ export default function SetupPassword() {
         hasData: !!onboardingData,
         hasPrefs: !!preferencesData,
       });
+      
+      // If this is a password reset (not initial signup), skip onboarding data transfer
+      if (isPasswordReset) {
+        console.log('Password reset flow - skipping onboarding data transfer');
+        // Just redirect to main app
+        navigate('/ai-chat');
+        return;
+      }
       
       if (onboardingData || preferencesData) {
         const data = JSON.parse(onboardingData || '{}');
@@ -190,20 +210,8 @@ export default function SetupPassword() {
         console.log('No onboarding data found - user may need to complete onboarding');
       }
 
-      // Check if user has active subscription
-      const { data: subscription } = await supabase
-        .from('justai_subscriptions')
-        .select('id, status')
-        .eq('student_id', user.id)
-        .eq('status', 'active')
-        .single();
-
-      // Redirect based on subscription status
-      if (subscription) {
-        navigate('/ai-chat');
-      } else {
-        navigate('/subscription/plans');
-      }
+      // Always redirect to ai-chat after password setup
+      navigate('/ai-chat');
     } catch (err) {
       console.error('Setup password error:', err);
       setError(err instanceof Error ? err.message : 'Failed to set up password');
@@ -213,29 +221,39 @@ export default function SetupPassword() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Set Up Your Account</CardTitle>
-          <CardDescription>
-            Choose a password to secure your account
+    <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5] p-4">
+      <Card className="w-full max-w-[480px] shadow-sm">
+        <CardHeader className="pt-8">
+          {/* Logo */}
+          <div className="flex justify-center mb-6">
+            <img src={Logo} alt="JustTalk" className="h-12" />
+          </div>
+          <CardTitle className="text-center text-[#666666] text-lg font-normal">
+            {isPasswordReset ? 'Reset Your Password' : 'Set Up Your Account'}
+          </CardTitle>
+          <CardDescription className="text-center">
+            {isPasswordReset 
+              ? 'Enter your new password below' 
+              : 'Choose a password to secure your account'}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-8 px-8">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
-                Your Name
-              </label>
-              <Input
-                type="text"
-                placeholder="John Doe"
-                value={name}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
-                required
-                disabled={loading}
-              />
-            </div>
+            {!isPasswordReset && (
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  Your Name
+                </label>
+                <Input
+                  type="text"
+                  placeholder="John Doe"
+                  value={name}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+                  required
+                  disabled={loading}
+                />
+              </div>
+            )}
 
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">

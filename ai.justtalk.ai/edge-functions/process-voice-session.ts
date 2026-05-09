@@ -16,6 +16,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 
+// Helper function to remove voice tags like <Naomi>...</Naomi> from ElevenLabs transcripts
+function stripVoiceTags(text: string): string {
+  // Remove XML-style voice tags used by ElevenLabs multi-voice feature
+  return text.replace(/<[^>]+>/g, '')
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -39,8 +45,8 @@ serve(async (req) => {
     // Initialize Supabase client with service role key for admin access
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Get voice session ID from request body
-    const { voiceSessionId } = await req.json()
+    // Get voice session ID and skip flags from request body
+    const { voiceSessionId, skipVocabProcessing = false, skipSegmentCreation = false } = await req.json()
 
     if (!voiceSessionId) {
       return new Response(
@@ -51,6 +57,12 @@ serve(async (req) => {
         }
       )
     }
+
+    console.log('Processing voice session:', {
+      voiceSessionId,
+      skipVocabProcessing,
+      skipSegmentCreation,
+    })
 
     // Get voice session data
     const { data: voiceSession, error: sessionError } = await supabase
@@ -66,6 +78,120 @@ serve(async (req) => {
     if (!voiceSession.elevenlabs_conversation_id) {
       throw new Error('No ElevenLabs conversation ID found in voice session')
     }
+
+    // 🆕 NEW: If vocab was processed in real-time, skip duplicate processing
+    if (skipVocabProcessing && skipSegmentCreation) {
+      console.log('⏩ Skipping segment/vocab processing (already done in real-time)')
+      console.log('📊 Fetching metadata from ElevenLabs for finalization...')
+      
+      // Wait for ElevenLabs to process
+      await new Promise(resolve => setTimeout(resolve, 5000))
+      
+      const elevenLabsResponse = await fetch(
+        `https://api.elevenlabs.io/v1/convai/conversations/${voiceSession.elevenlabs_conversation_id}`,
+        {
+          method: 'GET',
+          headers: {
+            'xi-api-key': apiKey,
+          },
+        }
+      )
+      
+      if (!elevenLabsResponse.ok) {
+        const errorText = await elevenLabsResponse.text()
+        throw new Error(`ElevenLabs API error: ${elevenLabsResponse.status} - ${errorText}`)
+      }
+      
+      const elevenLabsData = await elevenLabsResponse.json()
+      const metadata = elevenLabsData.metadata || {}
+      const charging = metadata.charging || {}
+      
+      // Calculate costs
+      const totalCost = metadata.cost || 0
+      const callCharge = charging.call_charge || 0
+      const llmCharge = charging.llm_charge || 0
+      const callDurationSecs = metadata.call_duration_secs || 0
+      
+      // Extract dynamic variables for next conversation
+      const analysis = elevenLabsData.analysis || {}
+      const dynamicVariables = {
+        conversation_summary: analysis.conversation_summary || null,
+        emotional_notes: analysis.emotional_notes || null,
+        open_threads: analysis.open_threads || null,
+        unlock_next_scenario: analysis.unlock_next_scenario || false,
+        extracted_at: new Date().toISOString(),
+      }
+      
+      // Count characters from transcript
+      const transcript = elevenLabsData.transcript || []
+      let totalCharacters = 0
+      for (const entry of transcript) {
+        if (entry.role === 'agent') {
+          totalCharacters += stripVoiceTags(entry.message || '').length
+        }
+      }
+      
+      // Calculate speaking times
+      let userSpeakingTimeSecs = 0
+      let agentSpeakingTimeSecs = 0
+      for (let i = 0; i < transcript.length; i++) {
+        const entry = transcript[i]
+        const nextEntry = transcript[i + 1]
+        const startTime = entry.time_in_call_secs || 0
+        const endTime = nextEntry ? nextEntry.time_in_call_secs : callDurationSecs
+        const duration = Math.max(0, endTime - startTime)
+        
+        if (entry.role === 'user') {
+          userSpeakingTimeSecs += duration
+        } else if (entry.role === 'agent') {
+          agentSpeakingTimeSecs += duration
+        }
+      }
+      
+      // Update voice session with final metadata
+      await supabase
+        .from('justai_voice_sessions')
+        .update({
+          total_characters_agent: totalCharacters,
+          total_cost_credits: totalCost,
+          call_charge_credits: callCharge,
+          llm_charge_credits: llmCharge,
+          user_speaking_time_secs: userSpeakingTimeSecs,
+          agent_speaking_time_secs: agentSpeakingTimeSecs,
+          processed_at: new Date().toISOString(),
+        })
+        .eq('id', voiceSessionId)
+      
+      // Store dynamic variables in conversation
+      if (voiceSession.conversation_id) {
+        await supabase
+          .from('justai_conversations')
+          .update({
+            session_memory: dynamicVariables,
+          })
+          .eq('id', voiceSession.conversation_id)
+      }
+      
+      console.log('✅ Session finalized with metadata (vocab already processed)')
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Session metadata updated (vocab processed in real-time)',
+          voiceSessionId,
+          totalCharacters,
+          totalCost,
+          callDurationSecs,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
+    // 🔄 EXISTING: Fall through to normal processing if flags not set
+    console.log('📝 Processing session with full transcript extraction...')
 
     // Wait a few seconds for ElevenLabs to process the conversation
     // Conversations may not be immediately available after ending
@@ -98,6 +224,17 @@ serve(async (req) => {
 
     const elevenLabsData = await elevenLabsResponse.json()
     console.log('ElevenLabs conversation data:', JSON.stringify(elevenLabsData, null, 2))
+
+    // Extract dynamic variables from analysis for next conversation
+    const analysis = elevenLabsData.analysis || {}
+    const dynamicVariables = {
+      conversation_summary: analysis.conversation_summary || null,
+      emotional_notes: analysis.emotional_notes || null,
+      open_threads: analysis.open_threads || null,
+      unlock_next_scenario: analysis.unlock_next_scenario || false,
+      extracted_at: new Date().toISOString(),
+    }
+    console.log('Extracted dynamic variables:', dynamicVariables)
 
     // Extract metadata for costs and usage
     const metadata = elevenLabsData.metadata || {}
@@ -142,7 +279,8 @@ serve(async (req) => {
       // entry.role: "user" or "agent"
       // entry.message: the text content
       const role = entry.role === 'user' ? 'user' : 'assistant'
-      const content = entry.message || ''
+      // Remove voice tags like <Naomi>...</Naomi> from the message
+      const content = stripVoiceTags(entry.message || '')
       
       if (content) {
         messagesToInsert.push({
@@ -231,7 +369,8 @@ serve(async (req) => {
 
     for (const entry of transcript) {
       const role = entry.role === 'user' ? 'student' : 'teacher' // Map to lesson speaker roles
-      const content = entry.message || ''
+      // Remove voice tags like <Naomi>...</Naomi> from the transcript
+      const content = stripVoiceTags(entry.message || '')
       const timeInCall = entry.time_in_call_secs || 0
       
       if (content) {
@@ -312,6 +451,113 @@ serve(async (req) => {
     }
 
     console.log('Voice session processing complete')
+
+    // // Save dynamic variables to conversation for context continuity
+    // if (Object.values(dynamicVariables).some(v => v !== null && v !== false)) {
+    //   const { error: conversationUpdateError } = await supabase
+    //     .from('justai_conversations')
+    //     .update({
+    //       session_memory: dynamicVariables,
+    //       updated_at: new Date().toISOString(),
+    //     })
+    //     .eq('id', voiceSession.conversation_id)
+
+    //   if (conversationUpdateError) {
+    //     console.error('Error saving dynamic variables:', conversationUpdateError)
+    //   } else {
+    //     console.log('Dynamic variables saved to conversation session_memory')
+    //   }
+    // }
+
+    // Update student progress if this was a roleplay with an agent
+    const conversation = voiceSession.justai_conversations
+    if (conversation && conversation.agent_id) {
+      console.log(`Updating student progress for agent: ${conversation.agent_id}`)
+      
+      const messageCount = messagesToInsert.filter(m => m.role === 'user').length
+      const durationSeconds = callDurationSecs || voiceSession.total_duration_seconds || 0
+      
+      try {
+        // Use the database function to update progress
+        const { error: progressError } = await supabase.rpc('update_student_progress', {
+          p_student_id: conversation.student_id,
+          p_agent_id: conversation.agent_id,
+          p_messages_sent: messageCount,
+          p_time_spent_seconds: durationSeconds,
+          p_conversation_id: conversation.id,
+        })
+        
+        if (progressError) {
+          console.error('Error updating student progress:', progressError)
+          // Don't throw - progress update is non-critical
+        } else {
+          console.log('Student progress updated successfully')
+          
+          // Check if this completes a step based on both sources:
+          // 1. ElevenLabs analysis (immediate)
+          // 2. Database conversation record (may be set by analyze-conversation-feedback later)
+          let shouldComplete = dynamicVariables.unlock_next_scenario === true
+          
+          // Also check the database in case feedback was already generated
+          if (!shouldComplete) {
+            const { data: conversationCheck } = await supabase
+              .from('justai_conversations')
+              .select('unlock_next_scenario, session_memory')
+              .eq('id', conversation.id)
+              .single()
+            
+            if (conversationCheck?.unlock_next_scenario === true) {
+              shouldComplete = true
+              console.log('Step completion criteria met from database unlock_next_scenario')
+            } else if (conversationCheck?.session_memory?.unlock_next_scenario === true) {
+              shouldComplete = true
+              console.log('Step completion criteria met from session_memory.unlock_next_scenario')
+            }
+          } else {
+            console.log('Step completion criteria met from ElevenLabs unlock_next_scenario')
+          }
+          
+          if (shouldComplete) {
+            // Mark step as completed
+            const { data: updatedProgress, error: completeError } = await supabase
+              .from('justai_student_progress')
+              .update({
+                status: 'completed',
+                completed_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              })
+              .eq('student_id', conversation.student_id)
+              .eq('agent_id', conversation.agent_id)
+              .neq('status', 'completed') // Only update if not already completed
+              .select()
+            
+            if (completeError) {
+              console.error('Error marking step completed:', completeError)
+            } else if (updatedProgress && updatedProgress.length > 0) {
+              console.log('Step marked as completed')
+            } else {
+              console.log('Step already completed, skipping status update')
+            }
+            
+            // Always try to unlock next step when unlock_next_scenario is true
+            // This ensures unlocking happens even if step was already completed
+            const { error: unlockError } = await supabase.rpc('check_unlock_next_step', {
+              p_student_id: conversation.student_id,
+              p_current_agent_id: conversation.agent_id,
+            })
+            
+            if (unlockError) {
+              console.error('Error checking unlock next step:', unlockError)
+            } else {
+              console.log('Checked for next step unlock')
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error in progress tracking:', error)
+        // Don't fail the whole request
+      }
+    }
 
     return new Response(
       JSON.stringify({

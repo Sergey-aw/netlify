@@ -12,6 +12,7 @@ export async function getElevenLabsSignedUrl(params: {
   voiceId?: string;
   voiceName?: string;
   agentId?: string; // ElevenLabs agent ID
+  dynamicVariables?: Record<string, any>; // Context from previous step
 }) {
   const session = await supabase.auth.getSession();
   const accessToken = session.data.session?.access_token;
@@ -26,6 +27,7 @@ export async function getElevenLabsSignedUrl(params: {
     voiceId: params.voiceId,
     voiceName: params.voiceName,
     agentId: params.agentId, // Pass agent ID to edge function
+    dynamicVariables: params.dynamicVariables, // Pass context from previous step
   };
   
   console.log('🚀 Sending request to edge function:', requestBody);
@@ -52,6 +54,47 @@ export async function getElevenLabsSignedUrl(params: {
     signedUrl: data.signed_url as string,
     systemPrompt: data.system_prompt as string,
   };
+}
+
+/**
+ * Get context memory from previous conversations in the roleplay series
+ */
+export async function getContextMemory(agentId: string): Promise<string> {
+  const session = await supabase.auth.getSession();
+  const accessToken = session.data.session?.access_token;
+  const user = session.data.session?.user;
+
+  if (!accessToken || !user) {
+    throw new Error('Not authenticated');
+  }
+
+  const response = await fetch(
+    `${SUPABASE_URL}/functions/v1/get-context-memory`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        agent_id: agentId,
+        student_id: user.id,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    console.error('Failed to get context memory, continuing without it');
+    return ''; // Return empty string if fails
+  }
+
+  const data = await response.json();
+  console.log('📚 Context memory retrieved:', {
+    length: data.context_memory?.length || 0,
+    conversationsCount: data.conversations_count || 0,
+  });
+  
+  return data.context_memory || '';
 }
 
 /**
@@ -89,8 +132,17 @@ export async function getConversationTranscript(conversationId: string) {
 
 /**
  * Create Stripe checkout session for subscription
+ * @param embedded - If true, returns clientSecret for embedded checkout; if false, returns redirect URL
+ * @param pricingVariant - The A/B test variant for pricing (control, plan-a, plan-b)
  */
-export async function createCheckoutSession(priceId: string, coupon?: string) {
+export async function createCheckoutSession(
+  priceId: string, 
+  coupon?: string, 
+  trialDays?: number, 
+  trialVariant?: string,
+  embedded?: boolean,
+  pricingVariant?: string
+): Promise<{ url?: string; clientSecret?: string }> {
   console.log('createCheckoutSession: Starting...');
   
   const { data: { session } } = await supabase.auth.getSession();
@@ -102,20 +154,49 @@ export async function createCheckoutSession(priceId: string, coupon?: string) {
     tokenPreview: accessToken ? `${accessToken.substring(0, 30)}...` : 'MISSING',
     userId: session?.user?.id,
     isAnonymous: session?.user?.is_anonymous,
-    coupon: coupon || 'none'
+    coupon: coupon || 'none',
+    trialDays: trialDays || 'none',
+    trialVariant: trialVariant || 'none',
+    embedded: embedded || false,
+    pricingVariant: pricingVariant || 'control'
   });
 
   if (!accessToken) {
     throw new Error('Not authenticated');
   }
 
-  const requestBody: { priceId: string; coupon?: string } = {
+  const requestBody: { 
+    priceId: string; 
+    coupon?: string; 
+    trialDays?: number; 
+    trialVariant?: string;
+    embedded?: boolean;
+    pricingVariant?: string;
+  } = {
     priceId: priceId,
   };
   
   // Add coupon if provided
   if (coupon) {
     requestBody.coupon = coupon;
+  }
+  
+  // Add trial days if provided
+  if (trialDays && trialDays > 0) {
+    requestBody.trialDays = trialDays;
+    if (trialVariant) {
+      requestBody.trialVariant = trialVariant;
+    }
+  }
+
+  // Add embedded flag if provided
+  if (embedded) {
+    requestBody.embedded = embedded;
+  }
+
+  // Add pricing variant for A/B testing
+  if (pricingVariant) {
+    requestBody.pricingVariant = pricingVariant;
   }
 
   console.log('createCheckoutSession: Sending request', {
@@ -151,8 +232,15 @@ export async function createCheckoutSession(priceId: string, coupon?: string) {
   }
 
   const data = await response.json();
-  console.log('createCheckoutSession: Success', { hasUrl: !!data.url });
-  return data.url as string;
+  console.log('createCheckoutSession: Success', { 
+    hasUrl: !!data.url, 
+    hasClientSecret: !!data.clientSecret 
+  });
+  
+  return {
+    url: data.url,
+    clientSecret: data.clientSecret
+  };
 }
 
 /**
@@ -174,13 +262,14 @@ export async function checkSubscriptionAccess() {
   }
 
   return {
-    hasActiveSubscription: data[0]?.has_active_subscription || false,
-    planName: data[0]?.plan_name || null,
-    messageLimit: data[0]?.message_limit || null,
-    messagesUsed: data[0]?.messages_used || 0,
-    messagesRemaining: data[0]?.messages_remaining || 0,
-    includesVoice: data[0]?.includes_voice || false,
-    periodEnd: data[0]?.period_end || null,
+    hasActiveSubscription: data[0]?.has_subscription || false,
+    subscriptionStatus: data[0]?.subscription_status || null,
+    canSendMessage: data[0]?.can_send_message || false,
+    voiceMinutesLimit: data[0]?.voice_minutes_limit || null,
+    voiceSecondsUsed: data[0]?.voice_seconds_used || 0,
+    voiceSecondsRemaining: data[0]?.voice_seconds_remaining || null,
+    canStartVoiceSession: data[0]?.can_start_voice_session || false,
+    periodEnd: data[0]?.reset_date || null,
   };
 }
 
@@ -217,3 +306,51 @@ export async function checkEmailExists(email: string): Promise<{ exists: boolean
     return { exists: false, canUseMagicLink: false }; // Fail open - allow signup attempt
   }
 }
+
+interface TranscriptMessage {
+  speaker: 'student' | 'ai';
+  text: string;
+}
+
+/**
+ * Get conversation suggestions from LLM based on recent transcript and vocabulary
+ * Uses Supabase Edge Function to avoid CORS issues and protect API keys
+ */
+export async function getConversationSuggestions(params: {
+  transcript: TranscriptMessage[];
+  vocabularyWords?: string[];
+}): Promise<string[]> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('No active session');
+    }
+
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-conversation-suggestions`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          transcript: params.transcript,
+          vocabularyWords: params.vocabularyWords || [],
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to get suggestions: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.suggestions || [];
+  } catch (error) {
+    console.error('Error getting conversation suggestions:', error);
+    throw new Error(`Failed to get suggestions: ${error}`);
+  }
+}
+

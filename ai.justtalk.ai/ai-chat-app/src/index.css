@@ -1,6 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@font-face {
+  font-family: 'DIN Round Pro';
+  src: url('./assets/fonts/DINRoundPro-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
 
 @layer base {
   :root {
@@ -47,6 +57,14 @@
 }
 
 @layer base {
+  :root {
+    /* Fix for Safari iOS viewport height - set by JS using visualViewport */
+    --app-h: 100vh;
+    /* Safe area insets for notched devices */
+    --safe-area-inset-top: env(safe-area-inset-top, 0px);
+    --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  
   * {
     border-color: hsl(var(--border));
   }
@@ -54,7 +72,7 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     margin: 0;
-    font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+    font-family: 'Inter Tight', system-ui, -apple-system, sans-serif;
   }
 }
 
@@ -66,9 +84,35 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+  
+  /* Safari iOS viewport fix using visualViewport height */
+  .h-screen-safe {
+    height: var(--app-h);
+  }
+  
+  .min-h-screen-safe {
+    min-height: var(--app-h);
+  }
+  
+  .fullscreen {
+    height: var(--app-h);
+  }
 }
 
-/* Page transition animations */
+/* Force overlay and sheet to cover entire viewport on mobile Safari */
+@supports (-webkit-touch-callout: none) {
+  [data-radix-dialog-overlay] {
+    height: var(--app-h) !important;
+    max-height: 100dvh !important;
+  }
+  
+  [data-radix-dialog-content] {
+    height: var(--app-h) !important;
+    max-height: 100dvh !important;
+  }
+}
+
+/* Page transition animations - Optimized for 60fps */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -91,21 +135,21 @@
 
 @keyframes slideUp {
   from {
-    transform: translateY(20px);
+    transform: translate3d(0, 20px, 0);
     opacity: 0;
   }
   to {
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
     opacity: 1;
   }
 }
 
 @keyframes slideInRight {
   from {
-    transform: translateX(100%);
+    transform: translate3d(100%, 0, 0);
   }
   to {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
@@ -122,21 +166,25 @@
   }
 }
 
-/* Smooth page entrance */
+/* Smooth page entrance with GPU acceleration */
 .page-enter {
-  animation: fadeIn 0.3s ease-out;
+  animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: opacity;
 }
 
 .page-fade-in-bg {
-  animation: fadeInBackground 0.5s ease-out;
+  animation: fadeInBackground 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: opacity, backdrop-filter;
 }
 
 .page-slide-up {
-  animation: slideUp 0.4s ease-out;
+  animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity;
 }
 
 .morph-button {
-  animation: morphButton 0.5s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+  animation: morphButton 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  will-change: width, height;
 }
 
 /* Voice chat specific animations */
@@ -150,7 +198,15 @@
 }
 
 .pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
+  animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  will-change: box-shadow;
+}
+
+/* Performance optimizations */
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
 }
 
 

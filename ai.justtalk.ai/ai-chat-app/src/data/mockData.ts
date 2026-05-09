@@ -21,8 +21,8 @@ export interface AISubscription {
   student_id: string;
   subscription_type: 'basic' | 'premium' | 'unlimited';
   status: 'active' | 'paused' | 'canceled' | 'expired' | 'past_due';
-  monthly_message_limit: number | null;
-  messages_used_this_period: number;
+  voice_minutes_limit: number | null;
+  voice_seconds_used?: number;
   price_cents: number;
   currency: string;
   billing_cycle: 'monthly' | 'yearly';
@@ -36,7 +36,7 @@ export interface AISubscriptionPlan {
   plan_name: string;
   plan_type: 'basic' | 'premium' | 'unlimited';
   description: string;
-  monthly_message_limit: number | null;
+  voice_minutes_limit: number | null;
   price_cents: number;
   currency: string;
   billing_cycle: 'monthly' | 'yearly';
@@ -130,8 +130,8 @@ export const mockSubscription: AISubscription = {
   student_id: '1',
   subscription_type: 'premium',
   status: 'active',
-  monthly_message_limit: 500,
-  messages_used_this_period: 127,
+  voice_minutes_limit: 120,
+  voice_seconds_used: 4572,
   price_cents: 2999,
   currency: 'usd',
   billing_cycle: 'monthly',
@@ -147,15 +147,15 @@ export const mockSubscriptionPlans: AISubscriptionPlan[] = [
     plan_name: 'Basic',
     plan_type: 'basic',
     description: 'Perfect for casual learners',
-    monthly_message_limit: 100,
+    voice_minutes_limit: 30,
     price_cents: 999,
     currency: 'usd',
     billing_cycle: 'monthly',
     features: [
-      '100 text messages/month',
+      '30 minutes voice/month',
       '24/7 availability',
       'Basic AI tutor',
-      'Text-only conversations'
+      'Voice conversations'
     ],
     is_active: true,
     is_featured: false,
@@ -166,12 +166,12 @@ export const mockSubscriptionPlans: AISubscriptionPlan[] = [
     plan_name: 'Premium Plus',
     plan_type: 'premium',
     description: 'Best for serious learners',
-    monthly_message_limit: 500,
+    voice_minutes_limit: 120,
     price_cents: 2999,
     currency: 'usd',
     billing_cycle: 'monthly',
     features: [
-      '500 messages/month',
+      '120 minutes voice/month',
       'Voice conversation',
       'Advanced transcription',
       'Vocabulary tracking',
@@ -187,7 +187,7 @@ export const mockSubscriptionPlans: AISubscriptionPlan[] = [
     plan_name: 'Unlimited Plus',
     plan_type: 'unlimited',
     description: 'For power users',
-    monthly_message_limit: null,
+    voice_minutes_limit: null,
     price_cents: 6999,
     currency: 'usd',
     billing_cycle: 'monthly',

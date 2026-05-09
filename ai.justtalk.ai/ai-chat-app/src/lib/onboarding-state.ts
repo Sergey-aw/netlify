@@ -3,12 +3,23 @@
  * Tracks user progress through signup, onboarding, and subscription
  */
 
-export type OnboardingStep = 
-  | 'email-entry'           // Initial email entry
+export type OnboardingStep =
   | 'pronunciation-assessment' // Pronunciation test
-  | 'onboarding-goals'      // Step 1: Learning goals
-  | 'onboarding-interests'  // Step 2: Interests
-  | 'onboarding-preferences' // Step 3: Preferences (CEFR level, etc)
+  | 'onboarding-age'        // Age selection
+  | 'onboarding-native-language' // Native language
+  | 'onboarding-speaking-confidence' // Speaking confidence
+  | 'onboarding-current-learning' // Current learning methods
+  | 'onboarding-daily-usage' // Daily English usage
+  | 'onboarding-pain-points' // Speaking pain points
+  | 'onboarding-motivation' // Why improve English
+  | 'onboarding-vocab-intro' // Vocabulary check intro
+  | 'onboarding-name'       // User name entry
+  | 'onboarding-vocab-check' // Vocabulary word selection
+  | 'onboarding-vocab-result' // Vocabulary result
+  | 'onboarding-goals'      // Learning goals
+  | 'onboarding-interests'  // Interests
+  | 'onboarding-preferences' // Preferences (CEFR level, etc)
+  | 'email-entry'           // Email signup (after onboarding screens)
   | 'subscription-selection' // Choose a plan
   | 'subscription-payment'   // Payment in progress
   | 'email-verification'     // Waiting for email verification
@@ -56,7 +67,7 @@ export function saveOnboardingState(state: Partial<OnboardingState>): void {
   try {
     const current = getOnboardingState();
     const updated: OnboardingState = {
-      currentStep: state.currentStep ?? current?.currentStep ?? 'email-entry',
+      currentStep: state.currentStep ?? current?.currentStep ?? 'pronunciation-assessment',
       email: state.email ?? current?.email ?? null,
       hasCompletedOnboarding: state.hasCompletedOnboarding ?? current?.hasCompletedOnboarding ?? false,
       hasActiveSubscription: state.hasActiveSubscription ?? current?.hasActiveSubscription ?? false,
@@ -124,16 +135,38 @@ export function getResumeRoute(state: OnboardingState): string {
   
   // Resume at current step
   switch (state.currentStep) {
-    case 'email-entry':
-      return '/login';
     case 'pronunciation-assessment':
       return '/onboarding/pronunciation';
+    case 'onboarding-age':
+      return '/onboarding/age';
+    case 'onboarding-native-language':
+      return '/onboarding/native-language';
+    case 'onboarding-speaking-confidence':
+      return '/onboarding/speaking-confidence';
+    case 'onboarding-current-learning':
+      return '/onboarding/current-learning';
+    case 'onboarding-daily-usage':
+      return '/onboarding/daily-usage';
+    case 'onboarding-pain-points':
+      return '/onboarding/pain-points';
+    case 'onboarding-motivation':
+      return '/onboarding/motivation';
+    case 'onboarding-vocab-intro':
+      return '/onboarding/vocab-intro';
+    case 'onboarding-name':
+      return '/onboarding/name';
+    case 'onboarding-vocab-check':
+      return '/onboarding/vocab-check';
+    case 'onboarding-vocab-result':
+      return '/onboarding/vocab-result';
     case 'onboarding-goals':
       return '/onboarding/goals';
     case 'onboarding-interests':
       return '/onboarding/interests';
     case 'onboarding-preferences':
       return '/onboarding/preferences';
+    case 'email-entry':
+      return '/login';
     case 'subscription-selection':
     case 'subscription-payment':
       return '/subscription-plans';
@@ -142,7 +175,7 @@ export function getResumeRoute(state: OnboardingState): string {
     case 'completed':
       return '/ai-chat';
     default:
-      return '/login';
+      return '/welcome';
   }
 }
 
@@ -153,11 +186,72 @@ export function shouldResumeOnboarding(): { shouldResume: boolean; route: string
   const state = getOnboardingState();
   
   if (!state || state.currentStep === 'completed') {
-    return { shouldResume: false, route: '/login' };
+    return { shouldResume: false, route: '/welcome' };
   }
   
   return {
     shouldResume: true,
     route: getResumeRoute(state),
   };
+}
+
+// ========================================
+// PRICING VARIANT PERSISTENCE
+// ========================================
+
+/**
+ * Valid pricing variants for A/B testing
+ */
+export type PricingVariant = 'control' | 'plan-a' | 'plan-b';
+
+const PRICING_VARIANT_KEY = 'justai_pricing_variant';
+
+/**
+ * Check if a value is a valid pricing variant
+ */
+export function isValidPricingVariant(value: string | null): value is PricingVariant {
+  return value !== null && ['control', 'plan-a', 'plan-b'].includes(value);
+}
+
+/**
+ * Save pricing variant from landing page URL
+ * This should be called when user first lands on the welcome page
+ */
+export function savePricingVariant(variant: PricingVariant): void {
+  try {
+    localStorage.setItem(PRICING_VARIANT_KEY, variant);
+    console.log('[Pricing Variant] Saved to localStorage:', variant);
+  } catch (error) {
+    console.error('Error saving pricing variant:', error);
+  }
+}
+
+/**
+ * Get stored pricing variant from localStorage
+ * Returns null if not found or invalid
+ */
+export function getPricingVariant(): PricingVariant | null {
+  try {
+    const stored = localStorage.getItem(PRICING_VARIANT_KEY);
+    if (stored && isValidPricingVariant(stored)) {
+      return stored;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error reading pricing variant:', error);
+    return null;
+  }
+}
+
+/**
+ * Clear stored pricing variant
+ * Should be called after successful subscription
+ */
+export function clearPricingVariant(): void {
+  try {
+    localStorage.removeItem(PRICING_VARIANT_KEY);
+    console.log('[Pricing Variant] Cleared from localStorage');
+  } catch (error) {
+    console.error('Error clearing pricing variant:', error);
+  }
 }

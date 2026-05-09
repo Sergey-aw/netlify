@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check } from 'lucide-react';
+import { Check, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { learningGoals } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { updateOnboardingStep } from '@/lib/onboarding-state';
+import { trackOnboardingStep } from '@/lib/posthog';
+
+const TOTAL_STEPS = 15;
+const CURRENT_STEP = 13;
 
 export default function OnboardingGoals() {
   const navigate = useNavigate();
@@ -12,6 +16,7 @@ export default function OnboardingGoals() {
 
   // Load from localStorage on mount
   useEffect(() => {
+    trackOnboardingStep('goals', 'started');
     const saved = JSON.parse(localStorage.getItem('justai_onboarding_data') || '{}');
     if (saved.goals) {
       setSelectedGoals(saved.goals);
@@ -31,6 +36,12 @@ export default function OnboardingGoals() {
       saved.goals = selectedGoals;
       localStorage.setItem('justai_onboarding_data', JSON.stringify(saved));
       
+      // Track completion
+      trackOnboardingStep('goals', 'completed', { 
+        goals_selected: selectedGoals.length,
+        goals: selectedGoals 
+      });
+      
       // Update onboarding state
       updateOnboardingStep('onboarding-interests');
       
@@ -42,12 +53,14 @@ export default function OnboardingGoals() {
     <div className="min-h-screen bg-white flex flex-col">
       {/* Progress Indicator */}
       <div className="px-4 py-6">
-        <div className="flex gap-1.5 mb-4">
-          <div className="h-1 flex-1 bg-blue-500 rounded-full" />
-          <div className="h-1 flex-1 bg-gray-200 rounded-full" />
-          <div className="h-1 flex-1 bg-gray-200 rounded-full" />
+        <div className="flex items-center gap-3 mb-4">
+          <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-gray-600">
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${(CURRENT_STEP / TOTAL_STEPS) * 100}%` }} />
+          </div>
         </div>
-        <p className="text-sm text-gray-500">Step 1 of 3</p>
       </div>
 
       {/* Content */}

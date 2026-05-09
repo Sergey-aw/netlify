@@ -164,9 +164,15 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { priceId, coupon } = await req.json()
+    const { priceId, coupon, trialDays, trialVariant, embedded } = await req.json()
     
-    console.log('Edge function: Request body parsed', { priceId, coupon: coupon || 'none' })
+    console.log('Edge function: Request body parsed', { 
+      priceId, 
+      coupon: coupon || 'none',
+      trialDays: trialDays || 'none',
+      trialVariant: trialVariant || 'none',
+      embedded: embedded || false
+    })
 
     if (!priceId) {
       return new Response(
@@ -299,8 +305,6 @@ serve(async (req) => {
         },
       ],
       mode: 'subscription',
-      success_url: `${req.headers.get('origin')}/subscription-status?success=true`,
-      cancel_url: `${req.headers.get('origin')}/subscription-plans?canceled=true`,
       metadata: {
         student_id: studentId, // Use profile ID from profiles table
       },
@@ -313,6 +317,28 @@ serve(async (req) => {
       allow_promotion_codes: true,
     }
 
+    // Configure for embedded or redirect mode
+    if (embedded) {
+      // Embedded checkout - user stays on our domain
+      sessionParams.ui_mode = 'embedded'
+      sessionParams.return_url = `${req.headers.get('origin')}/subscription-status?session_id={CHECKOUT_SESSION_ID}`
+    } else {
+      // Traditional redirect checkout
+      sessionParams.success_url = `${req.headers.get('origin')}/subscription-status?success=true`
+      sessionParams.cancel_url = `${req.headers.get('origin')}/subscription-plans?canceled=true`
+    }
+
+    // Add trial period if provided
+    if (trialDays && trialDays > 0) {
+      console.log('Edge function: Adding trial period', { trialDays, trialVariant })
+      sessionParams.subscription_data!.trial_period_days = trialDays
+      // Store trial info in metadata
+      sessionParams.subscription_data!.metadata!.trial_days = trialDays.toString()
+      if (trialVariant) {
+        sessionParams.subscription_data!.metadata!.trial_variant = trialVariant
+      }
+    }
+
     // If a coupon code was provided, apply it
     if (coupon) {
       console.log('Edge function: Applying coupon code', { coupon })
@@ -320,6 +346,17 @@ serve(async (req) => {
     }
 
     const session = await stripe.checkout.sessions.create(sessionParams)
+
+    // Return clientSecret for embedded mode, url for redirect mode
+    if (embedded) {
+      return new Response(
+        JSON.stringify({ clientSecret: session.client_secret }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
 
     return new Response(
       JSON.stringify({ url: session.url }),

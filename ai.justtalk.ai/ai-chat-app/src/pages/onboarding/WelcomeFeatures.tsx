@@ -1,10 +1,16 @@
 import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ArrowUp } from 'lucide-react';
+import { trackWelcomeStep } from '@/lib/posthog';
 
 export default function WelcomeFeatures() {
   const navigate = useNavigate();
+  
+  useEffect(() => {
+    trackWelcomeStep('features');
+  }, []);
 
   return (
     <div className="h-screen bg-gradient-to-br from-indigo-900 via-blue-600 to-indigo-800 flex flex-col items-center justify-center p-4">

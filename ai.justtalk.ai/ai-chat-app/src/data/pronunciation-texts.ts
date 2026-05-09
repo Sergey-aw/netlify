@@ -27,12 +27,7 @@ export const PRONUNCIATION_TEXTS: PronunciationText[] = [
   },
   {
     id: 4,
-    text: "Peter Piper picked a peck of pickled peppers. How many pickled peppers did Peter Piper pick? If Peter Piper picked a peck of pickled peppers, where's the peck of pickled peppers Peter Piper picked?",
-    description: "Plosive consonants and repetition"
-  },
-  {
-    id: 5,
-    text: "Technology has revolutionized communication worldwide. People can instantly connect across continents using smartphones and internet. This global connectivity has transformed how we work, learn, and interact daily.",
+    text: "Technology has revolutionized communication worldwide. People can instantly connect across continents using smartphones and internet.",
     description: "Modern vocabulary and natural flow"
   }
 ];

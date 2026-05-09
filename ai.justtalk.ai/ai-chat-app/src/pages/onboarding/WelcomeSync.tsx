@@ -1,10 +1,21 @@
 import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ArrowRight, Bot, UserRound } from 'lucide-react';
+import { trackWelcomeStep, trackWelcomeCompleted } from '@/lib/posthog';
 
 export default function WelcomeSync() {
   const navigate = useNavigate();
+  
+  useEffect(() => {
+    trackWelcomeStep('sync');
+  }, []);
+  
+  const handleGetStarted = () => {
+    trackWelcomeCompleted();
+    navigate('/onboarding/pronunciation');
+  };
 
   return (
     <div className="h-screen bg-gradient-to-br from-purple-200 via-blue-200 to-purple-200 flex items-center justify-center p-4">
@@ -62,7 +73,7 @@ export default function WelcomeSync() {
           {/* Continue Button */}
           <div className="pt-4">
             <Button
-              onClick={() => navigate('/onboarding/pronunciation')}
+              onClick={handleGetStarted}
               className="w-full bg-gray-900 hover:bg-gray-800 text-white py-7 rounded-[24px] text-lg font-semibold shadow-lg"
             >
               Get Started

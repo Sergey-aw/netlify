@@ -88,7 +88,7 @@ export default function RolePlays() {
             <PanelLeft className="w-6 h-6 text-gray-600" />
           </Button>
           <div className="flex-1 text-center">
-            <h1 className="text-xl font-semibold">Role-play Scenarios</h1>
+            <h1 className="text-lg font-medium">Role-play Scenarios</h1>
           </div>
           <Avatar className="w-10 h-10 cursor-pointer" onClick={() => navigate('/profile')}>
             <AvatarImage src={user?.profile_photo_url} />
@@ -117,16 +117,26 @@ export default function RolePlays() {
         </div>
 
         {/* Role-play Cards */}
-        <div className="space-y-4">
+        <div className="space-y-2">
           {filteredAgents.map((agent) => (
             <Card
               key={agent.id}
-              className="p-4 cursor-pointer hover:shadow-md hover:border-primary transition-all"
+              className="p-2 cursor-pointer hover:shadow-md hover:border-primary transition-all"
               onClick={() => handleAgentClick(agent.id, agent.agentId, agent.name, agent.id, agent.description)}
             >
               <div className="flex items-start gap-4">
-                {/* Icon */}
-                <div className="text-4xl flex-shrink-0">{agent.icon}</div>
+                {/* Icon or Image */}
+                {agent.imageUrl ? (
+                  <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden">
+                    <img 
+                      src={agent.imageUrl} 
+                      alt={agent.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="text-4xl flex-shrink-0">{agent.icon}</div>
+                )}
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">

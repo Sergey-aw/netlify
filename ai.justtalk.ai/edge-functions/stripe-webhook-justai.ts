@@ -115,9 +115,11 @@ async function getPlanIdFromPriceId(priceId: string): Promise<string | null> {
 /**
  * Get billing period from Stripe subscription
  */
-function getBillingPeriod(subscription: any): 'monthly' | 'annual' {
+function getBillingPeriod(subscription: any): 'weekly' | 'monthly' | 'annual' {
   const interval = subscription.items.data[0]?.price?.recurring?.interval;
-  return interval === 'year' ? 'annual' : 'monthly';
+  if (interval === 'year') return 'annual';
+  if (interval === 'week') return 'weekly';
+  return 'monthly';
 }
 
 /**
@@ -207,13 +209,19 @@ async function handleSubscriptionCreated(
     };
   }
 
+  // Get trial information from metadata (set by PostHog feature flag experiment)
+  const trialDays = subscription.metadata?.trial_days ? parseInt(subscription.metadata.trial_days) : null;
+  const trialVariant = subscription.metadata?.trial_variant || null;
+  
+  console.log('Trial info from metadata:', { trialDays, trialVariant });
+
   // Create subscription record
   const { data, error } = await supabase
     .from('justai_subscriptions')
     .insert({
       student_id: studentId,
       subscription_type: plan.plan_type,
-      monthly_message_limit: plan.monthly_message_limit,
+      voice_minutes_limit: plan.voice_minutes_limit,
       price_cents: plan.price_cents,
       currency: 'usd',
       billing_cycle: billingPeriod,
@@ -224,7 +232,8 @@ async function handleSubscriptionCreated(
       stripe_price_id: priceId,
       current_period_start: new Date(periodStart * 1000).toISOString(),
       current_period_end: new Date(periodEnd * 1000).toISOString(),
-      messages_used_this_period: 0,
+      trial_days: trialDays,
+      trial_variant: trialVariant,
     })
     .select()
     .single();
@@ -305,7 +314,7 @@ async function handleSubscriptionUpdated(
   // If plan changed, update plan details
   if (plan) {
     updateData.subscription_type = plan.plan_type;
-    updateData.monthly_message_limit = plan.monthly_message_limit;
+    updateData.voice_minutes_limit = plan.voice_minutes_limit;
     updateData.price_cents = plan.price_cents;
     updateData.stripe_price_id = priceId;
   }
@@ -414,10 +423,9 @@ async function handlePaymentSucceeded(
   const periodStart = subscriptionItem?.current_period_start;
   const periodEnd = subscriptionItem?.current_period_end;
 
-  // Update subscription: mark as active and reset message usage
+  // Update subscription: mark as active for new period
   const updateData: any = {
     status: 'active',
-    messages_used_this_period: 0, // Reset usage for new period
     updated_at: new Date().toISOString(),
   };
 
@@ -506,6 +514,35 @@ async function handlePaymentFailed(
   };
 }
 
+/**
+ * Handle customer.subscription.trial_will_end event
+ * This event is sent 3 days before the trial ends
+ */
+async function handleTrialWillEnd(
+  subscription: any
+): Promise<WebhookResponse> {
+  console.log('⏰ Handling trial_will_end:', subscription.id);
+
+  const studentId = getStudentId(subscription);
+  if (!studentId) {
+    console.error('❌ No student_id in subscription metadata');
+    return {
+      received: true,
+      error: 'Missing student_id in subscription metadata',
+    };
+  }
+
+  console.log('Trial ending soon for student:', studentId);
+  // Note: You could add email notification logic here in the future
+
+  return {
+    received: true,
+    event_type: 'trial_will_end',
+    subscription_id: subscription.id,
+    student_id: studentId,
+  };
+}
+
 // =============================================================================
 // MAIN WEBHOOK HANDLER
 // =============================================================================
@@ -569,6 +606,10 @@ serve(async (req) => {
 
       case 'invoice.payment_failed':
         result = await handlePaymentFailed(event.data.object);
+        break;
+
+      case 'customer.subscription.trial_will_end':
+        result = await handleTrialWillEnd(event.data.object);
         break;
 
       default:

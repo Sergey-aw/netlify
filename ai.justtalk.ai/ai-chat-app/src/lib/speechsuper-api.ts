@@ -1,30 +1,23 @@
 /**
- * Speechace API Integration
- * API for pronunciation assessment
+ * SpeechSuper API Integration
+ * API for pronunciation assessment in onboarding flow
  */
 
-export interface SpeechaceWordScore {
+export interface SpeechSuperWordScore {
   word: string;
   quality_score: number;
-  phone_score_list: Array<{
+  phone_score_list?: Array<{
     phone: string;
     quality_score: number;
-    extent: [number, number];
   }>;
 }
 
-export interface SpeechaceResponse {
-  status: string;
-  text_score: {
-    text: string;
-    word_score_list: SpeechaceWordScore[];
-    speechace_score: {
-      pronunciation: number;
-    };
-    cefr_score: {
-      pronunciation: string;
-    };
-  };
+export interface SpeechSuperResponse {
+  overall: number;
+  words: SpeechSuperWordScore[];
+  fluency?: number;
+  completeness?: number;
+  pronunciation?: number;
 }
 
 export interface PronunciationResult {
@@ -48,7 +41,20 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
 
 /**
- * Score pronunciation using Speechace API via Edge Function
+ * Map overall score to CEFR level
+ * Based on common pronunciation proficiency scales
+ */
+function mapScoreToCEFR(score: number): string {
+  if (score >= 90) return 'C2';
+  if (score >= 80) return 'C1';
+  if (score >= 70) return 'B2';
+  if (score >= 60) return 'B1';
+  if (score >= 50) return 'A2';
+  return 'A1';
+}
+
+/**
+ * Score pronunciation using SpeechSuper API via Edge Function
  */
 export async function scorePronunciation(
   audioBlob: Blob,
@@ -59,7 +65,7 @@ export async function scorePronunciation(
   formData.append('user_audio_file', audioBlob, 'recording.wav');
 
   try {
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/speechace-score`, {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/speechsuper-score`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -68,44 +74,48 @@ export async function scorePronunciation(
     });
 
     if (!response.ok) {
-      throw new Error(`Speechace API error: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('SpeechSuper API error:', errorText);
+      throw new Error(`SpeechSuper API error: ${response.statusText}`);
     }
 
-    const data: SpeechaceResponse = await response.json();
+    const data: SpeechSuperResponse = await response.json();
 
-    if (data.status !== 'success') {
-      throw new Error('Speechace API returned non-success status');
-    }
+    // Calculate overall score (use pronunciation score if available, otherwise overall)
+    const overallScore = Math.round(data.pronunciation || data.overall || 0);
 
     // Calculate words to improve (score < 75)
-    const wordsToImprove = data.text_score.word_score_list
+    const wordsToImprove = data.words
       .filter((word) => word.quality_score < 75)
       .map((word) => ({
         word: word.word,
-        score: word.quality_score,
+        score: Math.round(word.quality_score),
       }))
       .sort((a, b) => a.score - b.score);
 
-    const totalWords = data.text_score.word_score_list.length;
-    const correctWords = data.text_score.word_score_list.filter(
+    const totalWords = data.words.length;
+    const correctWords = data.words.filter(
       (word) => word.quality_score >= 90
     ).length;
 
     // Get all words with scores
-    const allWords = data.text_score.word_score_list.map((word) => ({
+    const allWords = data.words.map((word) => ({
       word: word.word,
       score: Math.round(word.quality_score),
     }));
 
+    // Extract transcript from words
+    const transcript = data.words.map((word) => word.word).join(' ');
+
     return {
-      overallScore: data.text_score.speechace_score.pronunciation,
-      cefrLevel: data.text_score.cefr_score.pronunciation,
+      overallScore,
+      cefrLevel: mapScoreToCEFR(overallScore),
       accuracy: Math.round((correctWords / totalWords) * 100),
       totalWords,
       correctWords,
       wordsToImprove,
       allWords,
-      transcript: data.text_score.text,
+      transcript,
     };
   } catch (error) {
     console.error('Error scoring pronunciation:', error);

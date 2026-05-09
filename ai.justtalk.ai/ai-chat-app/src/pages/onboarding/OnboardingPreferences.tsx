@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Pause } from 'lucide-react';
+import { Play, Pause, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cefrLevels } from '@/data/mockData';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { markOnboardingComplete } from '@/lib/onboarding-state';
+import { ensureAnonymousSession } from '@/lib/auth';
+import { markOnboardingComplete, saveOnboardingState } from '@/lib/onboarding-state';
+import { trackOnboardingStep, trackOnboardingCompleted } from '@/lib/posthog';
 
 interface Voice {
   voice_id: string;
@@ -21,9 +22,11 @@ interface Voice {
   is_primary: boolean;
 }
 
+const TOTAL_STEPS = 15;
+const CURRENT_STEP = 15;
+
 export default function OnboardingPreferences() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [cefrLevel, setCefrLevel] = useState('');
   const [voicePreference, setVoicePreference] = useState('');
   const [correctionStyle, setCorrectionStyle] = useState('balanced');
@@ -34,24 +37,26 @@ export default function OnboardingPreferences() {
 
   // Load voices from API
   useEffect(() => {
+    trackOnboardingStep('preferences', 'started');
     const loadVoices = async () => {
       try {
+        // Ensure we have a session for the API call
+        await ensureAnonymousSession();
+
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
+        const headers: Record<string, string> = {};
+        if (session) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
 
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-get-voices`,
-          {
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-            },
-          }
+          { headers }
         );
 
         if (response.ok) {
           const data = await response.json();
           setVoices(data.voices || []);
-          // Set primary voice as default
           const primaryVoice = data.voices.find((v: Voice) => v.is_primary);
           if (primaryVoice) {
             setVoicePreference(primaryVoice.voice_id);
@@ -64,25 +69,17 @@ export default function OnboardingPreferences() {
       }
     };
     loadVoices();
-  }, []);
 
-  // Load from database on mount
-  useEffect(() => {
-    const loadPreferences = async () => {
-      if (!user) return;
-      
-      const { data } = await supabase
-        .from('profiles')
-        .select('cefr_level, justai_correction_style, justai_preferred_voice')
-        .eq('id', user.id)
-        .single();
-      
-      if (data?.cefr_level) setCefrLevel(data.cefr_level);
-      if (data?.justai_correction_style) setCorrectionStyle(data.justai_correction_style);
-      if (data?.justai_preferred_voice) setVoicePreference(data.justai_preferred_voice);
-    };
-    loadPreferences();
-  }, [user]);
+    // Load saved preferences from localStorage
+    const saved = localStorage.getItem('justai_onboarding_preferences');
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        if (data.cefrLevel) setCefrLevel(data.cefrLevel);
+        if (data.correctionStyle) setCorrectionStyle(data.correctionStyle);
+      } catch {}
+    }
+  }, []);
 
   // Play voice preview
   const handlePlayVoice = (voiceId: string, previewUrl: string, e: React.MouseEvent) => {
@@ -132,51 +129,59 @@ export default function OnboardingPreferences() {
     if (!cefrLevel || !voicePreference) return;
 
     try {
-      // Save to localStorage first
+      // Save all preferences to localStorage for later DB sync after signup
       const onboardingData = {
         cefrLevel,
         correctionStyle,
+        voicePreference,
       };
       localStorage.setItem('justai_onboarding_preferences', JSON.stringify(onboardingData));
 
-      // If user is authenticated, save to database
-      if (user) {
-        // Get current profile data
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('learning_goals, interests')
-          .eq('id', user.id)
-          .single();
+      // Track completion
+      trackOnboardingStep('preferences', 'completed', {
+        cefr_level: cefrLevel,
+        correction_style: correctionStyle,
+        voice_id: voicePreference,
+      });
+      trackOnboardingCompleted({
+        cefr_level: cefrLevel,
+        correction_style: correctionStyle,
+        voice_id: voicePreference,
+      });
 
-        // Update profile with preferences and mark onboarding complete
-        await supabase
-          .from('profiles')
-          .update({
-            cefr_level: cefrLevel,
-            justai_correction_style: correctionStyle,
-            justai_preferred_voice: voicePreference,
-            justai_onboarding_completed: true,
-          })
-          .eq('id', user.id);
+      // Sync remaining onboarding data to DB
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const onboardingData = JSON.parse(localStorage.getItem('justai_onboarding_data') || '{}');
+        const profileUpdate: Record<string, unknown> = {
+          justai_onboarding_completed: true,
+          cefr_level: cefrLevel,
+          justai_correction_style: correctionStyle,
+          justai_preferred_voice: voicePreference,
+        };
+        if (onboardingData.goals) profileUpdate.learning_goals = onboardingData.goals;
+        if (onboardingData.interests) profileUpdate.interests = onboardingData.interests;
 
-        // Create or update agent config
-        await supabase
-          .from('justai_agent_configs')
-          .upsert({
-            student_id: user.id,
-            learning_goals: profile?.learning_goals || [],
-            interests: profile?.interests || [],
-            cefr_level: cefrLevel,
-            correction_style: correctionStyle,
-            system_prompt_template: 'default',
-            onboarding_completed: true,
-          });
+        await supabase.from('profiles').update(profileUpdate).eq('id', session.user.id);
+
+        await supabase.from('justai_agent_configs').upsert({
+          student_id: session.user.id,
+          learning_goals: onboardingData.goals || [],
+          interests: onboardingData.interests || [],
+          cefr_level: cefrLevel,
+          correction_style: correctionStyle,
+          system_prompt_template: 'default',
+          onboarding_completed: true,
+        });
       }
 
-      // Mark onboarding as complete in state
       markOnboardingComplete();
+      saveOnboardingState({
+        currentStep: 'subscription-selection',
+        hasCompletedOnboarding: true,
+        hasActiveSubscription: false,
+      });
 
-      // Redirect to subscription plans (paywall) regardless of auth status
       navigate('/subscription-plans');
     } catch (error) {
       console.error('Error completing onboarding:', error);
@@ -187,12 +192,14 @@ export default function OnboardingPreferences() {
     <div className="min-h-screen bg-white flex flex-col overflow-y-auto">
       {/* Progress Indicator */}
       <div className="px-4 py-6">
-        <div className="flex gap-1.5 mb-4">
-          <div className="h-1 flex-1 bg-blue-500 rounded-full" />
-          <div className="h-1 flex-1 bg-blue-500 rounded-full" />
-          <div className="h-1 flex-1 bg-blue-500 rounded-full" />
+        <div className="flex items-center gap-3 mb-4">
+          <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-gray-600">
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${(CURRENT_STEP / TOTAL_STEPS) * 100}%` }} />
+          </div>
         </div>
-        <p className="text-sm text-gray-500">Step 3 of 3</p>
       </div>
 
       {/* Content */}

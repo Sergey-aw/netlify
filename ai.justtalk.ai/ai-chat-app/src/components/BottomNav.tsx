@@ -20,7 +20,7 @@ export function BottomNav() {
     {
       path: '/dictionary',
       icon: BookOpen,
-      label: 'Dictionary',
+      label: 'Vocabulary Builder',
     },
     {
       path: '/profile',

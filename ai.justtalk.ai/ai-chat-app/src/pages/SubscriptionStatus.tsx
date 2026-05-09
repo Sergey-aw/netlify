@@ -7,16 +7,46 @@ import { Progress } from '../components/ui/progress';
 import { Badge } from '../components/ui/badge';
 import { CheckCircle, ArrowLeft } from 'lucide-react';
 import { useSubscription } from '../hooks/useSubscription';
+import { useSession } from '../hooks/useSession';
+import { trackSubscriptionActivated, identifyUser } from '@/lib/posthog';
+import { toast } from 'sonner';
 
 export default function SubscriptionStatus() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const { subscription, messagesRemaining, isLoading } = useSubscription();
+  const [hasTrackedActivation, setHasTrackedActivation] = useState(false);
+  const { subscription, voiceSecondsUsed, voiceSecondsRemaining, voiceMinutesLimit, isLoading, refetch } = useSubscription();
+  const { user, getEmail } = useSession();
 
-  // Handle success parameter
+  // Check if we're coming from checkout
+  const isPostCheckout = searchParams.get('success') === 'true' || !!searchParams.get('session_id');
+
+  // Poll for subscription after checkout (webhook may take a moment)
   useEffect(() => {
-    if (searchParams.get('success') === 'true') {
+    if (!isPostCheckout || subscription) return;
+    
+    // Refetch every 2 seconds until subscription appears (max 30 seconds)
+    let attempts = 0;
+    const maxAttempts = 15;
+    
+    const pollInterval = setInterval(() => {
+      attempts++;
+      console.log(`Polling for subscription... attempt ${attempts}/${maxAttempts}`);
+      refetch();
+      
+      if (attempts >= maxAttempts) {
+        clearInterval(pollInterval);
+        console.log('Max polling attempts reached');
+      }
+    }, 2000);
+    
+    return () => clearInterval(pollInterval);
+  }, [isPostCheckout, subscription, refetch]);
+
+  // Handle success parameter (from redirect checkout) or session_id (from embedded checkout)
+  useEffect(() => {
+    if (isPostCheckout) {
       setShowSuccessMessage(true);
       // Clear the parameter after showing message
       const timer = setTimeout(() => {
@@ -26,6 +56,37 @@ export default function SubscriptionStatus() {
       return () => clearTimeout(timer);
     }
   }, [searchParams, setSearchParams]);
+
+  // Track subscription activation when subscription data loads after Stripe success
+  useEffect(() => {
+    const trackActivation = async () => {
+      if (isPostCheckout && subscription && !hasTrackedActivation && user?.id) {
+        // First, ensure PostHog has the user's email
+        const email = await getEmail();
+        
+        // Identify user with email before tracking subscription event
+        identifyUser(user.id, {
+          email: email || undefined,
+          isAnonymous: user.is_anonymous,
+        });
+        
+        // Now track the subscription activation
+        trackSubscriptionActivated(
+          subscription.subscription_type,
+          'stripe_price_id_from_subscription',
+          subscription.price_cents,
+          subscription.billing_period,
+          subscription.stripe_subscription_id || undefined
+        );
+        setHasTrackedActivation(true);
+
+        toast.success('Subscription activated! Enjoy unlimited access to JustTalk.');
+        navigate('/ai-chat');
+      }
+    };
+
+    trackActivation();
+  }, [isPostCheckout, subscription, hasTrackedActivation, user, getEmail, navigate]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center p-8">Loading...</div>;
@@ -63,8 +124,20 @@ export default function SubscriptionStatus() {
     );
   }
 
-  const usagePercentage = subscription.monthly_message_limit
-    ? ((subscription.messages_used_this_period || 0) / subscription.monthly_message_limit) * 100
+  // Format seconds to human-readable time
+  const formatTime = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    if (minutes >= 60) {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    }
+    return `${minutes}m`;
+  };
+
+  const voiceLimitSeconds = voiceMinutesLimit ? voiceMinutesLimit * 60 : null;
+  const usagePercentage = voiceLimitSeconds
+    ? (voiceSecondsUsed / voiceLimitSeconds) * 100
     : 0;
 
   const periodEnd = new Date(subscription.current_period_end);
@@ -90,10 +163,10 @@ export default function SubscriptionStatus() {
       )}
 
       <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+        <Button variant="ghost" size="icon" onClick={() => navigate('/ai-chat')}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <h1 className="text-3xl font-bold">My Subscription</h1>
+        <h1 className="text-lg font-medium">My Subscription</h1>
       </div>
 
       <div className="space-y-6">
@@ -153,15 +226,15 @@ export default function SubscriptionStatus() {
           </CardContent>
         </Card>
 
-        {/* Usage */}
-        {subscription.monthly_message_limit && (
+        {/* Voice Time Usage */}
+        {voiceMinutesLimit && (
           <Card>
             <CardHeader>
-              <CardTitle>Usage This Period</CardTitle>
+              <CardTitle>Voice Time This Period</CardTitle>
               <CardDescription>
                 {subscription.cancel_at_period_end 
-                  ? `Messages used: ${subscription.messages_used_this_period} of ${subscription.monthly_message_limit} (will not reset)`
-                  : `Messages used: ${subscription.messages_used_this_period} of ${subscription.monthly_message_limit}`
+                  ? `Time used: ${formatTime(voiceSecondsUsed)} of ${formatTime(voiceMinutesLimit * 60)} (will not reset)`
+                  : `Time used: ${formatTime(voiceSecondsUsed)} of ${formatTime(voiceMinutesLimit * 60)}`
                 }
               </CardDescription>
             </CardHeader>
@@ -170,7 +243,7 @@ export default function SubscriptionStatus() {
               
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">
-                  {messagesRemaining ?? 0} messages remaining
+                  {formatTime(voiceSecondsRemaining ?? 0)} remaining
                 </span>
                 <span className="font-medium">
                   {usagePercentage.toFixed(0)}% used
@@ -179,22 +252,22 @@ export default function SubscriptionStatus() {
 
               {usagePercentage > 80 && (
                 <div className="text-sm text-amber-600">
-                  You're running low on messages. Consider upgrading to get more.
+                  You're running low on voice time. Consider upgrading to get more.
                 </div>
               )}
             </CardContent>
           </Card>
         )}
 
-        {!subscription.monthly_message_limit && (
+        {!voiceMinutesLimit && (
           <Card>
             <CardContent className="py-6">
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600 mb-2">
-                  ♾️ Unlimited Messages
+                  ♾️ Unlimited Voice Time
                 </div>
                 <p className="text-muted-foreground">
-                  You have unlimited access to all JustAI features
+                  You have unlimited access to all JustAI voice features
                 </p>
               </div>
             </CardContent>
@@ -222,7 +295,7 @@ export default function SubscriptionStatus() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-green-600">✓</span>
-                <span className="text-sm">{subscription.monthly_message_limit ? `${subscription.monthly_message_limit} messages per month` : 'Unlimited messages'}</span>
+                <span className="text-sm">{voiceMinutesLimit ? `${formatTime(voiceMinutesLimit * 60)} voice time per ${subscription.billing_period === 'weekly' ? 'week' : subscription.billing_period === 'annual' ? 'month' : 'month'}` : 'Unlimited voice time'}</span>
               </li>
             </ul>
           </CardContent>

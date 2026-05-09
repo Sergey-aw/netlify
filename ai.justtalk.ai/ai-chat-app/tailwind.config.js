@@ -1,3 +1,5 @@
+import cornerShapePlugin from 'tailwindcss-corner-shape'
+
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: ["class"],
@@ -6,7 +8,11 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-  	extend: {
+	extend: {
+		fontFamily: {
+			sans: ['Inter Tight', 'system-ui', '-apple-system', 'sans-serif'],
+			din: ['"DIN Round Pro"', 'Inter Tight', 'system-ui', '-apple-system', 'sans-serif'],
+		},
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
@@ -66,5 +72,9 @@ export default {
   		}
   	}
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    require("@tailwindcss/typography"),
+    cornerShapePlugin(),
+  ],
 }
