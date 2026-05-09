@@ -13,7 +13,7 @@ const motivations = [
   { id: 'connect', icon: '🫶', label: 'Connect with family & friends' },
 ];
 
-const TOTAL_STEPS = 12;
+const TOTAL_STEPS = 15;
 const CURRENT_STEP = 8;
 
 export default function OnboardingMotivation() {

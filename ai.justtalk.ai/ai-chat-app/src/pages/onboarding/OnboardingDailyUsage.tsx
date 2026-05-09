@@ -14,7 +14,7 @@ const usageOptions = [
   { id: 'rarely-use', icon: '🙈', label: 'Rarely use English' },
 ];
 
-const TOTAL_STEPS = 12;
+const TOTAL_STEPS = 15;
 const CURRENT_STEP = 6;
 
 export default function OnboardingDailyUsage() {

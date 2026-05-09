@@ -6,7 +6,7 @@ import { cefrLevels } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { ensureAnonymousSession } from '@/lib/auth';
-import { updateOnboardingStep } from '@/lib/onboarding-state';
+import { updateOnboardingStep, markOnboardingComplete, saveOnboardingState } from '@/lib/onboarding-state';
 import { trackOnboardingStep, trackOnboardingCompleted } from '@/lib/posthog';
 
 interface Voice {
@@ -21,6 +21,9 @@ interface Voice {
   preview_url: string;
   is_primary: boolean;
 }
+
+const TOTAL_STEPS = 15;
+const CURRENT_STEP = 15;
 
 export default function OnboardingPreferences() {
   const navigate = useNavigate();
@@ -134,9 +137,6 @@ export default function OnboardingPreferences() {
       };
       localStorage.setItem('justai_onboarding_preferences', JSON.stringify(onboardingData));
 
-      // Update onboarding state
-      updateOnboardingStep('email-entry');
-
       // Track completion
       trackOnboardingStep('preferences', 'completed', {
         cefr_level: cefrLevel,
@@ -149,8 +149,40 @@ export default function OnboardingPreferences() {
         voice_id: voicePreference,
       });
 
-      // Navigate to signup
-      navigate('/login');
+      // Sync remaining onboarding data to DB
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const onboardingData = JSON.parse(localStorage.getItem('justai_onboarding_data') || '{}');
+        const profileUpdate: Record<string, unknown> = {
+          justai_onboarding_completed: true,
+          cefr_level: cefrLevel,
+          justai_correction_style: correctionStyle,
+          justai_preferred_voice: voicePreference,
+        };
+        if (onboardingData.goals) profileUpdate.learning_goals = onboardingData.goals;
+        if (onboardingData.interests) profileUpdate.interests = onboardingData.interests;
+
+        await supabase.from('profiles').update(profileUpdate).eq('id', session.user.id);
+
+        await supabase.from('justai_agent_configs').upsert({
+          student_id: session.user.id,
+          learning_goals: onboardingData.goals || [],
+          interests: onboardingData.interests || [],
+          cefr_level: cefrLevel,
+          correction_style: correctionStyle,
+          system_prompt_template: 'default',
+          onboarding_completed: true,
+        });
+      }
+
+      markOnboardingComplete();
+      saveOnboardingState({
+        currentStep: 'subscription-selection',
+        hasCompletedOnboarding: true,
+        hasActiveSubscription: false,
+      });
+
+      navigate('/subscription-plans');
     } catch (error) {
       console.error('Error completing onboarding:', error);
     }
@@ -165,7 +197,7 @@ export default function OnboardingPreferences() {
             <ChevronLeft className="w-6 h-6" />
           </button>
           <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-            <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: '100%' }} />
+            <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${(CURRENT_STEP / TOTAL_STEPS) * 100}%` }} />
           </div>
         </div>
       </div>

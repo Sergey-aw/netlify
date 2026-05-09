@@ -52,7 +52,7 @@ const statsByMotivation: Record<string, StatContent> = {
 
 const defaultStat: StatContent = statsByMotivation.work;
 
-const TOTAL_STEPS = 12;
+const TOTAL_STEPS = 15;
 const CURRENT_STEP = 9;
 
 export default function OnboardingMotivationStats() {
@@ -69,7 +69,7 @@ export default function OnboardingMotivationStats() {
 
   const handleContinue = () => {
     trackOnboardingStep('motivation-stats', 'completed');
-    navigate('/onboarding/goals');
+    navigate('/onboarding/vocab-intro');
   };
 
   return (

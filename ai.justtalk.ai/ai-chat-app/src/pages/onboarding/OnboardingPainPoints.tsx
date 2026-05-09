@@ -14,7 +14,7 @@ const painPoints = [
   { id: 'none', icon: '🚫', label: 'None of the above' },
 ];
 
-const TOTAL_STEPS = 12;
+const TOTAL_STEPS = 15;
 const CURRENT_STEP = 7;
 
 export default function OnboardingPainPoints() {

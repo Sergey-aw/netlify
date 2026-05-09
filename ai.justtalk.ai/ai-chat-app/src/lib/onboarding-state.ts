@@ -12,6 +12,10 @@ export type OnboardingStep =
   | 'onboarding-daily-usage' // Daily English usage
   | 'onboarding-pain-points' // Speaking pain points
   | 'onboarding-motivation' // Why improve English
+  | 'onboarding-vocab-intro' // Vocabulary check intro
+  | 'onboarding-name'       // User name entry
+  | 'onboarding-vocab-check' // Vocabulary word selection
+  | 'onboarding-vocab-result' // Vocabulary result
   | 'onboarding-goals'      // Learning goals
   | 'onboarding-interests'  // Interests
   | 'onboarding-preferences' // Preferences (CEFR level, etc)
@@ -147,6 +151,14 @@ export function getResumeRoute(state: OnboardingState): string {
       return '/onboarding/pain-points';
     case 'onboarding-motivation':
       return '/onboarding/motivation';
+    case 'onboarding-vocab-intro':
+      return '/onboarding/vocab-intro';
+    case 'onboarding-name':
+      return '/onboarding/name';
+    case 'onboarding-vocab-check':
+      return '/onboarding/vocab-check';
+    case 'onboarding-vocab-result':
+      return '/onboarding/vocab-result';
     case 'onboarding-goals':
       return '/onboarding/goals';
     case 'onboarding-interests':

@@ -31,7 +31,7 @@ const languages = [
   { code: 'eng', flag: '🇬🇧', name: 'English', native: 'English' },
 ];
 
-const TOTAL_STEPS = 12;
+const TOTAL_STEPS = 15;
 const CURRENT_STEP = 2;
 
 export default function OnboardingNativeLanguage() {

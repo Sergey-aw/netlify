@@ -14,7 +14,7 @@ const learningMethods = [
   { id: 'not-learning', icon: '❌', label: 'Not learning right now' },
 ];
 
-const TOTAL_STEPS = 12;
+const TOTAL_STEPS = 15;
 const CURRENT_STEP = 4;
 
 export default function OnboardingCurrentLearning() {

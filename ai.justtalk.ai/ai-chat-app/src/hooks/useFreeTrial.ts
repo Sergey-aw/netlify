@@ -7,8 +7,8 @@ import { useSubscription } from './useSubscription';
 export const FREE_TRIAL_VOICE_SECONDS_LIMIT = 300; // 5 minutes
 
 // Categories locked during free trial
-export const LOCKED_CATEGORIES = ['Business', 'Interview', 'Dating', 'Travel'];
-export const UNLOCKED_CATEGORIES = ['Daily Life', 'Social'];
+export const LOCKED_CATEGORIES = ['Business', 'Interview', 'Education', 'Travel'];
+export const UNLOCKED_CATEGORIES = ['Daily Life', 'Social', 'Dating'];
 
 export interface FreeTrialState {
   isFreeTrial: boolean;           // true if no active subscription

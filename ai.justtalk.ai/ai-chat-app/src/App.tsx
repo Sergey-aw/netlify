@@ -42,6 +42,10 @@ import OnboardingGoals from './pages/onboarding/OnboardingGoals'
 import OnboardingInterests from './pages/onboarding/OnboardingInterests'
 import OnboardingPreferences from './pages/onboarding/OnboardingPreferences'
 import PronunciationAssessment from './pages/onboarding/PronunciationAssessment'
+import VocabCheckIntro from './pages/onboarding/VocabCheckIntro'
+import OnboardingName from './pages/onboarding/OnboardingName'
+import VocabCheckWords from './pages/onboarding/VocabCheckWords'
+import VocabCheckResult from './pages/onboarding/VocabCheckResult'
 import WelcomeProgress from './pages/onboarding/WelcomeProgress'
 import WelcomeFeatures from './pages/onboarding/WelcomeFeatures'
 import WelcomeSync from './pages/onboarding/WelcomeSync'
@@ -89,6 +93,10 @@ function App() {
             <Route path="/onboarding/pain-points" element={<OnboardingPainPoints />} />
             <Route path="/onboarding/motivation" element={<OnboardingMotivation />} />
             <Route path="/onboarding/motivation-stats" element={<OnboardingMotivationStats />} />
+            <Route path="/onboarding/vocab-intro" element={<VocabCheckIntro />} />
+            <Route path="/onboarding/name" element={<OnboardingName />} />
+            <Route path="/onboarding/vocab-check" element={<VocabCheckWords />} />
+            <Route path="/onboarding/vocab-result" element={<VocabCheckResult />} />
             <Route path="/onboarding/goals" element={<OnboardingGoals />} />
             <Route path="/onboarding/interests" element={<OnboardingInterests />} />
             <Route path="/onboarding/preferences" element={<OnboardingPreferences />} />

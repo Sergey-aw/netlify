@@ -13,7 +13,7 @@ const ageGroups = [
   { id: '60-plus', label: '60+' },
 ];
 
-const TOTAL_STEPS = 12;
+const TOTAL_STEPS = 15;
 const CURRENT_STEP = 1;
 
 export default function OnboardingAge() {

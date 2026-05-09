@@ -12,7 +12,7 @@ const confidenceLevels = [
   { id: 'confident', icon: '😎', label: 'I feel confident enough' },
 ];
 
-const TOTAL_STEPS = 12;
+const TOTAL_STEPS = 15;
 const CURRENT_STEP = 3;
 
 export default function OnboardingSpeakingConfidence() {
