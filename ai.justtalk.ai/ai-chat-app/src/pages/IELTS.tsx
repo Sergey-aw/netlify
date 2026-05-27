@@ -4,7 +4,7 @@ import { PanelLeft, GraduationCap, ChevronRight, CheckCircle2 } from 'lucide-rea
 import { useQuery } from '@tanstack/react-query';
 import { AppSidebar } from '@/components/AppSidebar';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { iconForTheme } from '@/components/ielts/themeIcon';
