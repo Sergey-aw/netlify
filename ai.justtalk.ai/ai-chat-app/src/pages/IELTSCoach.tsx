@@ -57,7 +57,14 @@ export default function IELTSCoach({ mode = 'part_review' }: { mode?: CoachMode 
   const partNum = Number(partNumStr) as 1 | 2 | 3;
   const navigate = useNavigate();
   const location = useLocation();
-  const targetMoment = (location.state as { targetMoment?: CoachTargetMoment } | null)?.targetMoment;
+  const navState = (location.state ?? null) as {
+    targetMoment?: CoachTargetMoment;
+    attemptId?: string;
+  } | null;
+  const targetMoment = navState?.targetMoment;
+  // If the caller passed a specific attempt (e.g. from a past-attempt's results
+  // page), coach on THAT attempt — not the latest one for this Part.
+  const requestedAttemptId = navState?.attemptId ?? null;
 
   // ============================================================
   // Current user's profile (avatar + display name)
@@ -106,10 +113,24 @@ export default function IELTSCoach({ mode = 'part_review' }: { mode?: CoachMode 
     return test.parts.find((p) => p.part_number === partNum) ?? null;
   }, [mode, test, partNum]);
 
+  /**
+   * The attempt this Coach session debriefs.
+   *   - If the caller passed a specific `attemptId` via navigation state (e.g.
+   *     from a past attempt's Results page), use that exact one.
+   *   - Otherwise fall back to the latest finalized attempt for this Part.
+   * Kept under `latestAttempt` name so the rest of the page stays untouched.
+   */
   const latestAttempt = useMemo(() => {
     if (!part) return null;
+    if (requestedAttemptId) {
+      const explicit = part.attempts.find((a) => a.id === requestedAttemptId);
+      if (explicit) return explicit;
+      // If the requested attempt isn't on this Part (data race / wrong link),
+      // fall through to the latest so the user still gets a session.
+      console.warn('[ielts-coach] requested attempt not found on part; using latest', { requestedAttemptId });
+    }
     return latestFinalizedAttempt(part.attempts);
-  }, [part]);
+  }, [part, requestedAttemptId]);
 
   const canStart = mode === 'mock_review' ? !!test : !!latestAttempt;
 
