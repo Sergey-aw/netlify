@@ -14,12 +14,13 @@ import {
   GraduationCap,
   AudioWaveform,
 } from 'lucide-react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { VoiceBars } from '@/components/VoiceBars';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
 import bgWelcome from '@/assets/bg_welcome.jpg';
 import {
   endCoachSession,
@@ -56,6 +57,38 @@ export default function IELTSCoach({ mode = 'part_review' }: { mode?: CoachMode 
   const navigate = useNavigate();
   const location = useLocation();
   const targetMoment = (location.state as { targetMoment?: CoachTargetMoment } | null)?.targetMoment;
+
+  // ============================================================
+  // Current user's profile (avatar + display name)
+  // ============================================================
+  const { data: userProfile } = useQuery({
+    queryKey: ['ielts-coach-current-user'],
+    queryFn: async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) return null;
+      const { data } = await supabase
+        .from('profiles')
+        .select('display_name, name, username, profile_photo_url')
+        .eq('id', auth.user.id)
+        .maybeSingle();
+      return data as {
+        display_name?: string | null;
+        name?: string | null;
+        username?: string | null;
+        profile_photo_url?: string | null;
+      } | null;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const userInitial = useMemo(() => {
+    const n =
+      userProfile?.display_name ||
+      userProfile?.name ||
+      userProfile?.username ||
+      'You';
+    return n.trim().charAt(0).toUpperCase() || 'U';
+  }, [userProfile]);
 
   // ============================================================
   // Test + attempt resolution
@@ -298,6 +331,33 @@ export default function IELTSCoach({ mode = 'part_review' }: { mode?: CoachMode 
     });
   };
 
+  /**
+   * Send a suggested question to the Coach as a typed user message.
+   * Pushes it into the local transcript too so the user sees what was sent.
+   * @elevenlabs/react v0.12 exposes `sendUserMessage` on the conversation object.
+   */
+  const handleSendSuggestion = (text: string) => {
+    if (phase !== 'in_session' || !text.trim()) return;
+    setTranscript((prev) => [
+      ...prev,
+      { speaker: 'student', text, ts: Date.now() },
+    ]);
+    try {
+      const sendFn = (
+        conversation as unknown as { sendUserMessage?: (s: string) => void }
+      ).sendUserMessage;
+      if (typeof sendFn === 'function') {
+        sendFn.call(conversation, text);
+      } else {
+        console.warn('[ielts-coach] sendUserMessage not available on SDK; suggestion was not delivered.');
+      }
+    } catch (e) {
+      console.warn('[ielts-coach] sendUserMessage failed:', e);
+    }
+  };
+
+  const suggestions = useMemo(() => buildSuggestions(mode), [mode]);
+
   const isRecording = phase === 'in_session' && !isMuted;
   const isAISpeaking = phase === 'in_session' && conversation.isSpeaking === true;
 
@@ -430,7 +490,12 @@ export default function IELTSCoach({ mode = 'part_review' }: { mode?: CoachMode 
           )}
 
           {(phase === 'in_session' || phase === 'ended') && (
-            <TranscriptView transcript={transcript} ended={phase === 'ended'} />
+            <TranscriptView
+              transcript={transcript}
+              ended={phase === 'ended'}
+              userPhotoUrl={userProfile?.profile_photo_url ?? undefined}
+              userInitial={userInitial}
+            />
           )}
 
           {/* End-of-session footer */}
@@ -473,8 +538,28 @@ export default function IELTSCoach({ mode = 'part_review' }: { mode?: CoachMode 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.3 }}
-          className="px-5 pb-6"
+          className="px-3 sm:px-5 pb-6 space-y-3"
         >
+          {/* Suggestion chips — tap to ask the Coach something useful */}
+          {phase === 'in_session' && suggestions.length > 0 && (
+            <div
+              className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-3 sm:mx-0 px-3 sm:px-0"
+              data-swipe-ignore
+            >
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => handleSendSuggestion(s)}
+                  className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-white/95 backdrop-blur px-3 py-1.5 text-xs text-gray-800 shadow-sm hover:bg-white hover:shadow transition-all active:scale-95"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 text-primary" />
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="flex items-center gap-3 justify-center">
             <button
               className="flex-shrink-0 w-12 h-12 rounded-full bg-white shadow-md flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
@@ -514,9 +599,13 @@ export default function IELTSCoach({ mode = 'part_review' }: { mode?: CoachMode 
 function TranscriptView({
   transcript,
   ended,
+  userPhotoUrl,
+  userInitial,
 }: {
   transcript: TranscriptLine[];
   ended: boolean;
+  userPhotoUrl?: string;
+  userInitial: string;
 }) {
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -569,8 +658,9 @@ function TranscriptView({
           </div>
           {line.speaker === 'student' && (
             <Avatar className="w-8 h-8 flex-shrink-0">
-              <AvatarFallback className="bg-muted text-foreground/80">
-                You
+              {userPhotoUrl && <AvatarImage src={userPhotoUrl} alt="You" />}
+              <AvatarFallback className="bg-muted text-foreground/80 text-xs font-semibold">
+                {userInitial}
               </AvatarFallback>
             </Avatar>
           )}
@@ -733,4 +823,34 @@ function formatMMSS(totalSec: number): string {
   const m = Math.floor(totalSec / 60);
   const s = totalSec % 60;
   return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Curated suggestion prompts the user can tap to ask the Coach. Mode-specific
+ * so the prompts stay relevant.
+ */
+function buildSuggestions(mode: CoachMode): string[] {
+  if (mode === 'mock_review') {
+    return [
+      'What single thing would lift my overall band?',
+      'Which Part needs the most work?',
+      'Compare my Part 1 vs Part 3',
+      'What does the examiner listen for in fluency?',
+    ];
+  }
+  if (mode === 'retry') {
+    return [
+      'Give me a hint',
+      'Which grammar should I use here?',
+      'Show me a stronger version',
+      'What was wrong with my last answer?',
+    ];
+  }
+  // part_review
+  return [
+    "What's my highest-impact fix?",
+    'How do I get to band 7?',
+    'Show me a stronger version of what I said',
+    'What does the examiner listen for here?',
+  ];
 }
