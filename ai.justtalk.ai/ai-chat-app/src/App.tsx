@@ -50,6 +50,12 @@ import WelcomeProgress from './pages/onboarding/WelcomeProgress'
 import WelcomeFeatures from './pages/onboarding/WelcomeFeatures'
 import WelcomeSync from './pages/onboarding/WelcomeSync'
 import PronunciationPractice from './pages/PronunciationPractice'
+import IELTS from './pages/IELTS'
+import IELTSCategory from './pages/IELTSCategory'
+import IELTSTest from './pages/IELTSTest'
+import IELTSExaminer from './pages/IELTSExaminer'
+import IELTSResults from './pages/IELTSResults'
+import IELTSCoach from './pages/IELTSCoach'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -109,6 +115,14 @@ function App() {
             <Route path="/role-plays-v1" element={<ProtectedRoute><RolePlays /></ProtectedRoute>} />
             <Route path="/dictionary" element={<ProtectedRoute><VocabularyBuilder /></ProtectedRoute>} />
             <Route path="/pronunciation-practice" element={<ProtectedRoute><PronunciationPractice /></ProtectedRoute>} />
+            <Route path="/ielts" element={<ProtectedRoute><IELTS /></ProtectedRoute>} />
+            <Route path="/ielts/category/:slug" element={<ProtectedRoute><IELTSCategory /></ProtectedRoute>} />
+            <Route path="/ielts/test/:id" element={<ProtectedRoute><IELTSTest /></ProtectedRoute>} />
+            <Route path="/ielts/test/:id/part/:partNum/examiner" element={<ProtectedRoute><IELTSExaminer /></ProtectedRoute>} />
+            <Route path="/ielts/attempt/:attemptId/results" element={<ProtectedRoute><IELTSResults /></ProtectedRoute>} />
+            <Route path="/ielts/test/:id/part/:partNum/coach" element={<ProtectedRoute><IELTSCoach /></ProtectedRoute>} />
+            <Route path="/ielts/test/:id/part/:partNum/coach/retry" element={<ProtectedRoute><IELTSCoach mode="retry" /></ProtectedRoute>} />
+            <Route path="/ielts/test/:id/coach/mock" element={<ProtectedRoute><IELTSCoach mode="mock_review" /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/contact-support" element={<ProtectedRoute><ContactSupport /></ProtectedRoute>} />

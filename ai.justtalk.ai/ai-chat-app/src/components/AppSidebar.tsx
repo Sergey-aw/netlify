@@ -10,6 +10,7 @@ import {
   Loader2,
   HeadphonesIcon,
   Mic,
+  GraduationCap,
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -323,6 +324,15 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
                   >
                     <Mic className="w-4 h-4" />
                     <span>Pronunciation</span>
+                    <Badge className="ml-1 bg-slate-800 text-white text-[10px] px-1.5 py-0 h-4 ">new</Badge>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => handleNavigate('/ielts')}
+                  >
+                    <GraduationCap className="w-4 h-4" />
+                    <span>IELTS</span>
                     <Badge className="ml-1 bg-slate-800 text-white text-[10px] px-1.5 py-0 h-4 ">new</Badge>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
