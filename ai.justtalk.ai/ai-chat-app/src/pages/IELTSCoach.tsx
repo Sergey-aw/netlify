@@ -13,6 +13,7 @@ import {
   MessageCircle,
   GraduationCap,
   AudioWaveform,
+  RefreshCw,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -331,10 +332,47 @@ export default function IELTSCoach({ mode = 'part_review' }: { mode?: CoachMode 
     });
   };
 
+  // ============================================================
+  // Suggestion pool — 50+ prompts per mode, 4 visible at a time,
+  // rotated on each Coach turn / tap / manual reshuffle.
+  // ============================================================
+  const SUGGESTIONS_VISIBLE = 4;
+  const pool = useMemo(() => buildSuggestionPool(mode), [mode]);
+  const [usedSuggestions, setUsedSuggestions] = useState<Set<string>>(new Set());
+  const [visibleSuggestions, setVisibleSuggestions] = useState<string[]>([]);
+
+  // Initialize / re-initialize the visible set when mode (=pool) changes.
+  useEffect(() => {
+    setUsedSuggestions(new Set());
+    setVisibleSuggestions(pickN(pool, SUGGESTIONS_VISIBLE, new Set(), []));
+  }, [pool]);
+
+  // Rotate ONE visible chip every time the Coach posts a new message —
+  // keeps the prompt strip feeling alive without churning everything.
+  const lastCoachTsRef = useRef<number>(0);
+  useEffect(() => {
+    if (transcript.length === 0) return;
+    const last = transcript[transcript.length - 1];
+    if (last.speaker !== 'coach') return;
+    if (last.ts <= lastCoachTsRef.current) return;
+    lastCoachTsRef.current = last.ts;
+
+    setVisibleSuggestions((prev) => {
+      if (prev.length === 0) return prev;
+      const fresh = pickN(pool, 1, usedSuggestions, prev);
+      if (fresh.length === 0) return prev;
+      const swapIdx = Math.floor(Math.random() * prev.length);
+      const next = [...prev];
+      next[swapIdx] = fresh[0];
+      return next;
+    });
+  }, [transcript, pool, usedSuggestions]);
+
   /**
    * Send a suggested question to the Coach as a typed user message.
    * Pushes it into the local transcript too so the user sees what was sent.
    * @elevenlabs/react v0.12 exposes `sendUserMessage` on the conversation object.
+   * Also marks the suggestion used and slots a fresh one in.
    */
   const handleSendSuggestion = (text: string) => {
     if (phase !== 'in_session' || !text.trim()) return;
@@ -354,9 +392,21 @@ export default function IELTSCoach({ mode = 'part_review' }: { mode?: CoachMode 
     } catch (e) {
       console.warn('[ielts-coach] sendUserMessage failed:', e);
     }
+    // Mark used + replace in visible set
+    setUsedSuggestions((prev) => {
+      const nextUsed = new Set(prev);
+      nextUsed.add(text);
+      setVisibleSuggestions((prevVis) => {
+        const fresh = pickN(pool, 1, nextUsed, prevVis.filter((p) => p !== text));
+        return prevVis.map((p) => (p === text ? fresh[0] ?? p : p));
+      });
+      return nextUsed;
+    });
   };
 
-  const suggestions = useMemo(() => buildSuggestions(mode), [mode]);
+  const handleReshuffleSuggestions = () => {
+    setVisibleSuggestions(pickN(pool, SUGGESTIONS_VISIBLE, usedSuggestions, []));
+  };
 
   const isRecording = phase === 'in_session' && !isMuted;
   const isAISpeaking = phase === 'in_session' && conversation.isSpeaking === true;
@@ -541,22 +591,32 @@ export default function IELTSCoach({ mode = 'part_review' }: { mode?: CoachMode 
           className="px-3 sm:px-5 pb-6 space-y-3"
         >
           {/* Suggestion chips — tap to ask the Coach something useful */}
-          {phase === 'in_session' && suggestions.length > 0 && (
+          {phase === 'in_session' && visibleSuggestions.length > 0 && (
             <div
-              className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-3 sm:mx-0 px-3 sm:px-0"
+              className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-3 sm:mx-0 px-3 sm:px-0"
               data-swipe-ignore
             >
-              {suggestions.map((s) => (
+              {visibleSuggestions.map((s) => (
                 <button
                   key={s}
                   type="button"
                   onClick={() => handleSendSuggestion(s)}
-                  className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-white/95 backdrop-blur px-3 py-1.5 text-xs text-gray-800 shadow-sm hover:bg-white hover:shadow transition-all active:scale-95"
+                  className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-white/95 backdrop-blur px-3 py-1.5 text-xs text-gray-800 shadow-sm hover:bg-white hover:shadow transition-all active:scale-95 max-w-[260px]"
+                  title={s}
                 >
-                  <MessageCircle className="w-3.5 h-3.5 text-primary" />
-                  {s}
+                  <MessageCircle className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span className="truncate">{s}</span>
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={handleReshuffleSuggestions}
+                className="shrink-0 w-8 h-8 rounded-full bg-white/95 backdrop-blur flex items-center justify-center text-gray-600 hover:text-gray-900 shadow-sm hover:bg-white transition-all active:rotate-90"
+                aria-label="Shuffle suggestions"
+                title="Shuffle suggestions"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+              </button>
             </div>
           )}
 
@@ -826,31 +886,165 @@ function formatMMSS(totalSec: number): string {
 }
 
 /**
- * Curated suggestion prompts the user can tap to ask the Coach. Mode-specific
- * so the prompts stay relevant.
+ * Pick `n` items from `pool` at random, excluding anything already used
+ * or currently visible. Returns up to `n` items.
  */
-function buildSuggestions(mode: CoachMode): string[] {
+function pickN(
+  pool: string[],
+  n: number,
+  used: Set<string>,
+  visible: string[],
+): string[] {
+  const visibleSet = new Set(visible);
+  const available = pool.filter((p) => !used.has(p) && !visibleSet.has(p));
+  // Fisher-Yates partial shuffle is overkill for ~50 items — naive sort is fine.
+  const shuffled = available
+    .map((s) => [Math.random(), s] as const)
+    .sort((a, b) => a[0] - b[0])
+    .map(([, s]) => s);
+  return shuffled.slice(0, n);
+}
+
+/**
+ * Curated suggestion *pool* per mode. The visible chip strip shows 4 at a
+ * time and rotates as the conversation progresses.
+ */
+function buildSuggestionPool(mode: CoachMode): string[] {
+  const universal = [
+    "What's my highest-impact fix?",
+    'How do I get to band 7?',
+    'How do I get to band 8?',
+    'What does the examiner listen for in fluency?',
+    'What does the examiner listen for in vocabulary?',
+    'What does the examiner listen for in grammar?',
+    'What does the examiner listen for in pronunciation?',
+    'Show me a stronger version of what I said',
+    "What's a band-7 model answer for this?",
+    "What's a band-8 model answer for this?",
+    'Give me 3 collocations I should try',
+    'Give me 3 discourse markers I should try',
+    'Am I using fillers too much?',
+    'Do I sound natural or rehearsed?',
+    'Was my speech rate okay?',
+    'Compare me to a band-7 candidate',
+    'Compare me to a band-8 candidate',
+    "What's the difference between band 6 and band 7?",
+    "What's the difference between band 7 and band 8?",
+    'Should I memorise answers?',
+    'Which idioms are safe in IELTS Speaking?',
+    'Which idioms should I avoid?',
+    'How do I improve my /th/ sound?',
+    'How do I improve my stress patterns?',
+    'How do I improve my intonation?',
+    "What's one specific thing I should fix today?",
+    'Tell me something I did well that I should keep doing',
+    'Am I making any L1 interference mistakes?',
+    'Should I use idioms?',
+    'What grammar should I practise next?',
+    'What vocabulary range am I missing?',
+    'Did I sound confident?',
+    'Are my sentences too short?',
+    'Are my sentences too long?',
+    'Give me a quick warm-up speaking task',
+    'How do I avoid sounding rehearsed?',
+    'Did I repeat myself too much?',
+    "What's a stronger way to start an answer?",
+    "What's a stronger way to end an answer?",
+    "What's one phrase I should never use?",
+    'Give me one upgrade phrase to try',
+    'How should I handle a question I don\'t know?',
+    'What if I run out of ideas mid-answer?',
+    'Quick fire: ask me three new questions',
+    'What was my best grammar move?',
+    'What was my worst grammar mistake?',
+  ];
+
   if (mode === 'mock_review') {
     return [
-      'What single thing would lift my overall band?',
       'Which Part needs the most work?',
+      'What single thing would lift my overall band?',
       'Compare my Part 1 vs Part 3',
-      'What does the examiner listen for in fluency?',
+      'Compare my Part 2 vs the rest',
+      'Which Part was my strongest?',
+      'Which Part was my weakest?',
+      "What's a realistic overall band target?",
+      'Was my Part 2 long enough?',
+      'Did I stay on topic in Part 2?',
+      'Was my Part 3 abstract enough?',
+      'Did I show range across all 3 Parts?',
+      "What's my biggest pattern across the test?",
+      'Did I repeat the same phrases too much?',
+      'Which criterion lifts fastest with practice?',
+      'Plan my next 2 weeks of practice',
+      'Plan my next session for me',
+      'What kind of test should I take next?',
+      'Should I retake this test or move on?',
+      "What's the gap to band 7?",
+      "What's the gap to band 8?",
+      'Did I sound more natural in any one Part?',
+      'How should I open Part 1 strongly?',
+      'How should I open Part 2 strongly?',
+      'How should I open Part 3 strongly?',
+      'Show me a stronger Part 2 answer',
+      'Show me a stronger Part 3 answer',
+      'Am I making the same mistake across Parts?',
+      'Should I focus on grammar or vocabulary next?',
+      'Should I focus on fluency or pronunciation next?',
+      'What was my best moment in the whole test?',
+      'What was my weakest moment in the whole test?',
+      ...universal,
     ];
   }
+
   if (mode === 'retry') {
     return [
       'Give me a hint',
       'Which grammar should I use here?',
       'Show me a stronger version',
       'What was wrong with my last answer?',
+      'Try the same question again',
+      'Try a similar question',
+      'Give me a band-7 model for this moment',
+      'Walk me through the structure',
+      "What's a useful opening for this?",
+      "What's a useful closing for this?",
+      'Which discourse marker fits here?',
+      'Which tense should I use?',
+      'Suggest a collocation I can use',
+      'Replay just the part I struggled with',
+      'Tell me what went well first',
+      'Slow it down for me',
+      'Quick-fire: push me harder',
+      'Ease me in — start easy',
+      'Give me one new word to use',
+      'Give me one new phrase to use',
+      'Should I add an example?',
+      'Should I keep my answer short?',
+      'Show me how a band-9 candidate would answer',
+      'Critique each sentence',
+      'Just give me the verdict — better or not?',
+      "What's one thing I improved?",
+      "What's still missing?",
+      'Try once more, no hints',
+      'Move on to the next moment',
+      'Was my fix natural or forced?',
+      ...universal,
     ];
   }
+
   // part_review
   return [
-    "What's my highest-impact fix?",
-    'How do I get to band 7?',
-    'Show me a stronger version of what I said',
-    'What does the examiner listen for here?',
+    'Which of my answers was the strongest?',
+    'Which of my answers was the weakest?',
+    'Why did I lose points on grammar?',
+    'Why did I lose points on vocabulary?',
+    'Why did I lose points on fluency?',
+    'Why did I lose points on pronunciation?',
+    'Was my answer relevant to the question?',
+    'Did I go off topic anywhere?',
+    'Did I use enough discourse markers?',
+    'Roleplay the examiner for one question',
+    'Can you score me again pretending you\'re a real examiner?',
+    ...universal,
   ];
 }
