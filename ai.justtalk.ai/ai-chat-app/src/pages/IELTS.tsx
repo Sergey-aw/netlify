@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PanelLeft, GraduationCap, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -13,6 +13,7 @@ import {
   groupByTheme,
   type ThemeSummary,
 } from '@/services/ielts.service';
+import { trackIeltsCatalogViewed } from '@/lib/ielts-analytics';
 
 export default function IELTS() {
   const navigate = useNavigate();
@@ -34,6 +35,11 @@ export default function IELTS() {
   });
 
   const themes = tests ? groupByTheme(tests) : [];
+
+  useEffect(() => {
+    if (tests) trackIeltsCatalogViewed(themes.length);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tests]);
 
   return (
     <div className="flex h-screen bg-gray-50">

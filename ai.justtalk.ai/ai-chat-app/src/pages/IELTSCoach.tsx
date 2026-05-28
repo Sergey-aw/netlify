@@ -34,6 +34,13 @@ import {
   type CoachTargetMoment,
   type IeltsPartDetail,
 } from '@/services/ielts.service';
+import {
+  trackIeltsCoachOpened,
+  trackIeltsCoachSessionStarted,
+  trackIeltsCoachSessionEnded,
+  trackIeltsCoachSessionError,
+  trackIeltsCoachSuggestionSent,
+} from '@/lib/ielts-analytics';
 
 type Phase = 'idle' | 'ready' | 'connecting' | 'in_session' | 'ended' | 'error';
 
@@ -65,6 +72,20 @@ export default function IELTSCoach({ mode = 'part_review' }: { mode?: CoachMode 
   // If the caller passed a specific attempt (e.g. from a past-attempt's results
   // page), coach on THAT attempt — not the latest one for this Part.
   const requestedAttemptId = navState?.attemptId ?? null;
+
+  // Fire once when the Coach screen opens.
+  const openedTrackedRef = useRef(false);
+  useEffect(() => {
+    if (openedTrackedRef.current) return;
+    openedTrackedRef.current = true;
+    trackIeltsCoachOpened({
+      mode,
+      testId,
+      partNumber: mode === 'mock_review' ? undefined : partNum,
+      hasTargetMoment: mode === 'retry' ? !!targetMoment : undefined,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ============================================================
   // Current user's profile (avatar + display name)
@@ -224,13 +245,19 @@ export default function IELTSCoach({ mode = 'part_review' }: { mode?: CoachMode 
     },
     onError: (e: unknown) => {
       console.error('[ielts-coach] ElevenLabs error:', e);
-      setErrorMsg(
+      const msg =
         typeof e === 'string'
           ? e
           : e instanceof Error
             ? e.message
-            : (e as { message?: string })?.message ?? JSON.stringify(e),
-      );
+            : (e as { message?: string })?.message ?? JSON.stringify(e);
+      trackIeltsCoachSessionError({
+        mode,
+        testId,
+        partNumber: mode === 'mock_review' ? undefined : partNum,
+        error: msg,
+      });
+      setErrorMsg(msg);
       setPhase('error');
     },
   });
@@ -261,13 +288,30 @@ export default function IELTSCoach({ mode = 'part_review' }: { mode?: CoachMode 
   }, [mode, targetMoment]);
 
   // Finalize on disconnect
+  const endTrackedRef = useRef<string | null>(null);
   useEffect(() => {
     if (phase !== 'ended' || !coachStart) return;
     const attemptToMark = mode === 'mock_review' ? null : latestAttempt?.id ?? null;
     endCoachSession(coachStart.coach_session_id, attemptToMark).catch((e) => {
       console.warn('[ielts-coach] endCoachSession failed:', e);
     });
-  }, [phase, coachStart, latestAttempt, mode]);
+
+    if (endTrackedRef.current !== coachStart.coach_session_id) {
+      endTrackedRef.current = coachStart.coach_session_id;
+      const durationSeconds = startedAtRef.current
+        ? Math.floor((Date.now() - startedAtRef.current) / 1000)
+        : 0;
+      trackIeltsCoachSessionEnded({
+        mode,
+        coachSessionId: coachStart.coach_session_id,
+        testId,
+        partNumber: mode === 'mock_review' ? undefined : partNum,
+        durationSeconds,
+        coachMessageCount: transcript.filter((l) => l.speaker === 'coach').length,
+        studentMessageCount: transcript.filter((l) => l.speaker === 'student').length,
+      });
+    }
+  }, [phase, coachStart, latestAttempt, mode, testId, partNum, transcript]);
 
   // ============================================================
   // Handlers
@@ -298,6 +342,13 @@ export default function IELTSCoach({ mode = 'part_review' }: { mode?: CoachMode 
             : { mode: 'part_review', attemptId: latestAttempt!.id },
       );
       setCoachStart(res);
+      trackIeltsCoachSessionStarted({
+        mode,
+        coachSessionId: res.coach_session_id,
+        testId,
+        partNumber: mode === 'mock_review' ? undefined : partNum,
+        attemptId: mode === 'mock_review' ? null : latestAttempt?.id ?? null,
+      });
 
       const sessionInfo = await conversation.startSession({
         signedUrl: res.signed_url,
@@ -325,7 +376,14 @@ export default function IELTSCoach({ mode = 'part_review' }: { mode?: CoachMode 
       }
     } catch (e) {
       console.error('[ielts-coach] start failed:', e);
-      setErrorMsg(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      trackIeltsCoachSessionError({
+        mode,
+        testId,
+        partNumber: mode === 'mock_review' ? undefined : partNum,
+        error: msg,
+      });
+      setErrorMsg(msg);
       setPhase('error');
     }
   };
@@ -397,6 +455,7 @@ export default function IELTSCoach({ mode = 'part_review' }: { mode?: CoachMode 
    */
   const handleSendSuggestion = (text: string) => {
     if (phase !== 'in_session' || !text.trim()) return;
+    trackIeltsCoachSuggestionSent({ mode, suggestion: text });
     setTranscript((prev) => [
       ...prev,
       { speaker: 'student', text, ts: Date.now() },
