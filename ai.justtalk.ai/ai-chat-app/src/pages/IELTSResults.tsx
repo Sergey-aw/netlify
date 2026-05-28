@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -26,6 +26,12 @@ import {
   type CefrLevel,
   type ResponseDetail,
 } from '@/services/ielts.service';
+import {
+  trackIeltsResultsViewed,
+  trackIeltsPartFinalized,
+  trackIeltsTestFinalized,
+  trackIeltsCoachRetryRequested,
+} from '@/lib/ielts-analytics';
 
 const PART_TITLES: Record<1 | 2 | 3, string> = {
   1: 'Part 1 — Personal interview',
@@ -54,7 +60,15 @@ export default function IELTSResults() {
   // If we have an attempt with responses but no score yet, run finalize once.
   const finalize = useMutation({
     mutationFn: () => finalizeIeltsPart(attemptId),
-    onSuccess: async () => {
+    onSuccess: async (data) => {
+      if (bundle?.attempt) {
+        trackIeltsPartFinalized({
+          attemptId,
+          testId: bundle.attempt.test_part.test.id,
+          partNumber: bundle.attempt.test_part.part_number,
+          score: data.score,
+        });
+      }
       await refetch();
       queryClient.invalidateQueries({ queryKey: ['ielts-test-detail'] });
       queryClient.invalidateQueries({ queryKey: ['ielts-catalog'] });
@@ -70,6 +84,9 @@ export default function IELTSResults() {
     finalizeIeltsTest(testId)
       .then((res) => {
         if (!res.pending) {
+          if (res.test_score) {
+            trackIeltsTestFinalized({ testId, score: res.test_score });
+          }
           queryClient.invalidateQueries({ queryKey: ['ielts-test-detail'] });
           queryClient.invalidateQueries({ queryKey: ['ielts-catalog'] });
         }
@@ -90,6 +107,21 @@ export default function IELTSResults() {
       finalize.mutate();
     }
   }, [bundle, finalize]);
+
+  const resultsTrackedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!bundle || !bundle.score) return;
+    if (resultsTrackedRef.current === attemptId) return;
+    resultsTrackedRef.current = attemptId;
+    trackIeltsResultsViewed({
+      attemptId,
+      testId: bundle.attempt.test_part.test.id,
+      partNumber: bundle.attempt.test_part.part_number,
+      attemptNumber: bundle.attempt.attempt_number,
+      responseCount: bundle.responses.length,
+      score: bundle.score,
+    });
+  }, [bundle, attemptId]);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -826,7 +858,13 @@ function GrammarSection({
                     size="sm"
                     variant="outline"
                     className="gap-1.5"
-                    onClick={() =>
+                    onClick={() => {
+                      trackIeltsCoachRetryRequested({
+                        testId,
+                        partNumber,
+                        attemptId,
+                        category: 'grammatical_correction',
+                      });
                       navigate(
                         `/ielts/test/${testId}/part/${partNumber}/coach/retry`,
                         {
@@ -842,8 +880,8 @@ function GrammarSection({
                             },
                           },
                         },
-                      )
-                    }
+                      );
+                    }}
                   >
                     <MessageCircle className="w-3.5 h-3.5" />
                     Retry with Coach

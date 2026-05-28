@@ -37,6 +37,7 @@ import {
   type IeltsPartDetail,
   type IeltsTestDetail,
 } from '@/services/ielts.service';
+import { trackIeltsTestViewed } from '@/lib/ielts-analytics';
 
 const PART_TITLES: Record<1 | 2 | 3, string> = {
   1: 'Personal interview',
@@ -82,6 +83,10 @@ export default function IELTSTest() {
       carouselApi.off('select', onSelect);
     };
   }, [carouselApi]);
+
+  useEffect(() => {
+    if (test) trackIeltsTestViewed(test.id, test.theme, test.ordering);
+  }, [test]);
 
   const backToCategory = () => {
     if (test) navigate(`/ielts/category/${themeSlug(test.theme)}`);

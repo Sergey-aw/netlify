@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PanelLeft, ArrowLeft, GraduationCap } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -11,6 +11,7 @@ import {
   fetchIeltsCatalog,
   groupByTheme,
 } from '@/services/ielts.service';
+import { trackIeltsCategoryViewed } from '@/lib/ielts-analytics';
 
 export default function IELTSCategory() {
   const { slug = '' } = useParams<{ slug: string }>();
@@ -36,6 +37,15 @@ export default function IELTSCategory() {
     if (!tests) return null;
     return groupByTheme(tests).find((t) => t.slug === slug) ?? null;
   }, [tests, slug]);
+
+  useEffect(() => {
+    if (themeSummary)
+      trackIeltsCategoryViewed(
+        themeSummary.slug,
+        themeSummary.theme,
+        themeSummary.tests.length,
+      );
+  }, [themeSummary]);
 
   return (
     <div className="flex h-screen bg-gray-50">

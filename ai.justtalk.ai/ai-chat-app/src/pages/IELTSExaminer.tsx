@@ -25,6 +25,13 @@ import {
   type IeltsPartDetail,
   type IeltsQuestion,
 } from '@/services/ielts.service';
+import {
+  trackIeltsExaminerStarted,
+  trackIeltsRecordingStarted,
+  trackIeltsAnswerRecorded,
+  trackIeltsResponseScored,
+  trackIeltsExaminerCompleted,
+} from '@/lib/ielts-analytics';
 
 // Transient state for the CURRENT question's recorder only.
 type RecPhase = 'idle' | 'preparing' | 'recording';
@@ -102,10 +109,17 @@ export default function IELTSExaminer() {
           ...prev,
           [questionId]: { ...prev[questionId], status: 'done', blob: null, error: undefined },
         }));
+        trackIeltsResponseScored({ attemptId: attempt.id, questionId, success: true });
         void refetchResponses();
       })
       .catch((e) => {
         console.error('[ielts-examiner] background score failed:', e);
+        trackIeltsResponseScored({
+          attemptId: attempt.id,
+          questionId,
+          success: false,
+          error: e instanceof Error ? e.message : 'Scoring failed.',
+        });
         setJobs((prev) => ({
           ...prev,
           [questionId]: {
@@ -151,6 +165,25 @@ export default function IELTSExaminer() {
 
   const allDone =
     !!part && questionIndex !== null && questionIndex >= part.questions.length;
+
+  // ------------------------------------------------------------------
+  // Analytics — fire once per attempt / once on completion
+  // ------------------------------------------------------------------
+  const startedTrackedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!test || !part || !attempt) return;
+    if (startedTrackedRef.current === attempt.id) return;
+    startedTrackedRef.current = attempt.id;
+    trackIeltsExaminerStarted({
+      testId: test.id,
+      theme: test.theme,
+      partNumber: part.part_number,
+      attemptId: attempt.id,
+      attemptNumber: attempt.attempt_number,
+      resumed: !attempt.created,
+      totalQuestions: part.questions.length,
+    });
+  }, [test, part, attempt]);
 
   // ------------------------------------------------------------------
   // Recorder state (current question only)
@@ -203,6 +236,15 @@ export default function IELTSExaminer() {
       recorderRef.current.startRecording();
       setSecondsLeft(part.max_response_sec);
       setRecPhase('recording');
+      if (attempt) {
+        trackIeltsRecordingStarted({
+          testId,
+          partNumber: part.part_number,
+          attemptId: attempt.id,
+          questionId: currentQuestion.id,
+          questionIndex: questionIndex ?? 0,
+        });
+      }
 
       timerRef.current = window.setInterval(() => {
         setSecondsLeft((s) => {
@@ -232,8 +274,17 @@ export default function IELTSExaminer() {
     stopTimer();
 
     const q = currentQuestion;
+    const qIndex = questionIndex ?? 0;
     try {
       const wav = await recorderRef.current!.stopRecording();
+      trackIeltsAnswerRecorded({
+        testId,
+        partNumber: part.part_number,
+        attemptId: attempt.id,
+        questionId: q.id,
+        questionIndex: qIndex,
+        autoStopped: auto,
+      });
       runJob(q.id, q.question_text, wav); // no await — scores in background
     } catch (e) {
       console.error('Recorder stop failed:', e);
@@ -274,6 +325,20 @@ export default function IELTSExaminer() {
     });
     return ids.size;
   }, [answeredQuestionIds, jobs]);
+
+  const completedTrackedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!allDone || !test || !part || !attempt) return;
+    if (completedTrackedRef.current === attempt.id) return;
+    completedTrackedRef.current = attempt.id;
+    trackIeltsExaminerCompleted({
+      testId: test.id,
+      partNumber: part.part_number,
+      attemptId: attempt.id,
+      totalQuestions: part.questions.length,
+      scoredCount,
+    });
+  }, [allDone, test, part, attempt, scoredCount]);
 
   // ------------------------------------------------------------------
   // Render
