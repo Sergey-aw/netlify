@@ -250,6 +250,7 @@ function ResultsBody({ bundle }: { bundle: AttemptResultBundle }) {
             agg={aggregates}
             testId={attempt.test_part.test.id}
             partNumber={attempt.test_part.part_number}
+            attemptId={attempt.id}
           />
         </TabsContent>
         <TabsContent value="cefr" className="mt-4">
@@ -271,6 +272,8 @@ function ResultsBody({ bundle }: { bundle: AttemptResultBundle }) {
             onClick={() =>
               navigate(
                 `/ielts/test/${attempt.test_part.test.id}/part/${attempt.test_part.part_number}/coach`,
+                // Coach this *specific* attempt, not whatever's latest on the Part.
+                { state: { attemptId: attempt.id } },
               )
             }
           >
@@ -771,11 +774,13 @@ function GrammarSection({
   agg,
   testId,
   partNumber,
+  attemptId,
 }: {
   band: number;
   agg: AggregatedMetrics;
   testId: string;
   partNumber: 1 | 2 | 3;
+  attemptId: string;
 }) {
   const navigate = useNavigate();
   return (
@@ -825,7 +830,10 @@ function GrammarSection({
                       navigate(
                         `/ielts/test/${testId}/part/${partNumber}/coach/retry`,
                         {
+                          // Retry against THIS specific attempt the user is viewing,
+                          // not the latest one for the Part.
                           state: {
+                            attemptId,
                             targetMoment: {
                               quote: s.original,
                               category: 'grammatical_correction',
