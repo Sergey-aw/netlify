@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Mic, MessageSquareHeart, BookOpen, AudioLines, UserCircle } from 'lucide-react';
+import { Mic, MessageSquareHeart, BookOpen, AudioLines, UserCircle, Sparkles } from 'lucide-react';
 import Cover1 from '../assets/Cover-7.jpg';
 import Cover2 from '../assets/Cover-2.png';
 import Cover4 from '../assets/Cover-4.png';
@@ -19,7 +19,15 @@ interface FeatureCardGalleryProps {
 }
 
 const cards = [
-  
+  {
+    id: 'justtalk',
+    title: 'JustTalk',
+    description: 'Talk to your progress coach about everything you’ve done across the app. It remembers your past chats and helps you decide what to focus on next.',
+    cta: 'Talk about your progress →',
+    route: '/justtalk',
+    coverImage: Cover2,
+    icon: Sparkles,
+  },
   {
     id: 'scenarios',
     title: 'Role Plays',

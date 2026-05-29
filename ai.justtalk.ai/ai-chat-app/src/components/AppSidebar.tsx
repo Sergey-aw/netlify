@@ -296,7 +296,7 @@ export function AppSidebar({ open, onOpenChange, selectedConversation, onConvers
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton
-                    onClick={() => handleNavigate('/ai-chat/voice/new')}
+                    onClick={() => handleNavigate('/justtalk')}
                   >
                     <Star className="w-4 h-4" />
                     <span>JustTalk</span>
