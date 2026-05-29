@@ -56,6 +56,7 @@ import IELTSTest from './pages/IELTSTest'
 import IELTSExaminer from './pages/IELTSExaminer'
 import IELTSResults from './pages/IELTSResults'
 import IELTSCoach from './pages/IELTSCoach'
+import JustTalk from './pages/JustTalk'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -111,6 +112,7 @@ function App() {
             <Route path="/ai-chat" element={<ProtectedRoute><AIChatHome /></ProtectedRoute>} />
             <Route path="/ai-chat/conversation/:id?" element={<ProtectedRoute><AIChatConversation /></ProtectedRoute>} />
             <Route path="/ai-chat/voice/:id?" element={<ProtectedRoute><AIChatVoice /></ProtectedRoute>} />
+            <Route path="/justtalk" element={<ProtectedRoute><JustTalk /></ProtectedRoute>} />
             <Route path="/role-plays" element={<ProtectedRoute><RolePlaysV2 /></ProtectedRoute>} />
             <Route path="/role-plays-v1" element={<ProtectedRoute><RolePlays /></ProtectedRoute>} />
             <Route path="/dictionary" element={<ProtectedRoute><VocabularyBuilder /></ProtectedRoute>} />
