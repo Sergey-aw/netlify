@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { Mic, MessageSquareHeart, BookOpen, AudioLines, UserCircle, Sparkles } from 'lucide-react';
+import { useFeatureFlagVariantKey } from 'posthog-js/react';
+import { MessageSquareHeart, BookOpen, AudioLines, UserCircle, Sparkles, GraduationCap } from 'lucide-react';
 import Cover1 from '../assets/Cover-7.jpg';
 import Cover2 from '../assets/Cover-2.png';
+import Cover3 from '../assets/Cover-3.png';
 import Cover4 from '../assets/Cover-4.png';
 import Cover5 from '../assets/Cover-5.jpg';
 import Cover6 from '../assets/Cover-6.jpg';
@@ -29,6 +31,15 @@ const cards = [
     icon: Sparkles,
   },
   {
+    id: 'ielts',
+    title: 'IELTS Speaking',
+    description: 'Practice the IELTS Speaking test with a realistic examiner, then get band-scored feedback and targeted coaching to improve.',
+    cta: 'Start IELTS practice →',
+    route: '/ielts',
+    coverImage: Cover3,
+    icon: GraduationCap,
+  },
+  {
     id: 'scenarios',
     title: 'Role Plays',
     description: 'Practice real conversations — dating, interviews, travel, and more. Some scenarios continue over time, letting conversations evolve naturally.',
@@ -45,15 +56,6 @@ const cards = [
     route: '/pronunciation-practice',
     coverImage: Cover6,
     icon: AudioLines,
-  },
-  {
-    id: 'free-talk',
-    title: 'Free Talk',
-    description: '⁠Speak about anything you want. Pause, restart, make mistakes — I’ll help you keep going and sound more natural.',
-    cta: 'Start conversation →',
-    route: '/ai-chat/voice/new',
-    coverImage: Cover2,    
-    icon: Mic,  
   },
   {
     id: 'my-words',
@@ -77,6 +79,20 @@ const cards = [
 export function FeatureCardGallery({ onNavigate }: FeatureCardGalleryProps) {
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Experiment "homescreen-first-card": ielts_first variant leads with the
+  // IELTS card; control (and unflagged users) keep JustTalk first.
+  const firstCardVariant = useFeatureFlagVariantKey('homescreen-first-card');
+  const orderedCards = useMemo(() => {
+    if (firstCardVariant !== 'ielts_first') {
+      return cards;
+    }
+    const ieltsIndex = cards.findIndex((card) => card.id === 'ielts');
+    if (ieltsIndex <= 0) {
+      return cards;
+    }
+    return [cards[ieltsIndex], ...cards.filter((_, i) => i !== ieltsIndex)];
+  }, [firstCardVariant]);
 
   useEffect(() => {
     if (!carouselApi) {
@@ -106,7 +122,7 @@ export function FeatureCardGallery({ onNavigate }: FeatureCardGalleryProps) {
           className="w-full touch-pan-x"
         >
           <CarouselContent className="-ml-2">
-            {cards.map((card, index) => {
+            {orderedCards.map((card, index) => {
               // Calculate scale and opacity for spring entrance effect
               const distance = Math.abs(index - currentIndex);
 
@@ -166,7 +182,7 @@ export function FeatureCardGallery({ onNavigate }: FeatureCardGalleryProps) {
 
         {/* Dot Indicators */}
         <div className="flex justify-center gap-2 mt-6">
-          {cards.map((_, index) => (
+          {orderedCards.map((_, index) => (
             <button
               key={index}
               onClick={() => carouselApi?.scrollTo(index)}
@@ -183,7 +199,7 @@ export function FeatureCardGallery({ onNavigate }: FeatureCardGalleryProps) {
 
       {/* Desktop Grid */}
       <div className="hidden md:block">
-        <FeatureCardGrid cards={cards} onNavigate={onNavigate} />
+        <FeatureCardGrid cards={orderedCards} onNavigate={onNavigate} />
       </div>
     </div>
   );
