@@ -8,6 +8,7 @@ import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { useSubscription } from '@/hooks/useSubscription';
+import ConnectTeacherCard from '@/components/ConnectTeacherCard';
 
 interface Voice {
   voice_id: string;
@@ -252,6 +253,9 @@ export default function Settings() {
             </button>
           )}
         </Card>
+
+        {/* Connect with a teacher */}
+        <ConnectTeacherCard />
 
         {/* Learning Preferences */}
         <Card className="p-4">
